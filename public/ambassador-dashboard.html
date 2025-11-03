@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>T4L Ambassador Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      /* Custom styles for mobile sidebar toggle */
+      .sidebar-toggle {
+        display: none;
+      }
+      
+      @media (max-width: 768px) {
+        .sidebar-toggle {
+          display: block;
+          position: fixed;
+          top: 1rem;
+          left: 1rem;
+          z-index: 50;
+          background: #4b0d7f;
+          color: white;
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .sidebar {
+          transform: translateX(-100%);
+          transition: transform 0.3s ease;
+          position: fixed;
+          height: 100vh;
+          z-index: 40;
+        }
+        
+        .sidebar.active {
+          transform: translateX(0);
+        }
+        
+        .overlay {
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0, 0, 0, 0.5);
+          z-index: 30;
+        }
+        
+        .overlay.active {
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 font-sans">
+    <!-- Mobile Sidebar Toggle -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+      <i class="bx bx-menu text-xl"></i>
+    </button>
+    
+    <!-- Overlay for mobile sidebar -->
+    <div class="overlay" id="overlay"></div>
+    
+    <div class="flex min-h-screen">
+      <!-- Sidebar -->
+      <aside class="sidebar w-20 lg:w-20 md:w-20 bg-white shadow-md flex flex-col items-center py-6 space-y-6 z-40">
+        <div class="mb-4">
+          <div class="bg-[#4b0d7f] text-white px-3 py-2 rounded-xl font-semibold text-sm">T4L</div>
+        </div>
+        <nav class="flex flex-col space-y-4 text-gray-700 w-full">
+          <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bxs-home text-2xl text-[#4b0d9f] group-hover:scale-110 transition-transform duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Home</span>
+          </div>
+          <a href="/article-amb.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-edit-alt text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Publishing</span>
+          </a>
+          <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-line-chart text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Impact Log</span>
+          </div>
+          <a href="/Partner-Calls.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-briefcase text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Partners</span>
+          </a>
+          <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-calendar-event text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Events</span>
+          </div>
+          <a href="chat-pillar.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-chat text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Chat</span>
+          </a>
+          <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-user text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Profile</span>
+          </div>
+          <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-cog text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Settings</span>
+          </div>
+          <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-red-50">
+            <i class="bx bx-log-out text-2xl group-hover:text-red-600 group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-red-600 transition-colors duration-200">Logout</span>
+          </div>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="flex-1 p-4 md:p-6 lg:p-6">
+        <!-- Top Navbar -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+          <h1 class="text-xl font-semibold text-gray-900">T4L Ambassador</h1>
+          <div class="flex items-center space-x-4 w-full md:w-auto">
+            <div class="relative flex-1 md:flex-none">
+              <input
+                type="text"
+                placeholder="Search articles, events, partners..."
+                class="border border-gray-400 rounded-full pl-10 pr-4 py-2 text-sm w-full md:w-80 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <i class="bx bx-search absolute left-3 top-2.5 text-gray-900"></i>
+            </div>
+            <div class="flex items-center space-x-2">
+              <i class="bx bx-bell text-2xl text-gray-900"></i>
+              <div class="w-10 h-10 bg-[#4b0d7f] flex items-center justify-center rounded-full font-bold text-white">
+                SM
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <!-- Hero Section -->
+        <section
+          class="bg-gradient-to-r from-[#4b0d7f] to-[#a36737] text-white p-4 md:p-6 rounded-2xl mb-6 shadow-md"
+        >
+          <h2 class="text-xl md:text-2xl font-semibold mb-2">Welcome back, Sarah!</h2>
+          <p class="text-sm mb-6">
+            You're in Month 3 <span class="font-semibold">Visibility Stage</span><br />
+            There's an opportunity for you to be featured on our next podcast!
+          </p>
+
+          <div class="flex flex-col md:flex-row gap-4 items-stretch">
+            <div
+              class="flex-1 bg-white/20 backdrop-blur-md px-4 md:px-6 py-4 rounded-lg flex flex-col justify-center shadow-sm"
+            >
+              <p class="font-semibold text-sm flex items-center gap-2">
+                <i class="bx bx-microphone text-xl"></i>
+                Next Milestone
+              </p>
+              <p class="text-base mt-1 font-medium">Book for your Podcast Recording</p>
+            </div>
+
+            <div
+              class="flex-1 bg-white/20 backdrop-blur-md px-4 md:px-6 py-4 rounded-lg flex flex-col justify-center shadow-sm"
+            >
+              <p class="font-semibold text-sm flex items-center gap-2">
+                <i class="bx bx-calendar text-xl"></i>
+                3 days remaining
+              </p>
+              <p class="text-base mt-1 font-medium">Webinar Oct 25 • Register Now</p>
+            </div>
+
+            <!-- Join Your Tribe Button -->
+            <a href="chat-pillar.html"
+              class="flex items-center justify-center gap-4 bg-white/20 backdrop-blur-md px-4 md:px-6 py-4 rounded-lg shadow-sm hover:shadow-md transition-all flex-1"
+            >
+              <i class="bx bx-group text-xl"></i>
+              <span class="font-medium">Join your Tribe</span>
+          </a>
+          </div>
+        </section>
+
+        <!-- Stats -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
+          <!-- Journey Progress -->
+          <a href="/journey.html"
+            class="bg-white border border-purple-300 shadow hover:shadow-2xl rounded-xl p-4 md:p-5 text-center transition-all hover:-translate-y-1 hover:border-purple-500"
+          >
+            <i class="bx bx-trending-up text-3xl text-purple-600 mx-auto mb-2"></i>
+            <p class="font-bold text-black text-lg">25%</p>
+            <p class="text-black text-sm">Journey Progress</p>
+            <p class="text-black text-xs">Month 3 of 12</p>
+        </a>
+
+          <!-- Completed Tasks -->
+          <div
+            class="bg-white border border-green-300 shadow hover:shadow-2xl rounded-xl p-4 md:p-5 text-center transition-all hover:-translate-y-1 hover:border-green-500"
+          >
+            <i class="bx bx-check-circle text-3xl text-green-600 mx-auto mb-2"></i>
+            <p class="font-bold text-black text-lg">12</p>
+            <p class="text-black text-sm">Completed Tasks</p>
+            <p class="text-black text-xs">8 upcoming</p>
+          </div>
+
+          <!-- Article Due -->
+          <div
+            class="bg-white border border-blue-300 shadow hover:shadow-2xl rounded-xl p-4 md:p-5 text-center transition-all hover:-translate-y-1 hover:border-blue-500"
+          >
+            <i class="bx bx-edit text-3xl text-blue-600 mx-auto mb-2"></i>
+            <p class="font-bold text-black text-lg">1</p>
+            <p class="text-black text-sm">Article Due</p>
+            <p class="text-black text-xs">2025-09-30</p>
+          </div>
+
+          <!-- Partner Application -->
+          <div
+            class="bg-white border border-yellow-300 shadow hover:shadow-2xl rounded-xl p-4 md:p-5 text-center transition-all hover:-translate-y-1 hover:border-yellow-500"
+          >
+            <i class="bx bx-briefcase text-3xl text-yellow-600 mx-auto mb-2"></i>
+            <p class="font-bold text-black text-lg">1</p>
+            <p class="text-black text-sm">Partner Application</p>
+            <p class="text-black text-xs">Under Review</p>
+          </div>
+        </section>
+
+        <!-- Middle Section -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <!-- Video -->
+          <div class="bg-white rounded-2xl p-4 md:p-6 lg:col-span-2 border border-gray-100 flex flex-col">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-4">
+              <h4 class="font-semibold text-gray-900 text-lg">This Month's Video</h4>
+              <a href="#" class="text-purple-600 text-sm font-medium hover:text-purple-700 transition-colors">Watch now</a>
+            </div>
+
+            <!-- Video Area -->
+            <div class="bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex flex-col items-center justify-center min-h-[16rem] relative overflow-hidden">
+              <button class="bg-white text-purple-600 rounded-full p-4 shadow-lg hover:shadow-xl transition-all hover:scale-105 z-10">
+                <i class="bx bx-play text-3xl"></i>
+              </button>
+              <div class="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent"></div>
+            </div>
+
+            <!-- Text Section -->
+            <div class="text-center mt-4">
+              <p class="font-semibold text-gray-900">Visibility Stage Guide</p>
+              <p class="text-sm text-gray-500">5:30 mins • Events</p>
+            </div>
+
+            <!-- Gap between Video and Journey Courses -->
+            <div class="mt-8">
+              <!-- Journey Courses Section -->
+              <h4 class="font-semibold text-gray-900 text-lg mb-4">Journey Courses</h4>
+              <div class="flex flex-col md:flex-row gap-4">
+                <!-- LinkedIn Warrior -->
+                <div class="border border-gray-200 rounded-2xl p-4 hover:border-purple-300 hover:shadow-sm transition-all flex-1">
+                  <p class="font-medium text-gray-900">LinkedIn Warrior</p>
+                </div>
+
+                <!-- AI Stacking -->
+                <div class="border border-gray-200 rounded-2xl p-4 flex justify-between items-center hover:border-purple-300 hover:shadow-sm transition-all flex-1">
+                  <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Premium</p>
+                    <p class="font-semibold text-gray-900">AI Stacking</p>
+                  </div>
+                  <button class="text-purple-600 text-sm font-medium hover:text-purple-700 transition-colors">Learn More</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Events + Partner Calls Column -->
+          <div class="flex flex-col gap-6">
+            <!-- Events (now a big card like Partner Calls) -->
+            <div class="bg-white rounded-2xl p-4 md:p-6 border border-gray-100">
+              <div class="flex justify-between items-center mb-4">
+                <h4 class="font-semibold text-gray-900 text-lg">Events</h4>
+                <a href="#" class="text-purple-600 text-sm font-medium hover:text-purple-700 transition-colors">Calendar</a>
+              </div>
+              <div class="space-y-3">
+                <!-- Event 1 -->
+                <div class="border border-gray-200 rounded-2xl p-4 hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer">
+                  <div class="flex items-start gap-3">
+                    <div class="bg-purple-100 rounded-xl p-2 flex-shrink-0">
+                      <i class="bx bxs-group text-purple-600 text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                      <p class="font-semibold text-gray-900 text-sm mb-1">Ambassador-only Roundtable</p>
+                      <p class="text-xs text-gray-500">Private • 20 Oct</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Event 2 -->
+                <div class="border border-gray-200 rounded-2xl p-4 hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer">
+                  <div class="flex items-start gap-3">
+                    <div class="bg-purple-100 rounded-xl p-2 flex-shrink-0">
+                      <i class="bx bx-microphone text-purple-600 text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                      <p class="font-semibold text-gray-900 text-sm mb-1">Shameless Podcast-Booking</p>
+                      <p class="text-xs text-gray-500">Confirmation Pending</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Partner Calls (unchanged) -->
+            <div class="bg-white rounded-2xl p-4 md:p-6 border border-gray-100">
+              <div class="flex justify-between items-center mb-4">
+                <h4 class="font-semibold text-gray-900 text-lg">Partner Calls</h4>
+                <a href="/Partner-Calls.html" class="text-purple-600 text-sm font-medium hover:text-purple-700 transition-colors">View all</a>
+              </div>
+              <div class="space-y-3">
+                <div class="border border-gray-200 rounded-2xl p-4 hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer">
+                  <div class="flex items-start gap-3">
+                    <div class="bg-purple-100 rounded-xl p-2 flex-shrink-0">
+                      <i class="bx bxs-group text-purple-600 text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                      <p class="font-semibold text-gray-900 text-sm mb-1">Girls in STEM</p>
+                      <p class="text-xs text-gray-500">Speaker • Online • Inspiring Others • 12 Oct</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="border border-gray-200 rounded-2xl p-4 hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer">
+                  <div class="flex items-start gap-3">
+                    <div class="bg-purple-100 rounded-xl p-2 flex-shrink-0">
+                      <i class="bx bxs-group text-purple-600 text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                      <p class="font-semibold text-gray-900 text-sm mb-1">Youth Code Lab</p>
+                      <p class="text-xs text-gray-500 mb-2">Nov 25 • Social Looking</p>
+                      <div class="flex items-center gap-1">
+                        <div class="flex -space-x-2">
+                          <div class="w-6 h-6 rounded-full bg-purple-500 border-2 border-white"></div>
+                          <div class="w-6 h-6 rounded-full bg-purple-400 border-2 border-white"></div>
+                          <div class="w-6 h-6 rounded-full bg-purple-300 border-2 border-white"></div>
+                        </div>
+                        <span class="text-xs text-gray-500 ml-1">3 of 10 open</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Upcoming Actions -->
+        <section class="bg-white rounded-2xl p-4 md:p-6 mb-6">
+          <h4 class="font-semibold text-gray-800 text-lg mb-4">Upcoming Actions</h4>
+          <div class="space-y-4">
+            <!-- Action 1 -->
+            <div class="flex flex-col border-l-4 border-yellow-400 bg-yellow-50 p-4 rounded-xl shadow hover:shadow-lg transition-shadow duration-200">
+              <div class="flex justify-between items-center mb-1">
+                <p class="font-semibold text-gray-800">Social Media Audit Results</p>
+                <span class="text-xs text-yellow-700 font-semibold uppercase">Pending</span>
+              </div>
+              <p class="text-sm text-gray-600">
+                Review your LinkedIn audit findings <br />Oct 12, 2025
+              </p>
+            </div>
+
+            <!-- Action 2 -->
+            <div class="flex flex-col border-l-4 border-blue-400 bg-blue-50 p-4 rounded-xl shadow hover:shadow-lg transition-shadow duration-200">
+              <div class="flex justify-between items-center mb-1">
+                <p class="font-semibold text-gray-800">Speaker Profile Review</p>
+                <span class="text-xs text-blue-700 font-semibold uppercase">Todo</span>
+              </div>
+              <p class="text-sm text-gray-600">
+                Submit updated speaker profile for review <br />Oct 20, 2025
+              </p>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      // Mobile sidebar toggle functionality
+      document.addEventListener('DOMContentLoaded', function() {
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.getElementById('overlay');
+        
+        sidebarToggle.addEventListener('click', function() {
+          sidebar.classList.toggle('active');
+          overlay.classList.toggle('active');
+        });
+        
+        overlay.addEventListener('click', function() {
+          sidebar.classList.remove('active');
+          overlay.classList.remove('active');
+        });
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>T4L Ambassador Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      /* Custom styles for mobile sidebar toggle */
+      .sidebar-toggle {
+        display: none;
+      }
+      
+      @media (max-width: 768px) {
+        .sidebar-toggle {
+          display: block;
+          position: fixed;
+          top: 1rem;
+          left: 1rem;
+          z-index: 50;
+          background: #4b0d7f;
+          color: white;
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .sidebar {
+          transform: translateX(-100%);
+          transition: transform 0.3s ease;
+          position: fixed;
+          height: 100vh;
+          z-index: 40;
+        }
+        
+        .sidebar.active {
+          transform: translateX(0);
+        }
+        
+        .overlay {
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0, 0, 0, 0.5);
+          z-index: 30;
+        }
+        
+        .overlay.active {
+          display: block;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 font-sans">
+    <!-- Mobile Sidebar Toggle -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+      <i class="bx bx-menu text-xl"></i>
+    </button>
+    
+    <!-- Overlay for mobile sidebar -->
+    <div class="overlay" id="overlay"></div>
+    
+    <div class="flex min-h-screen">
+      <!-- Sidebar -->
+      <aside class="sidebar w-20 lg:w-20 md:w-20 bg-white shadow-md flex flex-col items-center py-6 space-y-6 z-40">
+        <div class="mb-4">
+          <div class="bg-[#4b0d7f] text-white px-3 py-2 rounded-xl font-semibold text-sm">T4L</div>
+        </div>
+        <nav class="flex flex-col space-y-4 text-gray-700 w-full">
+          <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bxs-home text-2xl text-[#4b0d9f] group-hover:scale-110 transition-transform duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Home</span>
+          </div>
+          <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-edit-alt text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Publishing</span>
+          </div>
+          <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-line-chart text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Impact Log</span>
+          </div>
+          <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-briefcase text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Partners</span>
+          </div>
+          <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-calendar-event text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Events</span>
+          </div>
+          <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-chat text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Chat</span>
+          </div>
+          <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-user text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Profile</span>
+          </div>
+          <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-cog text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Settings</span>
+          </div>
+          <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-red-50">
+            <i class="bx bx-log-out text-2xl group-hover:text-red-600 group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-red-600 transition-colors duration-200">Logout</span>
+          </div>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="flex-1 p-4 md:p-6 lg:p-6">
+        <!-- Top Navbar -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+          <h1 class="text-xl font-semibold text-gray-900">T4L Ambassador</h1>
+          <div class="flex items-center space-x-4 w-full md:w-auto">
+            <div class="relative flex-1 md:flex-none">
+              <input
+                type="text"
+                placeholder="Search articles, events, partners..."
+                class="border border-gray-400 rounded-full pl-10 pr-4 py-2 text-sm w-full md:w-80 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <i class="bx bx-search absolute left-3 top-2.5 text-gray-900"></i>
+            </div>
+            <div class="flex items-center space-x-2">
+              <i class="bx bx-bell text-2xl text-gray-900"></i>
+              <div class="w-10 h-10 bg-[#4b0d7f] flex items-center justify-center rounded-full font-bold text-white">
+                SM
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="bg-gradient-to-r from-[#4b0d7f] to-[#a36737] text-white p-6 md:p-8 rounded-2xl mb-6 shadow-md relative overflow-hidden">
+          <div class="flex justify-between items-center">
+            <div>
+              <h2 class="text-2xl md:text-3xl font-bold mb-2">Welcome back, David!</h2>
+              <p class="text-sm md:text-base opacity-90">
+                2 new applications waiting for your review
+              </p>
+            </div>
+            
+            <a href="/creat-Post.html" class="bg-white/20 backdrop-blur-sm hover:bg-white/30 px-6 py-3 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-2 font-medium">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+              </svg>
+              <span>Create a Post</span>
+            </a>
+          </div>
+        </section>
+
+        <!-- LIFT Pillar Section -->
+        <section class="bg-white p-6 md:p-8 rounded-2xl mb-6 shadow-md">
+          <h2 class="text-xl font-bold mb-5">LIFT Pillar</h2>
+          
+          <!-- Dropdown -->
+          <div class="relative mb-6">
+            <select class="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 text-base appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white">
+              <option>Leading Self</option>
+              <option>Inspiring Others</option>
+              <option>Fostering Teams</option>
+              <option>Transforming Orgs</option>
+            </select>
+            <svg class="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-700 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          
+          <!-- Visibility Opportunities -->
+          <h3 class="text-lg font-bold mb-4">Visibility Opportunities</h3>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <button 
+              onclick="setActive(this)" 
+              class="opportunity-btn active bg-[#4b0d7f] text-white px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base"
+            >
+              Speaking
+            </button>
+            <button 
+              onclick="setActive(this)" 
+              class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base"
+            >
+              Podcast
+            </button>
+            <button 
+              onclick="setActive(this)" 
+              class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base"
+            >
+              Webinar
+            </button>
+            <button 
+              onclick="setActive(this)" 
+              class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base"
+            >
+              Volunteering
+            </button>
+          </div>
+        </section>
+
+   
+        <!-- Stats Section -->
+        <section class="mb-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Total Views Card -->
+            <div class="bg-white border border-purple-300 rounded-2xl p-5 shadow hover:shadow-lg transition-all hover:-translate-y-1 hover:border-purple-500 cursor-pointer">
+              <div class="flex justify-center mb-3">
+                <div class="rounded-xl p-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9 text-purple-800" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                    <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+              <div class="text-center">
+                <p class="text-2xl font-bold text-gray-900 mb-1">1,247</p>
+                <p class="text-sm text-gray-600 font-medium">Total Views</p>
+              </div>
+            </div>
+
+            <!-- Pending Review Card -->
+            <div class="bg-white border border-yellow-300 rounded-2xl p-5 shadow hover:shadow-lg transition-all hover:-translate-y-1 hover:border-yellow-500 cursor-pointer">
+              <div class="flex justify-center mb-3">
+                <div class="rounded-xl p-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+              <div class="text-center">
+                <p class="text-2xl font-bold text-gray-900 mb-1">189</p>
+                <p class="text-sm text-gray-600 font-medium">Pending Review</p>
+              </div>
+            </div>
+
+            <!-- Active Posts Card -->
+            <div class="bg-white border border-purple-300 rounded-2xl p-5 shadow hover:shadow-lg transition-all hover:-translate-y-1 hover:border-purple-500 cursor-pointer">
+              <div class="flex justify-center mb-3">
+                <div class="rounded-xl p-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9 text-purple-800" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                  </svg>
+                </div>
+              </div>
+              <div class="text-center">
+                <p class="text-2xl font-bold text-gray-900 mb-1">5</p>
+                <p class="text-sm text-gray-600 font-medium">Active Posts</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Recent Applications Section -->
+        <section class="bg-white rounded-2xl p-6 md:p-8 mb-6 shadow-md">
+          <div class="flex justify-between items-center mb-6">
+            <div>
+              <h2 class="text-xl font-bold text-gray-900 mb-2">Recent Applications</h2>
+              <p class="text-sm text-gray-600">Review and manage ambassador applications</p>
+            </div>
+            <a href="/CommunityPartView.html" class="text-purple-600 text-sm font-semibold hover:text-purple-700 transition-colors">View All</a>
+          </div>
+
+          <div class="space-y-4">
+            <!-- Application 1 - Sarah Johnson -->
+            <div class="border border-gray-200 rounded-2xl p-5 hover:border-purple-300 hover:shadow-md transition-all cursor-pointer">
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex items-start gap-4 flex-1">
+                  <!-- Avatar -->
+                  <div class="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-[#4b0d7f] flex items-center justify-center flex-shrink-0">
+                    <span class="text-white font-bold text-xl">SJ</span>
+                  </div>
+                  
+                  <!-- Content -->
+                  <div class="flex-1">
+                    <h3 class="text-lg font-bold text-gray-900 mb-1">Sarah Johnson</h3>
+                    <p class="text-sm text-gray-600 mb-1">Applied to: Women in Tech Leadership Series</p>
+                    <p class="text-sm text-gray-500">I have 15+ years of experience leading ...</p>
+                  </div>
+                </div>
+
+                <!-- Right side: Status and Date -->
+                <div class="flex flex-col items-end gap-2 flex-shrink-0">
+                  <span class="bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-semibold">Unread</span>
+                  <p class="text-sm text-gray-500">2025.10.15</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Application 2 - Maria Garcia -->
+            <div class="border border-gray-200 rounded-2xl p-5 hover:border-purple-300 hover:shadow-md transition-all cursor-pointer">
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex items-start gap-4 flex-1">
+                  <!-- Avatar -->
+                  <div class="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-[#4b0d7f] flex items-center justify-center flex-shrink-0">
+                    <span class="text-white font-bold text-xl">MG</span>
+                  </div>
+                  
+                  <!-- Content -->
+                  <div class="flex-1">
+                    <h3 class="text-lg font-bold text-gray-900 mb-1">Maria Garcia</h3>
+                    <p class="text-sm text-gray-600 mb-1">Applied to: Women in Tech Leadership Series</p>
+                    <p class="text-sm text-gray-500">I have 15+ years of experience leading ...</p>
+                  </div>
+                </div>
+
+                <!-- Right side: Status and Date -->
+                <div class="flex flex-col items-end gap-2 flex-shrink-0">
+                  <span class="bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-semibold">Unread</span>
+                  <p class="text-sm text-gray-500">2025.10.8</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Application 3 - David Chen -->
+            <div class="border border-gray-200 rounded-2xl p-5 hover:border-purple-300 hover:shadow-md transition-all cursor-pointer">
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex items-start gap-4 flex-1">
+                  <!-- Avatar -->
+                  <div class="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-[#4b0d7f] flex items-center justify-center flex-shrink-0">
+                    <span class="text-white font-bold text-xl">DC</span>
+                  </div>
+                  
+                  <!-- Content -->
+                  <div class="flex-1">
+                    <h3 class="text-lg font-bold text-gray-900 mb-1">David Chen</h3>
+                    <p class="text-sm text-gray-600 mb-1">Applied to: AI Implementation Case Studies</p>
+                    <p class="text-sm text-gray-500">I have 15+ years of experience leading ...</p>
+                  </div>
+                </div>
+
+                <!-- Right side: Status and Date -->
+                <div class="flex flex-col items-end gap-2 flex-shrink-0">
+                  <span class="bg-yellow-100 text-yellow-700 px-4 py-2 rounded-lg text-sm font-semibold">Reviewing</span>
+                  <p class="text-sm text-gray-500">2025.10.01</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Posts Section -->
+      <section class="bg-white rounded-2xl p-6 md:p-8 mb-6 shadow-md">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold text-gray-900">Posts</h2>
+          <div class="flex gap-2">
+            <button class="scroll-btn left-0 bg-gray-200 hover:bg-gray-300 rounded-full p-2 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button class="scroll-btn right-0 bg-gray-200 hover:bg-gray-300 rounded-full p-2 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="posts-container relative">
+          <div class="posts-scroll flex gap-6 overflow-x-auto scroll-smooth py-2 -mx-2 px-2" style="scrollbar-width: none; -ms-overflow-style: none;">
+            <!-- Post Card 1 -->
+            <div class="min-w-[400px] border border-gray-200 rounded-2xl p-6 hover:border-purple-300 hover:shadow-md transition-all flex-shrink-0">
+              <!-- Your existing post card content -->
+              <div class="flex items-start justify-between mb-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-[#4b0d7f] flex items-center justify-center flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="text-lg font-bold text-gray-900">Women in Tech Summit</h3>
+                    <p class="text-sm text-gray-500">2 hours ago</p>
+                  </div>
+                </div>
+                <div class="flex gap-2">
+                  <span class="bg-purple-200 text-purple-700 px-4 py-2 rounded-xl text-sm font-semibold">Speaking</span>
+                  <span class="bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold">Inspiring Others</span>
+                </div>
+              </div>
+              <div class="mb-4">
+                <h4 class="text-xl font-bold text-gray-900 mb-3">Speaking at WIT Summit 2025 - Austin</h4>
+                <p class="text-base text-gray-700">
+                  Join us for the largest women in tech conference! We're looking for 3 speakers to join our leadership panel. In-person event, 1000+ attendees, full travel covered.
+                </p>
+              </div>
+              <div class="bg-gradient-to-r from-[#4b0d7f] to-[#4b0d7f] text-white px-6 py-4 rounded-xl mb-4">
+                <p class="font-semibold text-lg">Deadline: 2025-11-20</p>
+              </div>
+              <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+                <!-- Footer content -->
+              </div>
+            </div>
+
+            <!-- Post Card 2 -->
+            <div class="min-w-[400px] border border-gray-200 rounded-2xl p-6 hover:border-purple-300 hover:shadow-md transition-all flex-shrink-0">
+              <!-- Duplicate or modify this card for more posts -->
+            </div>
+
+            <!-- Add more post cards as needed -->
+          </div>
+        </div>
+      </section>
+
+      </main>
+    </div>
+
+    <script>
+      // Sidebar toggle functionality
+      const sidebarToggle = document.getElementById('sidebarToggle');
+      const sidebar = document.querySelector('.sidebar');
+      const overlay = document.getElementById('overlay');
+
+      sidebarToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+      });
+
+      overlay.addEventListener('click', () => {
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
+      });
+
+      // Visibility opportunities active state functionality
+      function setActive(button) {
+        // Remove active class from all buttons
+        document.querySelectorAll('.opportunity-btn').forEach(btn => {
+          btn.classList.remove('active', 'bg-[#4b0d7f]', 'text-white');
+          btn.classList.add('bg-gray-300', 'text-black');
+        });
+        
+        // Add active class to clicked button
+        button.classList.add('active', 'bg-[#4b0d7f]', 'text-white');
+        button.classList.remove('bg-gray-300', 'text-black');
+      }
+
+
+      document.addEventListener('DOMContentLoaded', function() {
+        const scrollContainer = document.querySelector('.posts-scroll');
+        const scrollLeftBtn = document.querySelector('.scroll-btn:first-child');
+        const scrollRightBtn = document.querySelector('.scroll-btn:last-child');
+
+        scrollLeftBtn.addEventListener('click', () => {
+          scrollContainer.scrollBy({ left: -400, behavior: 'smooth' });
+        });
+
+        scrollRightBtn.addEventListener('click', () => {
+          scrollContainer.scrollBy({ left: 400, behavior: 'smooth' });
+        });
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T4L - Applications Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        }
+
+        .sidebar-toggle {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar-toggle {
+                display: flex;
+                position: fixed;
+                top: 1rem;
+                left: 1rem;
+                z-index: 50;
+                background: linear-gradient(135deg, #4b0d7f 0%, #6b1fa1 100%);
+                color: white;
+                border-radius: 14px;
+                width: 48px;
+                height: 48px;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 10px 25px rgba(75, 13, 127, 0.35);
+            }
+
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                position: fixed;
+                height: 100vh;
+                z-index: 40;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0, 0, 0, 0.6);
+                backdrop-filter: blur(8px);
+                z-index: 30;
+            }
+
+            .overlay.active {
+                display: block;
+            }
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-card:hover {
+            box-shadow: 0 12px 48px rgba(75, 13, 127, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .application-card {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .application-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, #4b0d7f 0%, #6b1fa1 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .application-card:hover::before {
+            opacity: 1;
+        }
+
+        .status-badge {
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            padding: 0.625rem 1.25rem;
+            border-radius: 12px;
+            font-size: 0.8125rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .filter-chip {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .filter-chip::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(75, 13, 127, 0.1);
+            transform: translate(-50%, -50%);
+            transition: width 0.3s ease, height 0.3s ease;
+        }
+
+        .filter-chip:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .filter-chip.active {
+            box-shadow: 0 6px 20px rgba(75, 13, 127, 0.35);
+        }
+
+        .tag-pill {
+            font-weight: 600;
+            font-size: 0.75rem;
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
+            letter-spacing: 0.3px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        }
+
+        .avatar-circle {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .avatar-circle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .search-input:focus {
+            box-shadow: 0 0 0 4px rgba(75, 13, 127, 0.12);
+        }
+
+        .section-header {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.95) 100%);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-slide-up {
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .sidebar-link {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-link::before {
+            content: '';
+            position: absolute;
+            left: -12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 0;
+            background: linear-gradient(180deg, #4b0d7f 0%, #6b1fa1 100%);
+            border-radius: 0 4px 4px 0;
+            transition: height 0.3s ease;
+        }
+
+        .sidebar-link.active::before {
+            height: 36px;
+        }
+
+        .action-button {
+            transition: all 0.2s ease;
+        }
+
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .action-button:active {
+            transform: translateY(0);
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 32px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            animation: slideUpModal 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUpModal {
+            from {
+                opacity: 0;
+                transform: translateY(50px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .modal-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+
+
+        .modal-action-btn {
+            transition: all 0.3s ease;
+            font-weight: 700;
+            padding: 1rem 2rem;
+            border-radius: 16px;
+            font-size: 0.95rem;
+        }
+
+        .modal-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .success-notification {
+            animation: slideDown 0.3s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <i class="bx bx-menu text-2xl"></i>
+    </button>
+
+    <div class="overlay" id="overlay"></div>
+
+    <div class="modal-overlay" id="applicationModal">
+        <div class="modal-content">
+            <div class="sticky top-0 bg-white rounded-t-3xl border-b border-gray-200 p-8 flex items-center justify-between z-10">
+                <h2 class="text-xl font-bold text-gray-900">Application Details</h2>
+                <button id="closeModal" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors">
+                    <i class="bx bx-x text-3xl text-gray-600"></i>
+                </button>
+            </div>
+
+            <div class="p-8">
+                <div class="flex items-start gap-6 mb-8 p-6 bg-gradient-to-br from-purple-50 to-white rounded-2xl border border-purple-100">
+                    <div class="w-8 h-8 bg-gradient-to-br from-purple-400 to-[#4b0d7f] rounded-2xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-lg">
+                        <span id="modalAvatar">LK</span>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-ld font-bold text-gray-900 mb-2" id="modalName">Lili Kimani</h3>
+                        <p class="text-gray-700 font-semibold text-sm mb-3" id="modalTitle">CTO | AI Strategy Leader | Executive Coach</p>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm text-gray-600 font-medium">Applied to:</span>
+                            <a href="#" class="text-[#4b0d7f] font-bold hover:underline" id="modalEvent">Speaking at WIT Summit 2025 - Austin</a>
+                        </div>
+                    </div>
+                    <span class="status-badge" id="modalStatus">
+                        <span class="w-2.5 h-2.5 bg-gray-400 rounded-full"></span>
+                        Reviewing
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6 mb-8">
+                    <div class="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                        <p class="text-sm font-bold text-gray-600 uppercase tracking-wide mb-2">Application Date</p>
+                        <p class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                            <i class="bx bx-calendar text-[#4b0d7f]"></i>
+                            <span id="modalDate">2025-10-08</span>
+                        </p>
+                    </div>
+                    <div class="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                        <p class="text-sm font-bold text-gray-600 uppercase tracking-wide mb-3">Categories</p>
+                        <div class="flex flex-wrap gap-2" id="modalCategories"></div>
+                    </div>
+                </div>
+
+                <div class="mb-8">
+                    <h4 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <i class="bx bx-message-square-detail text-[#4b0d7f] text-2xl"></i>
+                        Ambassador Pitch
+                    </h4>
+                    <div class="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                        <p class="text-gray-700 leading-relaxed font-medium" id="modalPitch"></p>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-200 pt-6">
+                    <p class="text-sm font-bold text-gray-600 uppercase tracking-wide mb-4">Review Application</p>
+                    <div class="grid grid-cols-3 gap-4">
+                        <button class="modal-action-btn bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2" onclick="handleAction('accepted')">
+                            <i class="bx bx-check-circle text-xl"></i>
+                            Accept
+                        </button>
+                        <button class="modal-action-btn bg-yellow-500 hover:bg-yellow-700 text-white flex items-center justify-center gap-2" onclick="handleAction('defer')">
+                            <i class="bx bx-time-five text-xl"></i>
+                            Defer
+                        </button>
+                        <button class="modal-action-btn bg-red-600 hover:bg-red-700 text-white flex items-center justify-center gap-2" onclick="handleAction('declined')">
+                            <i class="bx bx-x-circle text-xl"></i>
+                            Decline
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex min-h-screen">
+        <aside class="sidebar w-20 bg-white/95 backdrop-blur-xl shadow-2xl border-r border-gray-200/50 flex flex-col items-center py-8 space-y-6 z-40">
+            <div class="mb-4">
+                <div class="bg-gradient-to-br from-[#4b0d7f] to-[#6b1fa1] text-white px-4 py-3 rounded-2xl font-bold text-sm shadow-xl hover:shadow-2xl transition-all cursor-pointer hover:scale-105">
+                    T4L
+                </div>
+            </div>
+
+            <nav class="flex flex-col space-y-2 w-full px-3">
+                <div class="sidebar-link active flex flex-col items-center cursor-pointer group py-3.5 px-3 rounded-2xl hover:bg-purple-50/80 transition-all">
+                    <i class="bx bxs-home text-2xl text-[#4b0d7f] group-hover:scale-110 transition-transform"></i>
+                    <span class="text-[9px] mt-2 font-bold text-gray-700 group-hover:text-[#4b0d7f]">Home</span>
+                </div>
+
+                <div class="sidebar-link flex flex-col items-center cursor-pointer group py-3.5 px-3 rounded-2xl hover:bg-purple-50/80 transition-all">
+                    <i class="bx bx-line-chart text-2xl text-gray-500 group-hover:text-[#4b0d7f] group-hover:scale-110 transition-all"></i>
+                    <span class="text-[9px] mt-2 font-bold text-gray-500 group-hover:text-[#4b0d7f]">Analytics</span>
+                </div>
+
+                <div class="sidebar-link flex flex-col items-center cursor-pointer group py-3.5 px-3 rounded-2xl hover:bg-purple-50/80 transition-all">
+                    <i class="bx bx-briefcase text-2xl text-gray-500 group-hover:text-[#4b0d7f] group-hover:scale-110 transition-all"></i>
+                    <span class="text-[9px] mt-2 font-bold text-gray-500 group-hover:text-[#4b0d7f]">Offers</span>
+                </div>
+
+                <div class="sidebar-link flex flex-col items-center cursor-pointer group py-3.5 px-3 rounded-2xl hover:bg-purple-50/80 transition-all">
+                    <i class="bx bx-calendar text-2xl text-gray-500 group-hover:text-[#4b0d7f] group-hover:scale-110 transition-all"></i>
+                    <span class="text-[9px] mt-2 font-bold text-gray-500 group-hover:text-[#4b0d7f]">Events</span>
+                </div>
+
+                <div class="sidebar-link flex flex-col items-center cursor-pointer group py-3.5 px-3 rounded-2xl hover:bg-purple-50/80 transition-all">
+                    <i class="bx bx-user text-2xl text-gray-500 group-hover:text-[#4b0d7f] group-hover:scale-110 transition-all"></i>
+                    <span class="text-[9px] mt-2 font-bold text-gray-500 group-hover:text-[#4b0d7f]">Profile</span>
+                </div>
+
+                <div class="sidebar-link flex flex-col items-center cursor-pointer group py-3.5 px-3 rounded-2xl hover:bg-purple-50/80 transition-all">
+                    <i class="bx bx-cog text-2xl text-gray-500 group-hover:text-[#4b0d7f] group-hover:scale-110 transition-all"></i>
+                    <span class="text-[9px] mt-2 font-bold text-gray-500 group-hover:text-[#4b0d7f]">Settings</span>
+                </div>
+
+                <div class="sidebar-link flex flex-col items-center cursor-pointer group py-3.5 px-3 rounded-2xl hover:bg-red-50/80 transition-all mt-auto">
+                    <i class="bx bx-log-out text-2xl text-gray-500 group-hover:text-red-600 group-hover:scale-110 transition-all"></i>
+                    <span class="text-[9px] mt-2 font-bold text-gray-500 group-hover:text-red-600">Logout</span>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="flex-1 flex flex-col overflow-hidden">
+        <header class="section-header px-8 py-5 flex items-center justify-end shadow-sm sticky top-0 z-30">
+        <div class="relative w-64 mr-6">
+            <input 
+                type="text" 
+                placeholder="Search articles, posts, applications..." 
+                class="w-full px-4 py-2.5 pl-10 border-2 border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-[#4b0d7f] transition-all bg-white/80 backdrop-blur-sm"
+            >
+            <i class="bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+        </div>
+
+            <div class="flex items-center space-x-5">
+                <div class="relative cursor-pointer group">
+                    <i class="bx bx-bell text-2xl text-gray-600 group-hover:text-[#4b0d7f] transition-colors"></i>
+                    <span class="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-red-500 to-red-600 rounded-full text-xs text-white flex items-center justify-center font-bold shadow-lg animate-pulse">3</span>
+                </div>
+                <div class="w-11 h-11 bg-gradient-to-br from-[#4b0d7f] to-[#6b1fa1] rounded-2xl flex items-center justify-center text-white font-bold shadow-lg cursor-pointer hover:scale-105 transition-transform">
+                    D
+                </div>
+            </div>
+        </header>
+
+            <div class="flex-1 overflow-y-auto">
+                <div class="p-8 max-w-[1600px] mx-auto">
+                    <div class="mb-10 animate-slide-up">
+                        <div class="flex items-center justify-between mb-6">
+                            <div>
+                                <h1 class="text-3xl font-bold text-gray-900 mb-3 tracking-tight">Applications</h1>
+                                <p class="text-gray-800 text-lg font-medium">Review and manage ambassador applications</p>
+                            </div>
+                            <button class="action-button bg-gradient-to-r from-[#4b0d7f] to-[#6b1fa1] text-white px-8 py-4 rounded-2xl font-bold shadow-lg hover:shadow-xl flex items-center gap-3">
+                                <i class="bx bx-download text-lg"></i>
+                                Export Data
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                            <div class="stat-card rounded-2xl p-6 shadow-md">
+                                <div class="flex items-center justify-between mb-2">
+                                    <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Total</p>
+                                        <i class="bx bx-file text-blue-600 text-3xl"></i>
+                                </div>
+                                <h3 class="text-2xl font-bold text-gray-900 mb-1">247</h3>
+                                <p class="text-xs text-gray-500 font-medium">All applications</p>
+                            </div>
+                            
+                            <div class="stat-card rounded-2xl p-6 shadow-md">
+                                <div class="flex items-center justify-between mb-2">
+                                    <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Reviewing</p>
+                                        <i class="bx bx-time-five text-orange-600 text-3xl"></i>
+                                 </div>
+                                <h3 class="text-2xl font-bold text-gray-900 mb-1">82</h3>
+                                <p class="text-xs text-gray-500 font-medium">Pending review</p>
+                            </div>
+                            
+                            <div class="stat-card rounded-2xl p-6 shadow-md">
+                                <div class="flex items-center justify-between mb-2">
+                                    <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Accepted</p>
+                                        <i class="bx bx-check-circle text-green-600 text-3xl"></i>
+                                </div>
+                                <h3 class="text-2xl font-bold text-gray-900 mb-1">135</h3>
+                                <p class="text-xs text-gray-500 font-medium">Approved candidates</p>
+                            </div>
+                            
+                            <div class="stat-card rounded-2xl p-6 shadow-md">
+                                <div class="flex items-center justify-between mb-2">
+                                    <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Declined</p>
+                                        <i class="bx bx-x-circle text-red-600 text-3xl"></i>
+                                </div>
+                                <h3 class="text-2xl font-bold text-gray-900 mb-1">30</h3>
+                                <p class="text-xs text-gray-500 font-medium">Not selected</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card rounded-3xl p-8 mb-8 animate-slide-up" style="animation-delay: 0.1s">
+                        <div class="flex flex-wrap items-center gap-3 mb-6">
+                            <button class="filter-chip active bg-gradient-to-r from-[#4b0d7f] to-[#6b1fa1] text-white px-8 py-3.5 rounded-2xl font-bold relative z-10" data-filter="all">
+                                All Applications
+                            </button>
+                            <button class="filter-chip bg-white text-gray-700 px-8 py-3.5 rounded-2xl border-2 border-gray-200 hover:border-gray-300 font-bold relative z-10" data-filter="reviewing">
+                                Reviewing
+                            </button>
+                            <button class="filter-chip bg-white text-gray-700 px-8 py-3.5 rounded-2xl border-2 border-gray-200 hover:border-gray-300 font-bold relative z-10" data-filter="accepted">
+                                Accepted
+                            </button>
+                            <button class="filter-chip bg-white text-gray-700 px-8 py-3.5 rounded-2xl border-2 border-gray-200 hover:border-gray-300 font-bold relative z-10" data-filter="defer">
+                                Defer
+                            </button>
+                            <button class="filter-chip bg-white text-gray-700 px-8 py-3.5 rounded-2xl border-2 border-gray-200 hover:border-gray-300 font-bold relative z-10" data-filter="declined">
+                                Declined
+                            </button>
+                        </div>
+
+                        <div class="relative">
+                            <input 
+                                type="text" 
+                                placeholder="Search by name, role, or keywords..." 
+                                class="search-input w-full px-5 py-4 pl-12 border-2 border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-[#4b0d7f] transition-all bg-white"
+                            >
+                            <i class="bx bx-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl"></i>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6" id="applicationsContainer"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentApplicationCard = null;
+
+        const applications = [
+            {
+                name: "Lili Kimani",
+                title: "CTO | AI Strategy Leader | Executive Coach",
+                event: "Speaking at WIT Summit 2025 - Austin",
+                status: "Reviewing",
+                statusColor: "gray",
+                date: "2025-10-08",
+                categories: ["Podcast", "Leading Self"],
+                pitch: "I have 15+ years of experience leading technical teams in Fortune 500 companies. As one of the few female CTOs in the industry, I have unique insights on navigating male-dominated spaces while building inclusive, high-performing teams. I would love to share practical strategies that have helped me and other women leaders succeed.",
+                avatar: "DC",
+                dataStatus: "defer"
+            },
+            {
+                name: "Jucal Itongba",
+                title: "CTO | AI Strategy Leader | Executive Coach",
+                event: "Women in Tech Leadership Series",
+                status: "Declined",
+                statusColor: "red",
+                date: "2025-10-08",
+                categories: ["Speaking", "Leading Self"],
+                pitch: "I have 15+ years of experience leading technical teams in Fortune 500 companies. As one of the few female CTOs in the industry, I have unique insights on navigating male-dominated spaces while building inclusive, high-performing teams. I would love to share practical strategies that have helped me and other women leaders succeed.",
+                avatar: "JI",
+                dataStatus: "declined"
+            },
+            {
+                name: "Christine Clarck",
+                title: "CTO | AI Strategy Leader | Executive Coach",
+                event: "Women in Tech Leadership Series",
+                status: "Accepted",
+                statusColor: "green",
+                date: "2025-10-08",
+                categories: ["Speaking", "Leading Self"],
+                pitch: "I have 15+ years of experience leading technical teams in Fortune 500 companies. As one of the few female CTOs in the industry, I have unique insights on navigating male-dominated spaces while building inclusive, high-performing teams. I would love to share practical strategies that have helped me and other women leaders succeed.",
+                avatar: "CC",
+                dataStatus: "accepted"
+            }
+        ];
+
+        const statusColors = {
+            'gray': { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200', dot: 'bg-gray-400' },
+            'green': { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', dot: 'bg-green-500' },
+            'yellow': { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200', dot: 'bg-yellow-500' },
+            'red': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', dot: 'bg-red-500' }
+        };
+
+        const categoryColors = {
+            'Podcast': 'bg-purple-100 text-purple-700 border-purple-200',
+            'Speaking': 'bg-purple-100 text-purple-700 border-purple-200',
+            'Leading Self': 'bg-orange-100 text-orange-700 border-orange-200'
+        };
+
+        function renderApplicationCard(app, index) {
+            const colors = statusColors[app.statusColor];
+            const categoriesHTML = app.categories.map(cat => 
+                `<span class="tag-pill ${categoryColors[cat]} border">${cat}</span>`
+            ).join('');
+
+            return `
+                <article class="application-card glass-card rounded-3xl p-8 shadow-lg animate-slide-up" style="animation-delay: ${0.2 + index * 0.1}s" data-status="${app.dataStatus}">
+                    <div class="flex items-start justify-between mb-6">
+                        <div class="flex items-start space-x-6">
+                            <div class="avatar-circle w-9 h-9 bg-gradient-to-br from-purple-400 to-[#4b0d7f] rounded-2xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                                ${app.avatar}
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-gray-900 mb-2">${app.name}</h3>
+                                <p class="text-gray-600 font-semibold mb-3">${app.title}</p>
+                                <div class="flex items-center gap-2 text-sm">
+                                    <span class="text-gray-500 font-medium">Applied to:</span>
+                                    <a href="#" class="text-[#4b0d7f] font-bold hover:underline hover:text-[#6b1fa1]">${app.event}</a>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="status-badge ${colors.bg} ${colors.text} border-2 ${colors.border}">
+                            <span class="w-2.5 h-2.5 ${colors.dot} rounded-full"></span>
+                            ${app.status}
+                        </span>
+                    </div>
+
+                    <div class="rounded-2xl p-6 mb-6 ml-[104px] border">
+                        <p class="text-gray-700 leading-relaxed font-medium">
+                            ${app.pitch.substring(0, 200)}...
+                        </p>
+                    </div>
+
+                    <div class="flex items-center justify-between ml-[104px] flex-wrap gap-4">
+                        <div class="flex items-center gap-4">
+                            <span class="text-sm font-bold text-gray-600">Category:</span>
+                            ${categoriesHTML}
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="text-sm font-semibold text-gray-500 flex items-center gap-2">
+                                <i class="bx bx-calendar text-lg"></i>
+                                ${app.date}
+                            </span>
+                            <button class="action-button bg-white border-2 border-gray-200 text-gray-700 px-6 py-2.5 rounded-xl font-bold hover:border-[#4b0d7f] hover:text-[#4b0d7f] flex items-center gap-2 view-details-btn"
+                                    data-name="${app.name}"
+                                    data-title="${app.title}"
+                                    data-event="${app.event}"
+                                    data-status="${app.status}"
+                                    data-status-color="${app.statusColor}"
+                                    data-date="${app.date}"
+                                    data-categories='${JSON.stringify(app.categories)}'
+                                    data-pitch="${app.pitch}"
+                                    data-avatar="${app.avatar}">
+                                <i class="bx bx-show text-lg"></i>
+                                View Details
+                            </button>
+                        </div>
+                    </div>
+                </article>
+            `;
+        }
+
+        function renderApplications() {
+            const container = document.getElementById('applicationsContainer');
+            container.innerHTML = applications.map((app, index) => renderApplicationCard(app, index)).join('');
+            attachEventListeners();
+        }
+
+        function attachEventListeners() {
+            document.querySelectorAll('.view-details-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    currentApplicationCard = this.closest('.application-card');
+                    const data = this.dataset;
+                    
+                    document.getElementById('modalAvatar').textContent = data.avatar;
+                    document.getElementById('modalName').textContent = data.name;
+                    document.getElementById('modalTitle').textContent = data.title;
+                    document.getElementById('modalEvent').textContent = data.event;
+                    document.getElementById('modalDate').textContent = data.date;
+                    document.getElementById('modalPitch').textContent = data.pitch;
+
+                    const colors = statusColors[data.statusColor];
+                    const statusBadge = document.getElementById('modalStatus');
+                    statusBadge.className = `status-badge ${colors.bg} ${colors.text} border-2 ${colors.border}`;
+                    statusBadge.innerHTML = `<span class="w-2.5 h-2.5 ${colors.dot} rounded-full"></span>${data.status}`;
+
+                    const categories = JSON.parse(data.categories);
+                    document.getElementById('modalCategories').innerHTML = categories.map(cat => 
+                        `<span class="tag-pill ${categoryColors[cat]} border">${cat}</span>`
+                    ).join('');
+
+                    document.getElementById('applicationModal').classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                });
+            });
+        }
+
+        function updateCardStatus(card, statusText, statusColor, dataStatus) {
+            const statusBadge = card.querySelector('.status-badge');
+            const viewButton = card.querySelector('.view-details-btn');
+            const colors = statusColors[statusColor];
+            
+            statusBadge.className = `status-badge ${colors.bg} ${colors.text} border-2 ${colors.border}`;
+            statusBadge.innerHTML = `<span class="w-2.5 h-2.5 ${colors.dot} rounded-full"></span>${statusText}`;
+            
+            card.dataset.status = dataStatus;
+            viewButton.dataset.status = statusText;
+            viewButton.dataset.statusColor = statusColor;
+        }
+
+        function updateModalStatus(statusText, statusColor) {
+            const colors = statusColors[statusColor];
+            const statusBadge = document.getElementById('modalStatus');
+            statusBadge.className = `status-badge ${colors.bg} ${colors.text} border-2 ${colors.border}`;
+            statusBadge.innerHTML = `<span class="w-2.5 h-2.5 ${colors.dot} rounded-full"></span>${statusText}`;
+        }
+
+        function showSuccessNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-xl shadow-lg z-50 success-notification';
+            notification.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <i class="bx bx-check-circle text-xl"></i>
+                    <span class="font-semibold">${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        function closeModal() {
+            document.getElementById('applicationModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+            currentApplicationCard = null;
+        }
+
+        function handleAction(action) {
+            if (!currentApplicationCard) return;
+            
+            let statusText, statusColor, dataStatus;
+            
+            switch(action) {
+                case 'accepted':
+                    statusText = 'Accepted';
+                    statusColor = 'green';
+                    dataStatus = 'accepted';
+                    break;
+                case 'defer':
+                    const deferDate = '2025.12.01';
+                    statusText = `Defer: ${deferDate}`;
+                    statusColor = 'yellow';
+                    dataStatus = 'defer';
+                    break;
+                case 'declined':
+                    statusText = 'Declined';
+                    statusColor = 'red';
+                    dataStatus = 'declined';
+                    break;
+            }
+            
+            updateCardStatus(currentApplicationCard, statusText, statusColor, dataStatus);
+            updateModalStatus(statusText, statusColor);
+            showSuccessNotification(`Application ${statusText.toLowerCase()}`);
+            
+            setTimeout(() => closeModal(), 800);
+        }
+
+        window.handleAction = handleAction;
+
+        document.getElementById('closeModal').addEventListener('click', closeModal);
+        document.getElementById('applicationModal').addEventListener('click', (e) => {
+            if (e.target.id === 'applicationModal') closeModal();
+        });
+
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.getElementById('overlay');
+
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        });
+
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+        });
+
+        document.querySelectorAll('.filter-chip').forEach(button => {
+            button.addEventListener('click', function() {
+                const filterValue = this.dataset.filter;
+                
+                document.querySelectorAll('.filter-chip').forEach(btn => {
+                    btn.classList.remove('active', 'bg-gradient-to-r', 'from-[#4b0d7f]', 'to-[#6b1fa1]', 'text-white');
+                    btn.classList.add('bg-white', 'text-gray-700', 'border-2', 'border-gray-200');
+                });
+                
+                this.classList.add('active', 'bg-gradient-to-r', 'from-[#4b0d7f]', 'to-[#6b1fa1]', 'text-white');
+                this.classList.remove('bg-white', 'text-gray-700', 'border-2', 'border-gray-200');
+                
+                document.querySelectorAll('.application-card').forEach(card => {
+                    const cardStatus = card.dataset.status;
+                    card.style.display = (filterValue === 'all' || cardStatus === filterValue) ? 'block' : 'none';
+                });
+            });
+        });
+
+        renderApplications();
+    </script>
+</body>
+</html>

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CommunityPartView - Groups</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: #f5f5f5;
+        }
+
+        .gradient-header {
+            background: linear-gradient(135deg, #6b21a8 0%, #7c3aed 50%, #c2410c 100%);
+        }
+
+        .member-avatar {
+            transition: transform 0.2s ease;
+        }
+
+        .member-avatar:hover {
+            transform: scale(1.15);
+            z-index: 10;
+        }
+
+        .group-card {
+            transition: all 0.3s ease;
+        }
+
+        .group-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .tab-button {
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            background: #000;
+            color: white;
+        }
+
+        .region-icon {
+            font-size: 2rem;
+        }
+
+        .sidebar-link.active {
+            background: rgba(107, 13, 127, 0.1);
+        }
+
+        .section-header {
+            background: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex min-h-screen">
+        <!-- SIDEBAR/NAVBAR -->
+        <aside class="sidebar w-20 bg-white/95 backdrop-blur-xl shadow-2xl border-r border-gray-200/50 flex flex-col items-center py-8 space-y-6 z-40 fixed h-full">
+            <div class="mb-4">
+                <div class="bg-gradient-to-br from-[#4b0d7f] to-[#6b1fa1] text-white px-4 py-3 rounded-2xl font-bold text-sm shadow-xl hover:shadow-2xl transition-all cursor-pointer hover:scale-105">
+                    T4L
+                </div>
+            </div>
+
+            <nav class="flex flex-col space-y-2 w-full px-3">
+                <a  href="/ambassador-dashboard.html" class="sidebar-link flex flex-col items-center cursor-pointer group py-3.5 px-3 rounded-2xl hover:bg-purple-50/80 transition-all">
+                    <i class="bx bxs-home text-2xl text-gray-500 group-hover:text-[#4b0d7f] group-hover:scale-110 transition-transform"></i>
+                    <span class="text-[9px] mt-2 font-bold text-gray-700 group-hover:text-[#4b0d7f]">Home</span>
+                </a>
+
+                <div class="sidebar-link flex flex-col items-center cursor-pointer group py-3.5 px-3 rounded-2xl hover:bg-purple-50/80 transition-all">
+                      <i class="bx bx-chat text-2xl text-gray-600 mb-1"></i>
+                    <span class="text-[9px] mt-2 font-bold text-gray-500 group-hover:text-[#4b0d7f]">Messages</span>
+                </div>
+
+                <a  href="chat-pillar.html" class="sidebar-link flex flex-col items-center cursor-pointer group py-3.5 px-3 rounded-2xl hover:bg-purple-50/80 transition-all">
+                    <i class="bx bxs-group text-2xl text-purple-600 mb-1"></i>
+                    <span class="text-[9px] mt-2 font-bold text-gray-500 group-hover:text-[#4b0d7f]">Groups</span>
+                </a>
+
+                <div class="sidebar-link active flex flex-col items-center cursor-pointer group py-3.5 px-3 rounded-2xl hover:bg-purple-50/80 transition-all">
+                    <i class="bx bx-world text-2xl text-gray-600 mb-1"></i>
+                    <span class="text-[9px] mt-2 font-bold text-[#4b0d7f]">My Region</span>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <div class="flex-1 ml-20">
+            <!-- HEADER -->
+            <header class="section-header px-8 py-5 flex items-center justify-end shadow-sm sticky top-0 z-30">
+                <div class="relative w-64 mr-6">
+                    <input 
+                        type="text" 
+                        placeholder="Search articles, posts, applications..." 
+                        class="w-full px-4 py-2.5 pl-10 border-2 border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-[#4b0d7f] transition-all bg-white/80 backdrop-blur-sm"
+                    >
+                    <i class="bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+                </div>
+
+                <div class="flex items-center space-x-5">
+                    <div class="relative cursor-pointer group">
+                        <i class="bx bx-bell text-2xl text-gray-600 group-hover:text-[#4b0d7f] transition-colors"></i>
+                        <span class="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-red-500 to-red-600 rounded-full text-xs text-white flex items-center justify-center font-bold shadow-lg animate-pulse">3</span>
+                    </div>
+                    <div class="w-11 h-11 bg-gradient-to-br from-[#4b0d7f] to-[#6b1fa1] rounded-2xl flex items-center justify-center text-white font-bold shadow-lg cursor-pointer hover:scale-105 transition-transform">
+                        D
+                    </div>
+                </div>
+            </header>
+
+            <!-- Groups Content -->
+            <div class="p-6">
+                <div class="bg-white rounded-2xl shadow-lg p-6">
+                    <!-- Tabs -->
+                    <div class="flex items-center gap-4 mb-6">
+                        <button class="tab-button active px-8 py-3 rounded-xl font-semibold text-sm">
+                            All Groups
+                        </button>
+                        <button class="tab-button px-8 py-3 rounded-xl font-semibold text-sm bg-gray-200 text-gray-700">
+                            My Group
+                        </button>
+                    </div>
+
+                    <!-- Search Bar -->
+                    <div class="mb-6">
+                        <div class="relative max-w-md">
+                            <i class="bx bx-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-xl"></i>
+                            <input 
+                                type="text" 
+                                placeholder="Search groups..." 
+                                class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-purple-500 bg-gray-50"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Groups Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <!-- Africa -->
+                        <div class="group-card bg-white border-2 border-gray-200 rounded-2xl p-6 shadow-md">
+                            <div class="flex flex-col items-center">
+                                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-yellow-500 flex items-center justify-center mb-3 border-2 border-gray-200">
+                                    <span class="region-icon">🌍</span>
+                                </div>
+                                
+                                <h3 class="text-lg font-bold text-gray-900 mb-1">Africa</h3>
+                                <p class="text-sm text-gray-600 mb-4">2,847<br><span class="text-xs">Total Views</span></p>
+                                
+                                <div class="flex items-center justify-center mb-4 -space-x-2">
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white flex items-center justify-center">
+                                        <span class="text-white text-xs font-bold">+</span>
+                                    </div>
+                                </div>
+                                
+                                <button class="w-full bg-black text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition-colors">
+                                    Join
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Asia -->
+                        <div class="group-card bg-white border-2 border-gray-200 rounded-2xl p-6 shadow-md">
+                            <div class="flex flex-col items-center">
+                                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center mb-3 border-2 border-gray-200">
+                                    <span class="region-icon">🌏</span>
+                                </div>
+                                
+                                <h3 class="text-lg font-bold text-gray-900 mb-1">Asia</h3>
+                                <p class="text-sm text-gray-600 mb-4">3,542<br><span class="text-xs">Total Views</span></p>
+                                
+                                <div class="flex items-center justify-center mb-4 -space-x-2">
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white flex items-center justify-center">
+                                        <span class="text-white text-xs font-bold">+</span>
+                                    </div>
+                                </div>
+                                
+                                <button class="w-full bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors">
+                                    Joined
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Europe -->
+                        <div class="group-card bg-white border-2 border-gray-200 rounded-2xl p-6 shadow-md">
+                            <div class="flex flex-col items-center">
+                                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center mb-3 border-2 border-gray-200">
+                                    <span class="region-icon">🌍</span>
+                                </div>
+                                
+                                <h3 class="text-lg font-bold text-gray-900 mb-1">Europe</h3>
+                                <p class="text-sm text-gray-600 mb-4">2,193<br><span class="text-xs">Total Views</span></p>
+                                
+                                <div class="flex items-center justify-center mb-4 -space-x-2">
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white flex items-center justify-center">
+                                        <span class="text-white text-xs font-bold">+</span>
+                                    </div>
+                                </div>
+                                
+                                <button class="w-full bg-black text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition-colors">
+                                    Join
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- North America -->
+                        <div class="group-card bg-white border-2 border-gray-200 rounded-2xl p-6 shadow-md">
+                            <div class="flex flex-col items-center">
+                                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-red-600 flex items-center justify-center mb-3 border-2 border-gray-200">
+                                    <span class="region-icon">🌎</span>
+                                </div>
+                                
+                                <h3 class="text-lg font-bold text-gray-900 mb-1">North America</h3>
+                                <p class="text-sm text-gray-600 mb-4">1,876<br><span class="text-xs">Total Views</span></p>
+                                
+                                <div class="flex items-center justify-center mb-4 -space-x-2">
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white flex items-center justify-center">
+                                        <span class="text-white text-xs font-bold">+</span>
+                                    </div>
+                                </div>
+                                
+                                <button class="w-full bg-black text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition-colors">
+                                    Join
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- South America -->
+                        <div class="group-card bg-white border-2 border-gray-200 rounded-2xl p-6 shadow-md">
+                            <div class="flex flex-col items-center">
+                                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-green-600 to-yellow-600 flex items-center justify-center mb-3 border-2 border-gray-200">
+                                    <span class="region-icon">🌎</span>
+                                </div>
+                                
+                                <h3 class="text-lg font-bold text-gray-900 mb-1">South America</h3>
+                                <p class="text-sm text-gray-600 mb-4">1,634<br><span class="text-xs">Total Views</span></p>
+                                
+                                <div class="flex items-center justify-center mb-4 -space-x-2">
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white flex items-center justify-center">
+                                        <span class="text-white text-xs font-bold">+</span>
+                                    </div>
+                                </div>
+                                
+                                <button class="w-full bg-black text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition-colors">
+                                    Join
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Middle East -->
+                        <div class="group-card bg-white border-2 border-gray-200 rounded-2xl p-6 shadow-md">
+                            <div class="flex flex-col items-center">
+                                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-red-500 flex items-center justify-center mb-3 border-2 border-gray-200">
+                                    <span class="region-icon">🕌</span>
+                                </div>
+                                
+                                <h3 class="text-lg font-bold text-gray-900 mb-1">Middle East</h3>
+                                <p class="text-sm text-gray-600 mb-4">1,429<br><span class="text-xs">Total Views</span></p>
+                                
+                                <div class="flex items-center justify-center mb-4 -space-x-2">
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white flex items-center justify-center">
+                                        <span class="text-white text-xs font-bold">+</span>
+                                    </div>
+                                </div>
+                                
+                                <button class="w-full bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors">
+                                    Joined
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Oceania -->
+                        <div class="group-card bg-white border-2 border-gray-200 rounded-2xl p-6 shadow-md">
+                            <div class="flex flex-col items-center">
+                                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-teal-500 flex items-center justify-center mb-3 border-2 border-gray-200">
+                                    <span class="region-icon">🌏</span>
+                                </div>
+                                
+                                <h3 class="text-lg font-bold text-gray-900 mb-1">Oceania</h3>
+                                <p class="text-sm text-gray-600 mb-4">987<br><span class="text-xs">Total Views</span></p>
+                                
+                                <div class="flex items-center justify-center mb-4 -space-x-2">
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white flex items-center justify-center">
+                                        <span class="text-white text-xs font-bold">+</span>
+                                    </div>
+                                </div>
+                                
+                                <button class="w-full bg-black text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition-colors">
+                                    Join
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Central America -->
+                        <div class="group-card bg-white border-2 border-gray-200 rounded-2xl p-6 shadow-md">
+                            <div class="flex flex-col items-center">
+                                <div class="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500 to-yellow-500 flex items-center justify-center mb-3 border-2 border-gray-200">
+                                    <span class="region-icon">🏝️</span>
+                                </div>
+                                
+                                <h3 class="text-lg font-bold text-gray-900 mb-1 text-center">Central America</h3>
+                                <p class="text-sm text-gray-600 mb-4">1,156<br><span class="text-xs">Total Views</span></p>
+                                
+                                <div class="flex items-center justify-center mb-4 -space-x-2">
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                    <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white flex items-center justify-center">
+                                        <span class="text-white text-xs font-bold">+</span>
+                                    </div>
+                                </div>
+                                
+                                <button class="w-full bg-black text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition-colors">
+                                    Join
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching functionality
+        const tabButtons = document.querySelectorAll('.tab-button');
+        
+        tabButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                tabButtons.forEach(btn => {
+                    btn.classList.remove('active', 'bg-black', 'text-white');
+                    btn.classList.add('bg-gray-200', 'text-gray-700');
+                });
+                
+                this.classList.add('active', 'bg-black', 'text-white');
+                this.classList.remove('bg-gray-200', 'text-gray-700');
+            });
+        });
+
+        // Join/Joined button toggle
+        const groupCards = document.querySelectorAll('.group-card button');
+        
+        groupCards.forEach(button => {
+            button.addEventListener('click', function() {
+                if (this.textContent.trim() === 'Join') {
+                    this.textContent = 'Joined';
+                    this.classList.remove('bg-black', 'hover:bg-gray-800');
+                    this.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+                } else {
+                    this.textContent = 'Join';
+                    this.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+                    this.classList.add('bg-black', 'text-white', 'hover:bg-gray-800');
+                }
+            });
+        });
+
+        // Sidebar navigation highlighting
+        const sidebarLinks = document.querySelectorAll('.sidebar-link');
+        
+        sidebarLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                sidebarLinks.forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

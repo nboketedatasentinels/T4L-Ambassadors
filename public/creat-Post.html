@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Post - T4L</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .post-type-card {
+        transition: all 0.3s ease;
+      }
+      
+      .post-type-card.active {
+        border-color: #4b0d7f;
+        color: white;
+        background: linear-gradient(135deg, #4b0d7f 0%, #6b1fa0 100%);
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(75, 13, 127, 0.3);
+      }
+      
+      .post-type-card.active .icon-bg {
+        background: rgba(255, 255, 255, 0.2);
+      }
+      
+      .post-type-card.active svg {
+        color: white;
+      }
+      
+      .post-type-card.active span {
+        color: white;
+      }
+      
+      .post-type-card:hover:not(.active) {
+        transform: translateY(-2px);
+        border-color: #a855f7;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+      }
+      
+      .lift-checkbox {
+        transition: all 0.3s ease;
+      }
+      
+      .lift-checkbox.selected {
+        border-color: #4b0d7f;
+        background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+      }
+      
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      .fade-in {
+        animation: fadeIn 0.5s ease-out forwards;
+      }
+      
+      .sidebar-item {
+        transition: all 0.2s ease;
+      }
+      
+      .sidebar-item:hover {
+        background: #f3f4f6;
+        transform: translateX(4px);
+      }
+      
+      .sidebar-item.active {
+        background: #4b0d7f;
+        color: white;
+      }
+      
+      .mobile-menu {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+      }
+      
+      .mobile-menu.open {
+        transform: translateX(0);
+      }
+      
+      /* Responsive adjustments */
+      @media (max-width: 768px) {
+        .sidebar-item:hover {
+          transform: translateX(0);
+        }
+      }
+      
+      /* For very large screens */
+      @media (min-width: 1920px) {
+        .form-container {
+          max-width: 1400px;
+          margin: 0 auto;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 font-sans">
+    <div class="flex min-h-screen">
+      <!-- Mobile Overlay -->
+      <div id="mobileOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden md:hidden"></div>
+      
+      <!-- Sidebar - Desktop -->
+      <aside class="hidden md:flex w-16 bg-white shadow-lg flex-col items-center py-6 space-y-6 fixed h-full z-40">
+        <div class="mb-4">
+          <div class="bg-gradient-to-br from-[#4b0d7f] to-[#6b1fa0] text-white px-3 py-2 rounded-xl font-bold text-sm shadow-lg">
+            T4L
+          </div>
+        </div>
+        
+        <nav class="flex flex-col space-y-3 w-full px-2">
+          <div class="sidebar-item flex flex-col items-center cursor-pointer py-3 px-2 rounded-xl group">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600 group-hover:text-[#4b0d7f]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span class="text-[9px] mt-1 font-medium text-gray-600 group-hover:text-[#4b0d7f]">Home</span>
+          </div>
+          
+          <div class="sidebar-item flex flex-col items-center cursor-pointer py-3 px-2 rounded-xl group">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600 group-hover:text-[#4b0d7f]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <span class="text-[9px] mt-1 font-medium text-gray-600 group-hover:text-[#4b0d7f]">Impact Log</span>
+          </div>
+          
+          <div class="sidebar-item flex flex-col items-center cursor-pointer py-3 px-2 rounded-xl group">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600 group-hover:text-[#4b0d7f]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span class="text-[9px] mt-1 font-medium text-gray-600 group-hover:text-[#4b0d7f]">Ambassadors</span>
+          </div>
+          
+          <div class="sidebar-item flex flex-col items-center cursor-pointer py-3 px-2 rounded-xl group">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600 group-hover:text-[#4b0d7f]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span class="text-[9px] mt-1 font-medium text-gray-600 group-hover:text-[#4b0d7f]">Events</span>
+          </div>
+          
+          <div class="sidebar-item flex flex-col items-center cursor-pointer py-3 px-2 rounded-xl group">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600 group-hover:text-[#4b0d7f]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span class="text-[9px] mt-1 font-medium text-gray-600 group-hover:text-[#4b0d7f]">Settings</span>
+          </div>
+          
+          <div class="sidebar-item flex flex-col items-center cursor-pointer py-3 px-2 rounded-xl group mt-auto">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600 group-hover:text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span class="text-[9px] mt-1 font-medium text-gray-600 group-hover:text-red-600">Logout</span>
+          </div>
+        </nav>
+      </aside>
+
+      <!-- Mobile Sidebar -->
+      <aside id="mobileSidebar" class="mobile-menu md:hidden w-64 bg-white shadow-2xl flex-col py-6 fixed h-full z-50 overflow-y-auto">
+        <div class="flex items-center justify-between px-6 mb-6">
+          <div class="bg-gradient-to-br from-[#4b0d7f] to-[#6b1fa0] text-white px-4 py-2 rounded-xl font-bold text-sm shadow-lg">
+            T4L
+          </div>
+          <button onclick="toggleMobileMenu()" class="p-2 hover:bg-gray-100 rounded-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <nav class="flex flex-col space-y-2 px-4">
+          <div class="sidebar-item flex items-center gap-4 cursor-pointer py-3 px-4 rounded-xl">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span class="text-base font-medium text-gray-700">Home</span>
+          </div>
+          
+          <div class="sidebar-item flex items-center gap-4 cursor-pointer py-3 px-4 rounded-xl">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <span class="text-base font-medium text-gray-700">Impact Log</span>
+          </div>
+          
+          <div class="sidebar-item flex items-center gap-4 cursor-pointer py-3 px-4 rounded-xl">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span class="text-base font-medium text-gray-700">Ambassadors</span>
+          </div>
+          
+          <div class="sidebar-item flex items-center gap-4 cursor-pointer py-3 px-4 rounded-xl">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span class="text-base font-medium text-gray-700">Events</span>
+          </div>
+          
+          <div class="sidebar-item flex items-center gap-4 cursor-pointer py-3 px-4 rounded-xl">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span class="text-base font-medium text-gray-700">Settings</span>
+          </div>
+          
+          <div class="sidebar-item flex items-center gap-4 cursor-pointer py-3 px-4 rounded-xl mt-8">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span class="text-base font-medium text-gray-700">Logout</span>
+          </div>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="flex-1 md:ml-16 p-4 sm:p-6 md:p-8 lg:p-10">
+        <!-- Header -->
+        <header class="flex items-center justify-between mb-6 md:mb-8">
+          <div class="flex items-center gap-3">
+            <!-- Mobile Menu Button -->
+            <button onclick="toggleMobileMenu()" class="md:hidden p-2 hover:bg-gray-100 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            
+            <div>
+              <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Create a Post</h1>
+              <p class="text-sm md:text-base text-gray-600 hidden sm:block">Share opportunities with the T4L community</p>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-2 md:gap-4">
+            <!-- Search - Hidden on mobile -->
+            <div class="relative hidden md:block">
+              <input
+                type="text"
+                placeholder="Search articles, posts..."
+                class="border border-gray-300 rounded-full pl-10 pr-4 py-2 text-sm w-48 lg:w-64 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-3 top-2.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            
+            <button class="relative p-2 hover:bg-gray-100 rounded-full transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            </button>
+            
+            <div class="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-[#4b0d7f] to-[#6b1fa0] flex items-center justify-center rounded-full font-bold text-white text-sm cursor-pointer hover:shadow-lg transition-shadow">
+              DL
+            </div>
+          </div>
+        </header>
+
+        <!-- Form Content -->
+        <div class="form-container bg-white rounded-2xl md:rounded-3xl shadow-lg p-5 sm:p-6 md:p-8 lg:p-10 fade-in">
+          <!-- Post Type Section -->
+          <div class="mb-6 md:mb-8">
+            <label class="block text-base md:text-lg font-bold text-gray-900 mb-3 md:mb-4">
+              Post Type <span class="text-red-500">*</span>
+            </label>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+              <!-- Speaking Card -->
+              <div class="post-type-card bg-white border border-purple-200 rounded-xl md:rounded-2xl p-4 md:p-6 cursor-pointer flex flex-col items-center justify-center hover:border-purple-400" onclick="selectPostType(this, 'speaking')">
+                <div class="icon-bg w-12 h-12 md:w-16 md:h-16 bg-purple-50 rounded-lg md:rounded-xl flex items-center justify-center mb-2 md:mb-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-8 md:w-8 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                  </svg>
+                </div>
+                <span class="font-semibold text-sm md:text-base text-gray-900">Speaking</span>
+              </div>
+
+              <!-- Podcast Card -->
+              <div class="post-type-card bg-white border border-amber-200 rounded-xl md:rounded-2xl p-4 md:p-6 cursor-pointer flex flex-col items-center justify-center hover:border-amber-400" onclick="selectPostType(this, 'podcast')">
+                <div class="icon-bg w-12 h-12 md:w-16 md:h-16 bg-amber-50 rounded-lg md:rounded-xl flex items-center justify-center mb-2 md:mb-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-8 md:w-8 text-amber-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                  </svg>
+                </div>
+                <span class="font-semibold text-sm md:text-base text-gray-900">Podcast</span>
+              </div>
+
+              <!-- Webinar Card -->
+              <div class="post-type-card bg-white border border-sky-200 rounded-xl md:rounded-2xl p-4 md:p-6 cursor-pointer flex flex-col items-center justify-center hover:border-sky-400" onclick="selectPostType(this, 'webinar')">
+                <div class="icon-bg w-12 h-12 md:w-16 md:h-16 bg-sky-50 rounded-lg md:rounded-xl flex items-center justify-center mb-2 md:mb-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-8 md:w-8 text-sky-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M21 3H3c-1.11 0-2 .89-2 2v12c0 1.1.89 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.11-.9-2-2-2zm0 14H3V5h18v12z"/>
+                    <path d="M9 8l7 4-7 4z"/>
+                  </svg>
+                </div>
+                <span class="font-semibold text-sm md:text-base text-gray-900">Webinar</span>
+              </div>
+
+              <!-- Volunteering Card -->
+              <div class="post-type-card bg-white border border-purple-200 rounded-xl md:rounded-2xl p-4 md:p-6 cursor-pointer flex flex-col items-center justify-center hover:border-purple-400" onclick="selectPostType(this, 'volunteering')">
+                <div class="icon-bg w-12 h-12 md:w-16 md:h-16 bg-purple-50 rounded-lg md:rounded-xl flex items-center justify-center mb-2 md:mb-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-8 md:w-8 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                  </svg>
+                </div>
+                <span class="font-semibold text-sm md:text-base text-gray-900">Volunteering</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Title Input -->
+          <div class="mb-6 md:mb-8">
+            <label class="block text-base md:text-lg font-bold text-gray-900 mb-2 md:mb-3">
+              Title <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Give your post a compelling title"
+              class="w-full px-4 py-3 md:px-5 md:py-4 border-2 border-gray-200 rounded-xl text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+            />
+          </div>
+
+          <!-- Description Textarea -->
+          <div class="mb-6 md:mb-8">
+            <label class="block text-base md:text-lg font-bold text-gray-900 mb-2 md:mb-3">
+              Description <span class="text-red-500">*</span>
+            </label>
+            <textarea
+              placeholder="Describe what you're looking for in an ambassador ...."
+              rows="6"
+              class="w-full px-4 py-3 md:px-5 md:py-4 border-2 border-gray-200 rounded-xl text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none md:rows-8"
+            ></textarea>
+            <p class="text-xs md:text-sm text-gray-500 mt-2">Be specific about the opportunity, requirements, and benefits</p>
+          </div>
+
+          <!-- Format Dropdown -->
+          <div class="mb-6 md:mb-8">
+            <label class="block text-base md:text-lg font-bold text-gray-900 mb-2 md:mb-3">
+              Format <span class="text-red-500">*</span>
+            </label>
+            <div class="relative">
+              <select class="w-full px-4 py-3 md:px-5 md:py-4 border-2 border-gray-200 rounded-xl text-sm md:text-base appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white transition-all">
+                <option>in-person</option>
+                <option>virtual</option>
+                <option>hybrid</option>
+              </select>
+              <svg class="absolute right-4 md:right-5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- Location Dropdown -->
+          <div class="mb-6 md:mb-8">
+            <label class="block text-base md:text-lg font-bold text-gray-900 mb-2 md:mb-3">
+              Location
+            </label>
+            <div class="relative">
+              <select class="w-full px-4 py-3 md:px-5 md:py-4 border-2 border-gray-200 rounded-xl text-sm md:text-base appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white transition-all">
+                <option>Austin, Texas</option>
+                <option>New York, NY</option>
+                <option>San Francisco, CA</option>
+                <option>Chicago, IL</option>
+                <option>Boston, MA</option>
+                <option>Remote</option>
+              </select>
+              <svg class="absolute right-4 md:right-5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- Deadline Input -->
+          <div class="mb-6 md:mb-8">
+            <label class="block text-base md:text-lg font-bold text-gray-900 mb-2 md:mb-3">
+              Deadline <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="dd/mm/yyyy"
+              class="w-full px-4 py-3 md:px-5 md:py-4 border-2 border-gray-200 rounded-xl text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+            />
+          </div>
+
+          <!-- LIFT Pillars Section -->
+          <div class="mb-8 md:mb-10">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 md:mb-4 gap-2">
+              <label class="block text-base md:text-lg font-bold text-gray-900">
+                LIFT Pillars <span class="text-red-500">*</span>
+              </label>
+              <button 
+                onclick="selectAllLift()"
+                class="text-sm font-semibold text-purple-600 hover:text-purple-700 transition-colors flex items-center gap-2"
+              >
+                <input type="checkbox" id="selectAllCheckbox" class="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500" />
+                <span>Select All</span>
+              </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              <!-- Leading Self -->
+              <div class="lift-checkbox border-2 border-gray-200 rounded-xl p-4 md:p-5 cursor-pointer hover:border-purple-300 transition-all" onclick="toggleLift(this)">
+                <div class="flex items-center">
+                  <input type="checkbox" class="w-4 h-4 md:w-5 md:h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500 mr-3 md:mr-4" />
+                  <span class="font-semibold text-sm md:text-base text-gray-900">Leading Self</span>
+                </div>
+              </div>
+
+              <!-- Inspiring Others -->
+              <div class="lift-checkbox border-2 border-gray-200 rounded-xl p-4 md:p-5 cursor-pointer hover:border-purple-300 transition-all" onclick="toggleLift(this)">
+                <div class="flex items-center">
+                  <input type="checkbox" class="w-4 h-4 md:w-5 md:h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500 mr-3 md:mr-4" />
+                  <span class="font-semibold text-sm md:text-base text-gray-900">Inspiring Others</span>
+                </div>
+              </div>
+
+              <!-- Fostering Teams -->
+              <div class="lift-checkbox border-2 border-gray-200 rounded-xl p-4 md:p-5 cursor-pointer hover:border-purple-300 transition-all" onclick="toggleLift(this)">
+                <div class="flex items-center">
+                  <input type="checkbox" class="w-4 h-4 md:w-5 md:h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500 mr-3 md:mr-4" />
+                  <span class="font-semibold text-sm md:text-base text-gray-900">Fostering Teams</span>
+                </div>
+              </div>
+
+              <!-- Transforming Orgs -->
+              <div class="lift-checkbox border-2 border-gray-200 rounded-xl p-4 md:p-5 cursor-pointer hover:border-purple-300 transition-all" onclick="toggleLift(this)">
+                <div class="flex items-center">
+                  <input type="checkbox" class="w-4 h-4 md:w-5 md:h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500 mr-3 md:mr-4" />
+                  <span class="font-semibold text-sm md:text-base text-gray-900">Transforming Orgs</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="flex justify-center pt-4 md:pt-6">
+            <button class="w-full sm:w-auto bg-gradient-to-r from-[#4b0d7f] to-[#6b1fa0] text-white px-12 md:px-16 py-3 md:py-4 rounded-xl font-bold text-base md:text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
+              Post
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      let selectedPostType = null;
+
+      function toggleMobileMenu() {
+        const sidebar = document.getElementById('mobileSidebar');
+        const overlay = document.getElementById('mobileOverlay');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('hidden');
+      }
+
+      document.getElementById('mobileOverlay').addEventListener('click', toggleMobileMenu);
+
+      function selectPostType(element, type) {
+        document.querySelectorAll('.post-type-card').forEach(card => {
+          card.classList.remove('active');
+        });
+        
+        element.classList.add('active');
+        selectedPostType = type;
+      }
+
+      function toggleLift(element) {
+        const checkbox = element.querySelector('input[type="checkbox"]');
+        checkbox.checked = !checkbox.checked;
+        
+        if (checkbox.checked) {
+          element.classList.add('selected');
+        } else {
+          element.classList.remove('selected');
+        }
+        
+        updateSelectAllCheckbox();
+      }
+
+      function selectAllLift() {
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        const liftCheckboxes = document.querySelectorAll('.lift-checkbox');
+        
+        liftCheckboxes.forEach(box => {
+          const checkbox = box.querySelector('input[type="checkbox"]');
+          checkbox.checked = selectAllCheckbox.checked;
+          
+          if (selectAllCheckbox.checked) {
+            box.classList.add('selected');
+          } else {
+            box.classList.remove('selected');
+          }
+        });
+      }
+
+      function updateSelectAllCheckbox() {
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        const liftCheckboxes = document.querySelectorAll('.lift-checkbox input[type="checkbox"]');
+        const allChecked = Array.from(liftCheckboxes).every(cb => cb.checked);
+        
+        selectAllCheckbox.checked = allChecked;
+      }
+
+      document.getElementById('selectAllCheckbox').addEventListener('change', selectAllLift);
+    </script>
+  </body>
+</html>

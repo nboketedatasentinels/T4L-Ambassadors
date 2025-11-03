@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T4L Ambassador - Submit Article</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: #f5f7fa;
+        }
+
+        .step-indicator {
+            transition: all 0.3s ease;
+        }
+
+
+
+        .step-indicator.inactive {
+            background: #e5e7eb;
+            color: #6b7280;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        .sidebar-link {
+            transition: all 0.2s ease;
+        }
+
+        .input-field {
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+            border-color: #7c3aed;
+        }
+
+        .guideline-item {
+            transition: all 0.2s ease;
+        }
+
+        .guideline-item:hover {
+            transform: translateX(4px);
+            background: #fefce8;
+        }
+
+        .card-shadow {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .avatar-circle {
+            background: #7c3aed;
+            box-shadow: 0 4px 6px -1px rgba(124, 58, 237, 0.2), 0 2px 4px -1px rgba(124, 58, 237, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                height: 100vh;
+                z-index: 50;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+        }
+
+        /* Rich Text Editor Styles */
+        #editor:empty:before {
+            content: 'Start writing your article...';
+            color: #9ca3af;
+        }
+
+        #editor:focus:before {
+            content: '';
+        }
+
+        #editor {
+            outline: none;
+        }
+
+        #editor h1 {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 0.67em 0;
+        }
+
+        #editor h2 {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin: 0.75em 0;
+        }
+
+        #editor h3 {
+            font-size: 1.17em;
+            font-weight: bold;
+            margin: 0.83em 0;
+        }
+
+        #editor ul, #editor ol {
+            margin: 1em 0;
+            padding-left: 2em;
+        }
+
+        #editor a {
+            color: #7c3aed;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Mobile Menu Toggle -->
+    <button id="mobileMenuBtn" class="md:hidden fixed top-4 left-4 z-50 bg-purple-600 text-white p-3 rounded-xl shadow-lg">
+        <i class="bx bx-menu text-2xl"></i>
+    </button>
+
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar w-20 lg:w-20 md:w-20 bg-white shadow-md flex flex-col items-center py-6 space-y-6 z-40">
+            <div class="mb-4">
+                <div class="bg-[#4b0d7f] text-white px-3 py-2 rounded-xl font-semibold text-sm">T4L</div>
+            </div>
+            <nav class="flex flex-col space-y-4 text-gray-700 w-full">
+                <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+                    <i class="bx bxs-home text-2xl text-[#4b0d9f] group-hover:scale-110 transition-transform duration-200"></i>
+                    <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Home</span>
+                </div>
+                <a href="/article-amb.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+                    <i class="bx bx-edit-alt text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+                    <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Publishing</span>
+                </a>
+                <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+                    <i class="bx bx-line-chart text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+                    <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Impact Log</span>
+                </div>
+                <a href="/Partner-Calls.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+                    <i class="bx bx-briefcase text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+                    <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Partners</span>
+                </a>
+                <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+                    <i class="bx bx-calendar-event text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+                    <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Events</span>
+                </div>
+                <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+                    <i class="bx bx-chat text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+                    <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Chat</span>
+                </div>
+                <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+                    <i class="bx bx-user text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+                    <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Profile</span>
+                </div>
+                <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+                    <i class="bx bx-cog text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+                    <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Settings</span>
+                </div>
+                <div class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-red-50">
+                    <i class="bx bx-log-out text-2xl group-hover:text-red-600 group-hover:scale-110 transition-all duration-200"></i>
+                    <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-red-600 transition-colors duration-200">Logout</span>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+      <main class="flex-1">
+        <!-- Top Navbar -->
+        <header class="bg-white sticky top-0 z-30 border-b border-gray-200 shadow-sm">
+          <div class="flex flex-col md:flex-row md:items-center justify-between p-4 md:p-6 gap-4">
+            <h1 class="text-2xl font-bold text-gray-900">T4L Ambassador</h1>
+            <div class="flex items-center space-x-4 w-full md:w-auto">
+              <div class="relative flex-1 md:flex-none">
+                <input
+                  type="text"
+                  placeholder="Search articles, events, partners..."
+                  class="border border-gray-300 rounded-full pl-10 pr-4 py-2.5 text-sm w-full md:w-80 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-gray-50"
+                />
+                <i class="bx bx-search absolute left-3 top-2.5 text-gray-500"></i>
+              </div>
+              <button class="relative p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <i class="bx bx-bell text-2xl text-gray-700"></i>
+                <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              </button>
+              <div class="w-10 h-10 bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center rounded-full font-bold text-white shadow-md cursor-pointer hover:shadow-lg transition-shadow">
+                SM
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <div class="p-4 md:p-6 lg:p-8">
+
+          <!-- Page Content -->
+          <div class="max-w-7xl mx-auto">
+                <!-- Submit Button & Steps -->
+                <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
+                    <button class="bg-[#4b0d9f] text-white px-10 py-3 rounded-xl font-bold shadow-lg">
+                        Submit
+                    </button>
+
+ 
+                <!-- Progress Steps with Stylish Borders -->
+                <div class="flex items-center gap-2 md:gap-4 overflow-x-auto">
+                <!-- Active Step -->
+                <div class="active flex items-center gap-2 px-4 md:px-6 py-2 rounded-lg bg-[#4b0d9f] text-white font-semibold shadow-md border-2 border-[#4b0d7f] hover:border-[#4b0d7f] hover:shadow-lg transition-all duration-200 transform hover:scale-[1.02] whitespace-nowrap cursor-pointer">
+                    <span class="w-7 h-7 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">1</span>
+                    <span class="text-sm md:text-base">Write</span>
+                </div>
+
+                <!-- Inactive Step -->
+                <div class="step-indicator inactive flex items-center gap-2 px-4 md:px-6 py-2 rounded-lg bg-blue-100 text-gray-700 font-medium shadow-sm border-2 border-gray-300 hover:border-gray-400 hover:shadow-md transition-all duration-200 transform hover:scale-[1.02] whitespace-nowrap cursor-pointer">
+                    <span class="w-7 h-7 bg-gray-300 text-gray-700 rounded-full flex items-center justify-center font-bold text-sm">2</span>
+                    <span class="text-sm md:text-base">Review</span>
+                </div>
+
+                <!-- Inactive Step -->
+                <div class="step-indicator inactive flex items-center gap-2 px-4 md:px-6 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium shadow-sm border-2 border-gray-300 hover:border-gray-400 hover:shadow-md transition-all duration-200 transform hover:scale-[1.02] whitespace-nowrap cursor-pointer">
+                    <span class="w-7 h-7 bg-gray-300 text-gray-700 rounded-full flex items-center justify-center font-bold text-sm">3</span>
+                    <span class="text-sm md:text-base">Publish</span>
+                </div>
+                </div>
+
+
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Left Column - Form -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <!-- Article Title -->
+                        <div class="bg-white rounded-2xl p-6 card-shadow">
+                            <label class="block text-gray-900 font-bold mb-3">
+                                Article Title <span class="text-red-500">*</span>
+                            </label>
+                            <input 
+                                type="text" 
+                                placeholder="Article Title" 
+                                class="input-field w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none bg-gray-50"
+                            >
+                        </div>
+
+                        <!-- Article Content -->
+                        <div class="bg-white rounded-2xl p-6 card-shadow">
+                            <label class="block text-gray-900 font-bold mb-3">
+                                Article Content <span class="text-red-500">*</span>
+                            </label>
+                            
+                            <!-- Toolbar -->
+                            <div class="flex flex-wrap items-center gap-2 p-3 bg-gray-100 rounded-t-xl border-2 border-gray-200 border-b-0">
+                                <!-- Text Formatting -->
+                                <button type="button" onclick="formatText('bold')" class="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Bold">
+                                    <i class="bx bx-bold text-xl"></i>
+                                </button>
+                                <button type="button" onclick="formatText('italic')" class="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Italic">
+                                    <i class="bx bx-italic text-xl"></i>
+                                </button>
+                                <button type="button" onclick="formatText('underline')" class="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Underline">
+                                    <i class="bx bx-underline text-xl"></i>
+                                </button>
+                                <button type="button" onclick="formatText('strikeThrough')" class="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Strikethrough">
+                                    <i class="bx bx-strikethrough text-xl"></i>
+                                </button>
+                                
+                                <div class="w-px h-6 bg-gray-300"></div>
+                                
+                                <!-- Alignment -->
+                                <button type="button" onclick="formatText('justifyLeft')" class="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Left">
+                                    <i class="bx bx-align-left text-xl"></i>
+                                </button>
+                                <button type="button" onclick="formatText('justifyCenter')" class="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Center">
+                                    <i class="bx bx-align-middle text-xl"></i>
+                                </button>
+                                <button type="button" onclick="formatText('justifyRight')" class="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Align Right">
+                                    <i class="bx bx-align-right text-xl"></i>
+                                </button>
+                                <button type="button" onclick="formatText('justifyFull')" class="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Justify">
+                                    <i class="bx bx-align-justify text-xl"></i>
+                                </button>
+                                
+                                <div class="w-px h-6 bg-gray-300"></div>
+                                
+                                <!-- Lists -->
+                                <button type="button" onclick="formatText('insertUnorderedList')" class="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Bullet List">
+                                    <i class="bx bx-list-ul text-xl"></i>
+                                </button>
+                                <button type="button" onclick="formatText('insertOrderedList')" class="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Numbered List">
+                                    <i class="bx bx-list-ol text-xl"></i>
+                                </button>
+                                
+                                <div class="w-px h-6 bg-gray-300"></div>
+                                
+                                <!-- Headings -->
+                                <select onchange="formatText('formatBlock', this.value); this.selectedIndex=0;" class="px-3 py-1 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="" selected disabled>Heading</option>
+                                    <option value="h1">Heading 1</option>
+                                    <option value="h2">Heading 2</option>
+                                    <option value="h3">Heading 3</option>
+                                    <option value="p">Paragraph</option>
+                                </select>
+                                
+                                <div class="w-px h-6 bg-gray-300"></div>
+                                
+                                <!-- Link -->
+                                <button type="button" onclick="addLink()" class="p-2 hover:bg-gray-200 rounded-lg transition-colors" title="Insert Link">
+                                    <i class="bx bx-link text-xl"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Editable Content Area -->
+                            <div 
+                                id="editor"
+                                contenteditable="true"
+                                class="input-field w-full px-4 py-3 border-2 border-gray-200 rounded-b-xl focus:outline-none bg-gray-50 min-h-[300px] max-h-[500px] overflow-y-auto"
+                                placeholder="Start writing your article..."
+                            ></div>
+                        </div>
+
+                        <!-- About You Section -->
+                        <div class="bg-white rounded-2xl p-6 card-shadow">
+                            <div class="flex items-center gap-3 mb-6">
+                                <div class="w-12 h-12 bg-[#4b0d9f] rounded-xl flex items-center justify-center">
+                                    <i class="bx bx-user text-white text-2xl"></i>
+                                </div>
+                                <h2 class="text-lg font-bold text-gray-900">
+                                    About You <span class="text-red-500">*</span>
+                                </h2>
+                            </div>
+
+                        <div class="space-y-6">
+                            <!-- Name & Role -->
+                            <div>
+                                <label class="block text-gray-900 font-bold mb-2">
+                                    Your Name & Role <span class="text-red-500">*</span>
+                                </label>
+                                <div class="flex gap-4 items-center">
+                                    <div class="w-12 h-12 bg-[#4b0d9f] rounded-xl flex items-center justify-center text-white text-lg font-bold flex-shrink-0">
+                                        N
+                                    </div>
+                                    <input 
+                                        type="text" 
+                                        placeholder="e.g.: Nurh, CTO" 
+                                        class="input-field flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none bg-gray-50"
+                                    >
+                                </div>
+                            </div>
+
+                            <!-- Company & Description -->
+                            <div>
+                                <label class="block text-gray-900 font-bold mb-2">
+                                    Company & Description <span class="text-red-500">*</span>
+                                </label>
+                                <textarea 
+                                    placeholder="e.g: Data sentinel, building scalable systems that meets the user need" 
+                                    rows="3" 
+                                    class="input-field w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none bg-gray-50 resize-none"
+                                ></textarea>
+                            </div>
+                        </div>
+
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="flex justify-center pt-4">
+                            <button class="bg-[#4b0d9f] text-white px-16 py-4 rounded-xl font-bold text-lg shadow-lg">
+                                Submit
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right Column - Guidelines & Help -->
+                    <div class="space-y-6">
+                        <!-- Guidelines Card -->
+                        <div class="bg-white rounded-2xl p-6 card-shadow">
+                            <h3 class="text-lg font-bold text-gray-900 mb-4">Guidelines</h3>
+                            <div class="space-y-3">
+                                <div class="guideline-item flex items-start gap-3 p-3 rounded-lg bg-gray-50">
+                                    <span class="text-sm font-bold text-gray-700 flex-shrink-0">1.</span>
+                                    <p class="text-sm text-gray-700 font-medium">Write in your authentic voice</p>
+                                </div>
+                                <div class="guideline-item flex items-start gap-3 p-3 rounded-lg bg-blue-50">
+                                    <span class="text-sm font-bold text-gray-700 flex-shrink-0">2.</span>
+                                    <p class="text-sm text-gray-700 font-medium">Share real experience and insight</p>
+                                </div>
+                                <div class="guideline-item flex items-start gap-3 p-3 rounded-lg bg-yellow-50">
+                                    <span class="text-sm font-bold text-gray-700 flex-shrink-0">3.</span>
+                                    <p class="text-sm text-gray-700 font-medium">Include specific examples</p>
+                                </div>
+                                <div class="guideline-item flex items-start gap-3 p-3 rounded-lg bg-gray-50">
+                                    <span class="text-sm font-bold text-gray-700 flex-shrink-0">4.</span>
+                                    <p class="text-sm text-gray-700 font-medium">Engage & Inspire readers</p>
+                                </div>
+                                <div class="guideline-item flex items-start gap-3 p-3 rounded-lg bg-gray-50">
+                                    <span class="text-sm font-bold text-gray-700 flex-shrink-0">5.</span>
+                                    <p class="text-sm text-gray-700 font-medium">Citation</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Help Card -->
+                        <div class="bg-white rounded-2xl p-6 card-shadow text-center">
+                            <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="bx bx-message-dots text-3xl text-gray-700"></i>
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-900 mb-2">Need Help?</h3>
+                            <p class="text-sm text-gray-600 mb-4">Our team is here to support you</p>
+                            <button class="bg-[#4b0d9f] text-white px-8 py-3 rounded-xl font-bold w-full shadow-lg">
+                                Contact Support
+                            </button>
+                        </div>
+                    </div>
+                </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const sidebar = document.getElementById('sidebar');
+
+        mobileMenuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!sidebar.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
+                sidebar.classList.remove('active');
+            }
+        });
+
+        // Rich Text Editor Functions
+        function formatText(command, value = null) {
+            document.execCommand(command, false, value);
+            document.getElementById('editor').focus();
+        }
+
+        function addLink() {
+            const url = prompt('Enter the URL:');
+            if (url) {
+                formatText('createLink', url);
+            }
+        }
+
+        // Placeholder functionality
+        const editor = document.getElementById('editor');
+        editor.addEventListener('focus', function() {
+            if (this.innerHTML === '') {
+                this.setAttribute('data-placeholder', '');
+            }
+        });
+
+        editor.addEventListener('blur', function() {
+            if (this.innerHTML === '') {
+                this.setAttribute('data-placeholder', 'Start writing your article...');
+            }
+        });
+    </script>
+</body>
+</html>

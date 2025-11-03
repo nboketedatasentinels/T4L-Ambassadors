@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T4L Ambassador - Your Journey</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background: #e5e5e5;
+        }
+
+        .journey-card {
+            transition: all 0.2s ease;
+        }
+
+        .journey-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .completed {
+            background: #10b981;
+            color: white;
+        }
+
+        .current {
+            background: #7c3aed;
+            color: white;
+        }
+
+        .upcoming {
+            background: #e5e7eb;
+            color: #9ca3af;
+            border: 3px solid #d1d5db;
+        }
+
+        .sidebar-icon {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .sidebar-icon:hover {
+            background: #f3f4f6;
+        }
+
+        .sidebar-icon.active {
+            background: #1f2937;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-200">
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <div class="w-20 bg-white shadow-lg flex flex-col items-center py-6 gap-4">
+            <div class="sidebar-icon active">
+                <i class='bx bxs-home text-2xl'></i>
+            </div>
+            <div class="sidebar-icon">
+                <i class='bx bx-briefcase text-2xl text-gray-600'></i>
+            </div>
+            <div class="sidebar-icon">
+                <i class='bx bx-bar-chart-alt-2 text-2xl text-gray-600'></i>
+            </div>
+            <div class="sidebar-icon">
+                <i class='bx bx-heart text-2xl text-gray-600'></i>
+            </div>
+            <div class="sidebar-icon">
+                <i class='bx bx-calendar text-2xl text-gray-600'></i>
+            </div>
+            <div class="sidebar-icon">
+                <i class='bx bx-user text-2xl text-gray-600'></i>
+            </div>
+            <div class="mt-auto sidebar-icon">
+                <i class='bx bx-cog text-2xl text-gray-600'></i>
+            </div>
+            <div class="sidebar-icon">
+                <i class='bx bx-log-out text-2xl text-gray-600'></i>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-8">
+            <div class="max-w-5xl mx-auto">
+                <!-- Header -->
+                <div class="bg-white rounded-2xl shadow-md p-6 mb-6">
+                    <div class="flex items-center justify-between">
+                        <!-- Logo -->
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center">
+                                <span class="text-white font-bold text-sm">T4L</span>
+                            </div>
+                            <span class="text-lg font-semibold text-gray-800">T4L Ambassador</span>
+                        </div>
+
+                        <!-- Search Bar -->
+                        <div class="flex-1 max-w-md mx-8">
+                            <input 
+                                type="text" 
+                                placeholder="Search articles, events, partners..."
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                            />
+                        </div>
+
+                        <!-- Right Icons -->
+                        <div class="flex items-center gap-4">
+                            <button class="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                                <i class='bx bx-bell text-2xl text-gray-700'></i>
+                                <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                            </button>
+                            <div class="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold cursor-pointer hover:bg-purple-700 transition-colors">
+                                SM
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Journey Section -->
+                <div class="bg-white rounded-2xl shadow-md p-8">
+                    <h1 class="text-2xl font-bold text-gray-900 mb-8">Your 12-Month Journey</h1>
+
+                    <!-- Month 1: Onboarding -->
+                    <div class="journey-card bg-white border-2 border-gray-200 rounded-2xl p-6 mb-4 shadow-sm">
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-start gap-4 flex-1">
+                                <div class="status-icon completed">
+                                    <i class='bx bx-check' style="font-size: 28px;"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-bold text-gray-900 mb-3">Month 1: Onboarding</h3>
+                                    <div class="flex flex-wrap gap-2">
+                                        <span class="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">Welcome Email</span>
+                                        <span class="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">Profile Setup</span>
+                                        <span class="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">Orientation Call</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="px-4 py-1.5 bg-green-100 text-green-700 rounded-lg text-xs font-bold">COMPLETED</span>
+                        </div>
+                    </div>
+
+                    <!-- Month 2: Engagement -->
+                    <div class="journey-card bg-white border-2 border-gray-200 rounded-2xl p-6 mb-4 shadow-sm">
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-start gap-4 flex-1">
+                                <div class="status-icon completed">
+                                    <i class='bx bx-check' style="font-size: 28px;"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-bold text-gray-900 mb-3">Month 2: Engagement</h3>
+                                    <div class="flex flex-wrap gap-2">
+                                        <span class="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">Press Release</span>
+                                        <span class="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">Community Access</span>
+                                        <span class="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">Social Audit</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="px-4 py-1.5 bg-green-100 text-green-700 rounded-lg text-xs font-bold">COMPLETED</span>
+                        </div>
+                    </div>
+
+                    <!-- Month 3: Visibility (Current) -->
+                    <div class="journey-card bg-purple-50 border-2 border-purple-200 rounded-2xl p-6 mb-4 shadow-sm">
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-start gap-4 flex-1">
+                                <div class="status-icon current">
+                                    <i class='bx bx-circle' style="font-size: 12px;"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-bold text-gray-900 mb-3">Month 3: Visibility</h3>
+                                    <div class="flex flex-wrap gap-2">
+                                        <span class="px-4 py-1.5 bg-white text-gray-700 rounded-lg text-sm font-medium">Podcast Session</span>
+                                        <span class="px-4 py-1.5 bg-white text-gray-700 rounded-lg text-sm font-medium">Speaker Profile</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="px-4 py-1.5 bg-purple-200 text-purple-800 rounded-lg text-xs font-bold">CURRENT</span>
+                        </div>
+                    </div>
+
+                    <!-- Month 4: Visibility -->
+                    <div class="journey-card bg-white border-2 border-gray-200 rounded-2xl p-6 mb-4 shadow-sm">
+                        <div class="flex items-start gap-4">
+                            <div class="status-icon upcoming">
+                                <i class='bx bx-circle' style="font-size: 12px;"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-gray-900 mb-3">Month 4: Visibility</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">Webinar Planning</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Month 5: Visibility -->
+                    <div class="journey-card bg-white border-2 border-gray-200 rounded-2xl p-6 mb-4 shadow-sm">
+                        <div class="flex items-start gap-4">
+                            <div class="status-icon upcoming">
+                                <i class='bx bx-circle' style="font-size: 12px;"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-gray-900 mb-3">Month 5: Visibility</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">White Paper</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Month 6: Check-In -->
+                    <div class="journey-card bg-white border-2 border-gray-200 rounded-2xl p-6 mb-4 shadow-sm">
+                        <div class="flex items-start gap-4">
+                            <div class="status-icon upcoming">
+                                <i class='bx bx-circle' style="font-size: 12px;"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-gray-900 mb-3">Month 6: Check-In</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">Mid-Year Survey</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Month 7: Expansion -->
+                    <div class="journey-card bg-white border-2 border-gray-200 rounded-2xl p-6 mb-4 shadow-sm">
+                        <div class="flex items-start gap-4">
+                            <div class="status-icon upcoming">
+                                <i class='bx bx-circle' style="font-size: 12px;"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-gray-900 mb-3">Month 7: Expansion</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">Blog Writing</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Month 8: Expansion -->
+                    <div class="journey-card bg-white border-2 border-gray-200 rounded-2xl p-6 mb-4 shadow-sm">
+                        <div class="flex items-start gap-4">
+                            <div class="status-icon upcoming">
+                                <i class='bx bx-circle' style="font-size: 12px;"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-gray-900 mb-3">Month 8: Expansion</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">Peer Session</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Month 9: Leadership -->
+                    <div class="journey-card bg-white border-2 border-gray-200 rounded-2xl p-6 mb-4 shadow-sm">
+                        <div class="flex items-start gap-4">
+                            <div class="status-icon upcoming">
+                                <i class='bx bx-circle' style="font-size: 12px;"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-gray-900 mb-3">Month 9: Leadership</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">Impact Log</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Month 10: Engagement -->
+                    <div class="journey-card bg-white border-2 border-gray-200 rounded-2xl p-6 mb-4 shadow-sm">
+                        <div class="flex items-start gap-4">
+                            <div class="status-icon upcoming">
+                                <i class='bx bx-circle' style="font-size: 12px;"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-gray-900 mb-3">Month 10: Engagement</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">Roundtable</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Month 11: Recognition -->
+                    <div class="journey-card bg-white border-2 border-gray-200 rounded-2xl p-6 mb-4 shadow-sm">
+                        <div class="flex items-start gap-4">
+                            <div class="status-icon upcoming">
+                                <i class='bx bx-circle' style="font-size: 12px;"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-gray-900 mb-3">Month 11: Recognition</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">Top Voices</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Month 12: Renewal -->
+                    <div class="journey-card bg-white border-2 border-gray-200 rounded-2xl p-6 shadow-sm">
+                        <div class="flex items-start gap-4">
+                            <div class="status-icon upcoming">
+                                <i class='bx bx-circle' style="font-size: 12px;"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-gray-900 mb-3">Month 12: Renewal</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">Final Survey</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
