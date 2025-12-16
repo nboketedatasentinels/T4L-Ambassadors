@@ -12,6 +12,48 @@
       body {
         font-family: 'Inter', sans-serif;
       }
+      
+      /* Loading state for button */
+      .btn-loading {
+        position: relative;
+        color: transparent !important;
+      }
+      .btn-loading::after {
+        content: '';
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        top: 50%;
+        left: 50%;
+        margin-left: -10px;
+        margin-top: -10px;
+        border: 2px solid #ffffff;
+        border-radius: 50%;
+        border-right-color: transparent;
+        animation: spin 0.75s linear infinite;
+      }
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      
+      /* Error message styling */
+      .form-error {
+        display: none;
+        padding: 0.75rem;
+        margin-top: 0.5rem;
+        border-radius: 0.5rem;
+        background-color: #fee2e2;
+        border: 1px solid #fecaca;
+        color: #991b1b;
+        font-size: 0.875rem;
+      }
+      .form-error.show {
+        display: block;
+      }
+      .form-error i {
+        margin-right: 0.5rem;
+      }
     </style>
   </head>
 
@@ -31,42 +73,96 @@
           </p>
         </div>
 
+        <!-- Error message container -->
+        <div id="form-error-container" class="form-error mb-4">
+          <i class="bx bx-error-circle"></i>
+          <span id="form-error-message"></span>
+        </div>
+
+        <!-- Success message container -->
+        <div id="form-success-container" class="form-error mb-4" style="display: none; background-color: #dcfce7; border-color: #bbf7d0; color: #166534;">
+          <i class="bx bx-check-circle"></i>
+          <span id="form-success-message"></span>
+        </div>
+
         <!-- Form -->
-        <form class="space-y-5" action="/register/partner" method="POST" id="partner-signup-form">
-          <!-- Organization Name -->
-          <div>
-            <label class="text-sm font-semibold text-gray-800 block mb-2">Organization Name</label>
-            <input 
-              type="text" 
-              name="organizationName"
-              placeholder="Your organization" 
-              class="w-full border border-gray-300 rounded-lg px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent focus:outline-none transition"
-              required
-            />
+        <form class="space-y-5" id="partner-signup-form">
+          
+          <!-- Organization Name & Contact Name Side by Side -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm font-semibold text-gray-800 block mb-2">Organization Name</label>
+              <input 
+                type="text" 
+                name="organizationName"
+                placeholder="Your organization" 
+                class="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent focus:outline-none transition"
+                required
+              />
+            </div>
+            <div>
+              <label class="text-sm font-semibold text-gray-800 block mb-2">Contact Name</label>
+              <input 
+                type="text" 
+                name="contactName"
+                placeholder="Primary contact" 
+                class="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent focus:outline-none transition"
+                required
+              />
+            </div>
           </div>
 
-          <!-- Contact Name -->
-          <div>
-            <label class="text-sm font-semibold text-gray-800 block mb-2">Contact Name</label>
-            <input 
-              type="text" 
-              name="contactName"
-              placeholder="Primary contact" 
-              class="w-full border border-gray-300 rounded-lg px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent focus:outline-none transition"
-              required
-            />
+          <!-- Email & Phone Side by Side -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm font-semibold text-gray-800 block mb-2">Email Address</label>
+              <input 
+                type="email" 
+                name="email"
+                placeholder="you@organization.com" 
+                class="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent focus:outline-none transition"
+                required
+              />
+            </div>
+            <div>
+              <label class="text-sm font-semibold text-gray-800 block mb-2">Phone Number</label>
+              <input 
+                type="tel" 
+                name="phoneNumber"
+                placeholder="(555) 123-4567" 
+                class="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent focus:outline-none transition"
+              />
+              <input type="hidden" name="phoneNumberRaw" id="phoneNumberRaw">
+            </div>
           </div>
 
-          <!-- Email -->
-          <div>
-            <label class="text-sm font-semibold text-gray-800 block mb-2">Email Address</label>
-            <input 
-              type="email" 
-              name="email"
-              placeholder="you@organization.com" 
-              class="w-full border border-gray-300 rounded-lg px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent focus:outline-none transition"
-              required
-            />
+          <!-- Location & Partner Type Side by Side -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm font-semibold text-gray-800 block mb-2">Location</label>
+              <input 
+                type="text" 
+                name="location"
+                placeholder="City, Country" 
+                class="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent focus:outline-none transition"
+              />
+            </div>
+            <div>
+              <label class="text-sm font-semibold text-gray-800 block mb-2">Partner Type</label>
+              <select 
+                name="partnerType"
+                class="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent focus:outline-none transition bg-white"
+              >
+                <option value="">Select type</option>
+                <option value="corporate">Corporate</option>
+                <option value="nonprofit">Non-Profit</option>
+                <option value="educational">Educational</option>
+                <option value="government">Government</option>
+                <option value="community">Community</option>
+                <option value="individual">Individual</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
           </div>
 
           <!-- Access Code -->
@@ -77,42 +173,42 @@
             </div>
             <input 
               type="text" 
-              name="accessCode"
+              name="access_code"
               placeholder="T4LP-XXXX" 
-              class="w-full border border-gray-300 rounded-lg px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent focus:outline-none transition uppercase"
+              class="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent focus:outline-none transition uppercase"
               required
             />
           </div>
 
-          <!-- Password -->
-          <div>
-            <label class="text-sm font-semibold text-gray-800 block mb-2">Password</label>
-            <input 
-              type="password" 
-              name="password"
-              minlength="8"
-              placeholder="••••••••" 
-              class="w-full border border-gray-300 rounded-lg px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent focus:outline-none transition"
-              required
-            />
-          </div>
-
-          <!-- Confirm Password -->
-          <div>
-            <label class="text-sm font-semibold text-gray-800 block mb-2">Confirm Password</label>
-            <input 
-              type="password" 
-              name="confirmPassword"
-              minlength="8"
-              placeholder="••••••••" 
-              class="w-full border border-gray-300 rounded-lg px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent focus:outline-none transition"
-              required
-            />
-            <p id="partner-password-error" class="mt-2 text-sm text-red-600 hidden">Passwords do not match.</p>
+          <!-- Password & Confirm Password Side by Side -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="text-sm font-semibold text-gray-800 block mb-2">Password</label>
+              <input 
+                type="password" 
+                name="password"
+                minlength="8"
+                placeholder="••••••••" 
+                class="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent focus:outline-none transition"
+                required
+              />
+            </div>
+            <div>
+              <label class="text-sm font-semibold text-gray-800 block mb-2">Confirm Password</label>
+              <input 
+                type="password" 
+                name="confirmPassword"
+                minlength="8"
+                placeholder="••••••••" 
+                class="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent focus:outline-none transition"
+                required
+              />
+              <p id="partner-password-error" class="mt-2 text-sm text-red-600 hidden">Passwords do not match.</p>
+            </div>
           </div>
 
           <!-- Terms -->
-          <div class="flex items-start gap-3 text-sm">
+          <div class="flex items-start gap-3 text-sm pt-2">
             <input type="checkbox" name="terms" id="partner-terms" class="mt-1 w-4 h-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500 cursor-pointer" required />
             <label for="partner-terms" class="text-gray-700">I agree to <a href="#" class="text-yellow-600 hover:text-yellow-700 font-semibold">Terms & Conditions</a></label>
           </div>
@@ -120,9 +216,16 @@
           <!-- Submit Button -->
           <button 
             type="submit" 
-            class="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold py-3.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.01]"
+            id="submitBtn"
+            class="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold py-3.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.01] mt-4 flex items-center justify-center"
           >
-            Create Partner Account
+            <span id="submitText">Create Partner Account</span>
+            <span id="submitSpinner" class="hidden ml-2">
+              <svg class="animate-spin h-5 w-5 text-gray-900" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </span>
           </button>
         </form>
 
@@ -163,46 +266,210 @@
       bg-gradient-to-tr from-purple-200 to-purple-400 
       opacity-30 blur-3xl rounded-full z-0"></div>
 
+    <!-- Boxicons for error/success icons -->
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+
     <script>
       (function() {
         const form = document.getElementById('partner-signup-form');
         const errorEl = document.getElementById('partner-password-error');
-        form.addEventListener('submit', function(e) {
+        const submitBtn = document.getElementById('submitBtn');
+        const submitText = document.getElementById('submitText');
+        const submitSpinner = document.getElementById('submitSpinner');
+        const formErrorContainer = document.getElementById('form-error-container');
+        const formErrorMessage = document.getElementById('form-error-message');
+        const formSuccessContainer = document.getElementById('form-success-container');
+        const formSuccessMessage = document.getElementById('form-success-message');
+        const phoneInput = form.querySelector('input[name="phoneNumber"]');
+        const phoneRawInput = document.getElementById('phoneNumberRaw');
+        
+        // Hide error/success messages initially
+        formErrorContainer.classList.remove('show');
+        formSuccessContainer.style.display = 'none';
+        
+        function showError(message) {
+          formErrorMessage.textContent = message;
+          formErrorContainer.classList.add('show');
+          formSuccessContainer.style.display = 'none';
+          
+          // Scroll to error message
+          formErrorContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        
+        function showSuccess(message) {
+          formSuccessMessage.textContent = message;
+          formSuccessContainer.style.display = 'block';
+          formErrorContainer.classList.remove('show');
+        }
+        
+        function hideMessages() {
+          formErrorContainer.classList.remove('show');
+          formSuccessContainer.style.display = 'none';
+        }
+        
+        function setLoading(isLoading) {
+          if (isLoading) {
+            submitBtn.disabled = true;
+            submitText.textContent = 'Creating Account...';
+            submitSpinner.classList.remove('hidden');
+            submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+          } else {
+            submitBtn.disabled = false;
+            submitText.textContent = 'Create Partner Account';
+            submitSpinner.classList.add('hidden');
+            submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+          }
+        }
+        
+        // Store raw phone number before formatting
+        phoneInput.addEventListener('input', function(e) {
+          const rawValue = e.target.value.replace(/\D/g, '');
+          phoneRawInput.value = rawValue;
+          
+          // Auto-format phone number for display
+          let formattedValue = rawValue;
+          if (rawValue.length > 0) {
+            if (rawValue.length <= 3) {
+              formattedValue = `(${rawValue}`;
+            } else if (rawValue.length <= 6) {
+              formattedValue = `(${rawValue.slice(0, 3)}) ${rawValue.slice(3)}`;
+            } else {
+              formattedValue = `(${rawValue.slice(0, 3)}) ${rawValue.slice(3, 6)}-${rawValue.slice(6, 10)}`;
+            }
+          }
+          e.target.value = formattedValue;
+        });
+        
+        form.addEventListener('submit', async function(e) {
+          e.preventDefault();
+          
+          // Hide previous messages
+          hideMessages();
+          
+          // Client-side validation
           const pwd = form.querySelector('input[name="password"]').value;
           const confirm = form.querySelector('input[name="confirmPassword"]').value;
           const terms = form.querySelector('input[name="terms"]').checked;
+          
           let valid = true;
+          let errorMessage = '';
+          
           if (pwd !== confirm) {
             errorEl.classList.remove('hidden');
             valid = false;
+            errorMessage = 'Passwords do not match.';
           } else {
             errorEl.classList.add('hidden');
           }
+          
           if (!terms) {
             valid = false;
+            errorMessage = 'Please agree to the Terms & Conditions';
           }
+          
           if (!valid) {
-            e.preventDefault();
-          } else {
-            // Store fields for partner signin autofill with timestamp for security
-            try {
-              const email = form.querySelector('input[name="email"]').value || '';
-              const accessCode = form.querySelector('input[name="accessCode"]').value || '';
-              const password = form.querySelector('input[name="password"]').value || '';
-              const timestamp = Date.now();
-              const data = {
-                email: email,
-                accessCode: accessCode,
-                password: password,
-                timestamp: timestamp
-              };
-              localStorage.setItem('autoPopulatePartnerEmail', JSON.stringify(data));
-            } catch (_) {}
+            showError(errorMessage);
+            return;
+          }
+          
+          // Prepare form data
+          const formData = new FormData(form);
+          
+          // Use raw phone number if available
+          if (phoneRawInput.value) {
+            formData.set('phoneNumber', phoneRawInput.value);
+          }
+          
+          // Convert to JSON
+          const data = {};
+          formData.forEach((value, key) => {
+            // Skip confirmPassword field when sending to server
+            if (key !== 'confirmPassword') {
+              data[key] = value;
+            }
+          });
+          
+          console.log('Submitting partner registration:', data);
+          
+          // Set loading state
+          setLoading(true);
+          
+          try {
+            const response = await fetch('/register/partner', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+              // Success - store auto-populate data
+              try {
+                const email = form.querySelector('input[name="email"]').value || '';
+                const access_code = form.querySelector('input[name="access_code"]').value || '';
+                const password = form.querySelector('input[name="password"]').value || '';
+                const timestamp = Date.now();
+                const autoData = {
+                  email: email,
+                  access_code: access_code,
+                  password: password,
+                  timestamp: timestamp
+                };
+                localStorage.setItem('autoPopulatePartnerEmail', JSON.stringify(autoData));
+              } catch (err) {
+                console.warn('Could not save auto-populate data:', err);
+              }
+              
+              // Show success message
+              showSuccess('Account created successfully! Redirecting to sign in...');
+              
+              // Redirect after short delay
+              setTimeout(() => {
+                window.location.href = '/partner-signin?autoPopulate=true';
+              }, 2000);
+              
+            } else {
+              // Handle server error
+              const errorData = await response.json().catch(() => ({}));
+              const errorMsg = errorData.error || errorData.message || `Registration failed (${response.status})`;
+              showError(errorMsg);
+              setLoading(false);
+            }
+            
+          } catch (error) {
+            console.error('Registration error:', error);
+            showError('Network error. Please check your connection and try again.');
+            setLoading(false);
           }
         });
+
+        // Real-time password validation
+        const passwordInput = form.querySelector('input[name="password"]');
+        const confirmPasswordInput = form.querySelector('input[name="confirmPassword"]');
+        
+        function validatePasswords() {
+          const pwd = passwordInput.value;
+          const confirm = confirmPasswordInput.value;
+          
+          if (confirm && pwd !== confirm) {
+            errorEl.classList.remove('hidden');
+            return false;
+          } else {
+            errorEl.classList.add('hidden');
+            return true;
+          }
+        }
+        
+        passwordInput.addEventListener('input', validatePasswords);
+        confirmPasswordInput.addEventListener('input', validatePasswords);
+        
+        // Auto-focus first input field
+        const firstInput = form.querySelector('input[type="text"], input[type="email"]');
+        if (firstInput) {
+          setTimeout(() => firstInput.focus(), 100);
+        }
       })();
     </script>
   </body>
-  </html>
-
-
+</html>

@@ -670,32 +670,25 @@
                 });
         }
 
-        // Define timeline stages
+        // Define timeline stages - UPDATED TO 3 STEPS (REMOVED "DRAFT CREATED")
         const TIMELINE_STAGES = [
             {
-                id: 'draft',
-                title: 'Draft Created',
-                description: 'Your article has been created and saved as a draft.',
-                icon: 'bx-file',
-                statuses: ['draft']
-            },
-            {
                 id: 'submitted',
-                title: 'Submitted for Review',
+                title: 'Article Submitted',
                 description: 'Your article has been submitted and is waiting for admin review.',
                 icon: 'bx-send',
-                statuses: ['pending']
+                statuses: ['draft', 'pending']
             },
             {
                 id: 'editing',
                 title: 'Under Review',
                 description: 'Our editorial team is reviewing your article for quality and accuracy.',
                 icon: 'bx-edit',
-                statuses: ['pending', 'needs_update']
+                statuses: ['needs_update']
             },
             {
                 id: 'finalizing',
-                title: 'Approved & Finalizing',
+                title: 'Approved & Publishing',
                 description: 'Great news! Your article has been approved and is being prepared for publication.',
                 icon: 'bx-check-circle',
                 statuses: ['approved', 'published']
@@ -720,13 +713,13 @@
             }
         }
 
-        // Calculate progress percentage
+        // Calculate progress percentage - UPDATED FOR 3 STEPS
         function calculateProgress(articleStatus) {
             const statusProgress = {
-                'draft': 25,
-                'pending': 50,
-                'needs_update': 50,
-                'approved': 75,
+                'draft': 33,
+                'pending': 33,
+                'needs_update': 66,
+                'approved': 100,
                 'published': 100
             };
             return statusProgress[articleStatus] || 0;

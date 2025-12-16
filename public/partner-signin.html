@@ -12,6 +12,24 @@
       body {
         font-family: 'Inter', sans-serif;
       }
+      .loading {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .loading::after {
+        content: '';
+        width: 16px;
+        height: 16px;
+        border: 2px solid currentColor;
+        border-radius: 50%;
+        border-right-color: transparent;
+        animation: spin 0.75s linear infinite;
+      }
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
     </style>
   </head>
 
@@ -40,7 +58,7 @@
         </div>
 
         <!-- Form -->
-        <form class="space-y-5" action="/partner-signin" method="POST">
+        <form class="space-y-5" action="/partner-signin" method="POST" id="signinForm">
           <!-- Email -->
           <div>
             <label class="text-sm font-semibold text-gray-800 block mb-2">Email Address</label>
@@ -59,7 +77,7 @@
             <label class="text-sm font-semibold text-gray-800 block mb-2">Access Code</label>
             <input 
               type="text" 
-              name="accessCode"
+              name="access_code"
               placeholder="T4L8-X9QP" 
               class="w-full border border-gray-300 rounded-lg px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-yellow-500 focus:border-transparent focus:outline-none transition uppercase"
               required
@@ -91,6 +109,7 @@
           <!-- Sign In Button -->
           <button 
             type="submit" 
+            id="signinButton"
             class="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold py-3.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.01]"
           >
             Sign In
@@ -153,7 +172,7 @@
           try {
             const data = JSON.parse(storedData);
             const email = data.email;
-            const accessCode = data.accessCode;
+            const access_code = data.access_code;
             const savedPassword = data.password;
             const timestamp = data.timestamp;
             
@@ -164,7 +183,7 @@
             if (timestamp && (now - timestamp) < maxAge) {
               // Auto-fill fields
               const emailInput = document.getElementById('partner-email');
-              const accessCodeInput = document.querySelector('input[name="accessCode"]');
+              const access_codeInput = document.querySelector('input[name="access_code"]');
               const passwordInput = document.getElementById('partner-password');
               
               if (emailInput && email) {
@@ -174,8 +193,8 @@
                   emailInput.classList.remove('ring-2', 'ring-yellow-400', 'border-yellow-400');
                 }, 2000);
               }
-              if (accessCodeInput && accessCode) {
-                accessCodeInput.value = accessCode;
+              if (access_codeInput && access_code) {
+                access_codeInput.value = access_code;
               }
               if (passwordInput && savedPassword) {
                 passwordInput.value = savedPassword;
@@ -218,5 +237,53 @@
         localStorage.removeItem('autoPopulatePartnerEmail');
       } catch (_) {}
     }
+
+    // Add this script to handle form submission
+    document.getElementById('signinForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const form = e.target;
+      const submitBtn = document.getElementById('signinButton');
+      const originalText = submitBtn.textContent;
+      
+      // Show loading state
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="loading">Signing in...</span>';
+      
+      try {
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        const response = await fetch(form.action, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          // Success - redirect
+          if (result.redirect) {
+            window.location.href = result.redirect;
+          } else if (result.success) {
+            window.location.href = '/partner-dashboard.html';
+          }
+        } else {
+          // Show error
+          alert(result.error || 'Sign in failed');
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }
+        
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Network error. Please try again.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
+    });
   });
 </script>

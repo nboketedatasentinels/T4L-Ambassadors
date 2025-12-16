@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Application Details - T4L</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+  <style>
+    .sidebar-toggle { display: none; }
+    
+    @media (max-width: 768px) {
+      .sidebar-toggle {
+        display: block;
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        z-index: 50;
+        background: #4b0d7f;
+        color: white;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        position: fixed;
+        height: 100vh;
+        z-index: 40;
+      }
+      .sidebar.active {
+        transform: translateX(0);
+      }
+      .overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 30;
+      }
+      .overlay.active {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans">
+  <!-- Mobile Sidebar Toggle -->
+  <button class="sidebar-toggle" id="sidebarToggle">
+    <i class="bx bx-menu text-xl"></i>
+  </button>
+  
+  <!-- Overlay for mobile sidebar -->
+  <div class="overlay" id="overlay"></div>
+  
+  <div class="flex min-h-screen">
+    <!-- Sidebar - Same as partner-dashboard.html -->
+    <aside class="sidebar w-20 lg:w-20 md:w-20 bg-white shadow-md flex flex-col items-center py-6 space-y-6 z-40">
+      <div class="mb-4">
+        <div class="bg-[#4b0d7f] text-white px-3 py-2 rounded-xl font-semibold text-sm">T4L</div>
+      </div>
+      <nav class="flex flex-col space-y-4 text-gray-700 w-full">
+        <a href="/partner-dashboard.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <i class="bx bxs-home text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+          <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Home</span>
+        </a>
+        <a href="/applications.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50 bg-purple-50">
+          <i class="bx bx-file text-2xl text-[#4b0d9f] group-hover:scale-110 transition-transform duration-200"></i>
+          <span class="text-[10px] mt-1.5 font-medium text-[#4b0d9f] transition-colors duration-200">Applications</span>
+        </a>
+        <a href="/creat-Post.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <i class="bx bx-edit-alt text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+          <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Publishing</span>
+        </a>
+        <a href="/profile.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <i class="bx bx-user text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+          <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Profile</span>
+        </a>
+        <div onclick="logout()" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-red-50">
+          <i class="bx bx-log-out text-2xl group-hover:text-red-600 group-hover:scale-110 transition-all duration-200"></i>
+          <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-red-600 transition-colors duration-200">Logout</span>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-4 md:p-6 lg:p-6">
+      <header class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+        <div>
+          <h1 class="text-xl font-semibold text-gray-900">Application Details</h1>
+          <p class="text-sm text-gray-600 mt-1">Review ambassador application</p>
+        </div>
+        <div class="flex gap-3">
+          <a href="/applications.html" class="text-purple-600 hover:text-purple-700 font-semibold text-sm hover:underline">
+            ← Back to Applications
+          </a>
+          <a href="/partner-dashboard.html" class="text-gray-600 hover:text-gray-700 font-semibold text-sm hover:underline">
+            Dashboard
+          </a>
+        </div>
+      </header>
+      
+      <div class="max-w-4xl mx-auto">
+        <!-- Loading State -->
+        <div id="loadingState" class="bg-white rounded-2xl shadow-md p-8">
+          <div class="text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p class="text-gray-600">Loading application details...</p>
+          </div>
+        </div>
+        
+        <!-- Application Details -->
+        <div id="applicationDetails" class="hidden">
+          <!-- Details will be loaded here -->
+        </div>
+        
+        <!-- Error State -->
+        <div id="errorState" class="hidden bg-white rounded-2xl shadow-md p-8">
+          <div class="text-center">
+            <i class="bx bx-error text-4xl text-red-400 mb-4"></i>
+            <h3 class="text-lg font-bold text-gray-900 mb-2">Application not found</h3>
+            <p class="text-gray-600 mb-4">The application you're looking for doesn't exist or you don't have permission to view it.</p>
+            <a href="/applications.html" class="bg-purple-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-purple-700 transition-all">
+              Back to Applications
+            </a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Get application ID from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const applicationId = urlParams.get('id');
+      
+      if (!applicationId) {
+        showError('No application ID provided');
+        return;
+      }
+      
+      loadApplicationDetails(applicationId);
+      
+      // Sidebar toggle
+      const sidebarToggle = document.getElementById('sidebarToggle');
+      const sidebar = document.querySelector('.sidebar');
+      const overlay = document.getElementById('overlay');
+      
+      if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+          sidebar.classList.toggle('active');
+          overlay.classList.toggle('active');
+        });
+      }
+      
+      if (overlay) {
+        overlay.addEventListener('click', () => {
+          sidebar.classList.remove('active');
+          overlay.classList.remove('active');
+        });
+      }
+    });
+    
+    async function loadApplicationDetails(applicationId) {
+      try {
+        console.log('Loading application:', applicationId);
+        
+        // Use the new single application endpoint
+        const response = await fetch(`/api/partner/applications/${applicationId}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to load application');
+        }
+        
+        const data = await response.json();
+        
+        if (!data.application) {
+          throw new Error('Application not found');
+        }
+        
+        displayApplicationDetails(data.application);
+      } catch (error) {
+        console.error('Error loading application:', error);
+        showError(error.message);
+      }
+    }
+    
+    function displayApplicationDetails(application) {
+      document.getElementById('loadingState').classList.add('hidden');
+      document.getElementById('errorState').classList.add('hidden');
+      
+      const container = document.getElementById('applicationDetails');
+      container.classList.remove('hidden');
+      
+      // Format date
+      const appliedDate = new Date(application.appliedAt);
+      const formattedDate = appliedDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      // Status badge class
+      const statusClass = {
+        'pending': 'bg-yellow-100 text-yellow-800',
+        'accepted': 'bg-green-100 text-green-800',
+        'rejected': 'bg-red-100 text-red-800'
+      }[application.status] || 'bg-gray-100 text-gray-800';
+      
+      // Get initials for avatar
+      function getInitials(name) {
+        if (!name || name === 'Unknown') return 'A';
+        return name.charAt(0).toUpperCase();
+      }
+      
+      container.innerHTML = `
+        <div class="bg-white rounded-2xl shadow-md p-6 md:p-8">
+          <!-- Header -->
+          <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+            <div>
+              <div class="flex items-center gap-3 mb-2">
+                <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-[#4b0d7f] rounded-full flex items-center justify-center text-white font-bold text-lg">
+                  ${getInitials(application.ambassadorName)}
+                </div>
+                <div>
+                  <h2 class="text-xl font-bold text-gray-900">${application.ambassadorName || 'Unknown Ambassador'}</h2>
+                  <p class="text-sm text-gray-600">Applied for: ${application.postTitle || 'Opportunity'}</p>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col items-end">
+              <span class="px-4 py-2 rounded-full text-sm font-semibold ${statusClass} mb-2">
+                ${(application.status || 'pending').charAt(0).toUpperCase() + (application.status || 'pending').slice(1)}
+              </span>
+              <p class="text-sm text-gray-600">Applied on ${formattedDate}</p>
+            </div>
+          </div>
+          
+          <!-- Application Info -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Ambassador Info -->
+            <div class="border border-gray-200 rounded-xl p-5">
+              <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <i class="bx bx-user"></i>
+                Ambassador Information
+              </h3>
+              <div class="space-y-3">
+                <div>
+                  <p class="text-sm text-gray-600">Full Name</p>
+                  <p class="font-medium text-gray-900">${application.ambassadorName || 'Not provided'}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-600">Email</p>
+                  <p class="font-medium text-gray-900">${application.ambassadorProfile?.email || 'Not provided'}</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Application Details -->
+            <div class="border border-gray-200 rounded-xl p-5">
+              <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <i class="bx bx-file"></i>
+                Application Details
+              </h3>
+              <div class="space-y-3">
+                <div>
+                  <p class="text-sm text-gray-600">Opportunity</p>
+                  <p class="font-medium text-gray-900">${application.postTitle || 'Not specified'}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-600">Application Date</p>
+                  <p class="font-medium text-gray-900">${formattedDate}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-600">Terms Accepted</p>
+                  <p class="font-medium text-gray-900">${application.termsAccepted ? 'Yes' : 'No'}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-600">Newsletter</p>
+                  <p class="font-medium text-gray-900">${application.subscribeToNewsletter ? 'Subscribed' : 'Not subscribed'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- CV Section -->
+          <div class="border border-gray-200 rounded-xl p-5 mb-6">
+            <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <i class="bx bx-file-blank"></i>
+              Curriculum Vitae
+            </h3>
+            ${application.cvFilename ? `
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <i class="bx bx-file text-2xl text-gray-400"></i>
+                  <div>
+                    <p class="font-medium text-gray-900">CV File</p>
+                    <p class="text-sm text-gray-600">Uploaded with application</p>
+                  </div>
+                </div>
+                <a href="/uploads/cvs/${application.cvFilename}" 
+                   target="_blank" 
+                   class="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition-all flex items-center gap-2">
+                  <i class="bx bx-download"></i>
+                  Download CV
+                </a>
+              </div>
+            ` : `
+              <div class="text-center py-4">
+                <p class="text-gray-600">No CV uploaded with this application</p>
+              </div>
+            `}
+          </div>
+          
+          <!-- Action Buttons -->
+          <div class="flex flex-col sm:flex-row gap-3 pt-6 border-t border-gray-200">
+            <button onclick="updateStatus('${application.id}', 'accepted')" 
+                    class="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-all flex-1 flex items-center justify-center gap-2">
+              <i class="bx bx-check"></i>
+              Accept Application
+            </button>
+            <button onclick="updateStatus('${application.id}', 'rejected')" 
+                    class="bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 transition-all flex-1 flex items-center justify-center gap-2">
+              <i class="bx bx-x"></i>
+              Reject Application
+            </button>
+            <button onclick="updateStatus('${application.id}', 'pending')" 
+                    class="bg-yellow-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-yellow-700 transition-all flex-1 flex items-center justify-center gap-2">
+              <i class="bx bx-time"></i>
+              Mark as Pending
+            </button>
+          </div>
+        </div>
+      `;
+    }
+    
+    function showError(message) {
+      document.getElementById('loadingState').classList.add('hidden');
+      document.getElementById('applicationDetails').classList.add('hidden');
+      document.getElementById('errorState').classList.remove('hidden');
+    }
+    
+    async function updateStatus(applicationId, newStatus) {
+      if (!confirm(`Are you sure you want to mark this application as ${newStatus}?`)) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/partner/applications/${applicationId}/status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status: newStatus })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to update status');
+        }
+        
+        // Show success message
+        alert(`Application status updated to ${newStatus}`);
+        
+        // Reload the page to show updated status
+        window.location.reload();
+      } catch (error) {
+        console.error('Error updating status:', error);
+        alert('Failed to update status. Please try again.');
+      }
+    }
+    
+    function logout() {
+      fetch('/logout', { method: 'POST' })
+        .then(() => {
+          window.location.href = '/partner-signin';
+        })
+        .catch(error => {
+          console.error('Logout error:', error);
+          window.location.href = '/partner-signin';
+        });
+    }
+    
+    // Make functions available globally
+    window.logout = logout;
+    window.updateStatus = updateStatus;
+  </script>
+</body>
+</html>

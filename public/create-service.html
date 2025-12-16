@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Service | T4L Partners</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+    <style>
+      .sidebar-toggle { display: none; }
+      @media (max-width: 768px) {
+        .sidebar-toggle {
+          display: flex;
+          position: fixed;
+          top: 1rem;
+          left: 1rem;
+          z-index: 50;
+          background: #4b0d7f;
+          color: white;
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .sidebar {
+          transform: translateX(-100%);
+          transition: transform 0.3s ease;
+          position: fixed;
+          height: 100vh;
+          z-index: 40;
+        }
+        .sidebar.active { transform: translateX(0); }
+        .overlay {
+          display: none;
+          position: fixed;
+          inset: 0;
+          background-color: rgba(0, 0, 0, 0.5);
+          z-index: 30;
+        }
+        .overlay.active { display: block; }
+      }
+      .error-message {
+        color: #dc2626;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        display: none;
+      }
+      .error-message.show {
+        display: block;
+      }
+      .input-error {
+        border-color: #dc2626 !important;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 font-sans">
+    <button class="sidebar-toggle" id="sidebarToggle">
+      <i class="bx bx-menu text-xl"></i>
+    </button>
+    
+    <div class="overlay" id="overlay"></div>
+    
+    <div class="flex min-h-screen">
+      <aside class="sidebar w-20 bg-white shadow-md flex flex-col items-center py-6 space-y-6 z-40">
+        <div class="mb-4">
+          <div class="bg-[#4b0d7f] text-white px-3 py-2 rounded-xl font-semibold text-sm">T4L</div>
+        </div>
+        <nav class="flex flex-col space-y-4 text-gray-700 w-full">
+          <a href="/partner-dashboard.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bxs-home text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Home</span>
+          </a>
+          <a href="/services.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg bg-purple-50">
+            <i class="bx bx-briefcase-alt-2 text-2xl text-[#4b0d9f] group-hover:scale-110 transition-transform duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-[#4b0d9f] transition-colors duration-200">Services</span>
+          </a>
+          <a href="/article-amb.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-edit-alt text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Publishing</span>
+          </a>
+          <a href="/Partner-Calls.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-briefcase text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Partners</span>
+          </a>
+          <a href="https://www.t4leader.com/event" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-calendar-event text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Events</span>
+          </a>
+          <a href="/profile.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-user text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Profile</span>
+          </a>
+          <a href="/profile.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-cog text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Settings</span>
+          </a>
+          <div id="logoutBtn" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-red-50">
+            <i class="bx bx-log-out text-2xl text-gray-600 group-hover:text-red-600 group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-red-600 transition-colors duration-200">Logout</span>
+          </div>
+        </nav>
+      </aside>
+
+      <main class="flex-1 p-4 md:p-6 lg:p-6">
+        <header class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900">Create New Service</h1>
+            <p class="text-gray-600 text-sm mt-1">Offer a service to T4L Ambassadors and Partners</p>
+          </div>
+          <div class="flex items-center space-x-4 w-full md:w-auto">
+            <a href="/services.html" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors">
+              <i class="bx bx-arrow-back"></i>
+              Back to Services
+            </a>
+            <div class="flex items-center space-x-2">
+              <i class="bx bx-bell text-2xl text-gray-900"></i>
+              <div class="w-10 h-10 bg-[#4b0d7f] flex items-center justify-center rounded-full font-bold text-white" id="userAvatar">AP</div>
+            </div>
+          </div>
+        </header>
+
+        <div class="max-w-3xl mx-auto">
+          <div class="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+            <form id="createServiceForm" novalidate>
+              <div class="mb-6">
+                <label for="serviceTitle" class="block text-sm font-medium text-gray-700 mb-2">Service Title *</label>
+                <input type="text" id="serviceTitle" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="e.g., Professional Headshot Photography" required />
+                <p class="error-message" id="serviceTitleError">Please enter a service title</p>
+                <p class="text-xs text-gray-500 mt-1">Give your service a clear, descriptive title</p>
+              </div>
+
+              <div class="mb-6">
+                <label for="serviceType" class="block text-sm font-medium text-gray-700 mb-2">Service Type *</label>
+                <select id="serviceType" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500" required>
+                  <option value="">Select a service type</option>
+                  <option value="photography">Photography</option>
+                  <option value="videography">Videography</option>
+                  <option value="graphic-design">Graphic Design</option>
+                  <option value="web-development">Web Development</option>
+                  <option value="event-production">Event Production</option>
+                  <option value="copywriting">Copywriting/Content</option>
+                  <option value="legal-services">Legal Services</option>
+                  <option value="accounting">Accounting</option>
+                  <option value="other">Other</option>
+                </select>
+                <p class="error-message" id="serviceTypeError">Please select a service type</p>
+                <p class="text-xs text-gray-500 mt-1">Choose the most relevant category</p>
+              </div>
+
+              <div class="mb-6">
+                <label for="serviceDescription" class="block text-sm font-medium text-gray-700 mb-2">Service Description *</label>
+                <textarea id="serviceDescription" rows="5" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Describe what your service includes, who it's for, and what participants will gain..." required></textarea>
+                <p class="error-message" id="serviceDescriptionError">Please enter a service description</p>
+                <p class="text-xs text-gray-500 mt-1">Be specific about what you're offering</p>
+              </div>
+
+              <div class="mb-6 bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <h3 class="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <i class="bx bx-dollar-circle text-purple-600"></i>
+                  Pricing Information *
+                </h3>
+                
+                <div class="mb-4">
+                  <label for="pricingType" class="block text-sm font-medium text-gray-700 mb-2">Pricing Type *</label>
+                  <select id="pricingType" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white" required>
+                    <option value="">Select pricing type</option>
+                    <option value="free">Free</option>
+                    <option value="fixed">Fixed Price</option>
+                    <option value="hourly">Hourly Rate</option>
+                    <option value="package">Package/Bundle</option>
+                    <option value="negotiable">Negotiable</option>
+                  </select>
+                  <p class="error-message" id="pricingTypeError">Please select a pricing type</p>
+                </div>
+
+                <div id="priceInputSection" class="hidden">
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-1">
+                      <label for="currency" class="block text-sm font-medium text-gray-700 mb-2">Currency</label>
+                      <select id="currency" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white">
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                        <option value="NGN">NGN (₦)</option>
+                        <option value="ZAR">ZAR (R)</option>
+                        <option value="KES">KES (KSh)</option>
+                        <option value="GHS">GHS (₵)</option>
+                      </select>
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                      <label for="priceAmount" class="block text-sm font-medium text-gray-700 mb-2">
+                        <span id="priceLabel">Amount *</span>
+                      </label>
+                      <input type="number" id="priceAmount" min="0" step="0.01" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="0.00" />
+                      <p class="error-message" id="priceAmountError">Please enter a price amount</p>
+                    </div>
+                  </div>
+                  
+                  <div class="mt-3">
+                    <label for="priceNote" class="block text-sm font-medium text-gray-700 mb-2">Pricing Details (Optional)</label>
+                    <textarea id="priceNote" rows="2" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="e.g., Includes 3 revisions, Discounts for bulk orders"></textarea>
+                  </div>
+                </div>
+
+                <div id="freeServiceNote" class="hidden">
+                  <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
+                    <p class="text-sm text-blue-800">
+                      <i class="bx bx-info-circle"></i>
+                      This service will be offered for free to T4L Ambassadors.
+                    </p>
+                  </div>
+                </div>
+
+                <div id="negotiableNote" class="hidden">
+                  <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3">
+                    <p class="text-sm text-yellow-800">
+                      <i class="bx bx-info-circle"></i>
+                      Pricing will be discussed and agreed upon with each client.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-6">
+                <label for="serviceDuration" class="block text-sm font-medium text-gray-700 mb-2">Duration / Availability</label>
+                <input type="text" id="serviceDuration" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="e.g., 60-minute session, Weekly for 4 weeks, On-demand access" />
+                <p class="text-xs text-gray-500 mt-1">Specify time commitment or availability</p>
+              </div>
+
+              <div class="mb-6">
+                <label for="serviceCapacity" class="block text-sm font-medium text-gray-700 mb-2">Capacity (Optional)</label>
+                <div class="flex items-center gap-4">
+                  <div class="flex items-center gap-2">
+                    <input type="radio" id="capacityUnlimited" name="capacity" value="unlimited" checked class="text-purple-600 focus:ring-purple-500">
+                    <label for="capacityUnlimited" class="text-sm text-gray-700">Unlimited spots</label>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <input type="radio" id="capacityLimited" name="capacity" value="limited" class="text-purple-600 focus:ring-purple-500">
+                    <label for="capacityLimited" class="text-sm text-gray-700">Limited to</label>
+                    <input type="number" id="maxParticipants" class="border border-gray-300 rounded-lg px-3 py-1.5 w-20 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="10" disabled />
+                    <span class="text-sm text-gray-700">participants</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-6">
+                <label for="externalLink" class="block text-sm font-medium text-gray-700 mb-2">External Link (Optional)</label>
+                <input type="url" id="externalLink" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="https://example.com/your-resource" />
+                <p class="text-xs text-gray-500 mt-1">Link to external resources, booking calendar, or course materials</p>
+              </div>
+
+              <div class="mb-8">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Service Status</label>
+                <div class="flex items-center gap-4">
+                  <div class="flex items-center gap-2">
+                    <input type="radio" id="statusActive" name="status" value="active" checked class="text-purple-600 focus:ring-purple-500">
+                    <label for="statusActive" class="text-sm text-gray-700">Active (Accepting requests)</label>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <input type="radio" id="statusDraft" name="status" value="draft" class="text-purple-600 focus:ring-purple-500">
+                    <label for="statusDraft" class="text-sm text-gray-700">Save as Draft</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex gap-4 pt-6 border-t border-gray-200">
+                <button type="button" onclick="window.location.href='/services.html'" class="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 py-3 rounded-lg font-medium transition-colors">Cancel</button>
+                <button type="submit" id="submitBtn" class="flex-1 bg-[#4b0d7f] hover:bg-[#3a0a66] text-white py-3 rounded-lg font-medium transition-colors">Create Service</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="bg-blue-50 border border-blue-100 rounded-xl p-6">
+            <h3 class="font-bold text-lg text-blue-900 mb-3 flex items-center gap-2">
+              <i class="bx bx-info-circle"></i>
+              Tips for Creating Great Services
+            </h3>
+            <ul class="space-y-2 text-blue-800 text-sm">
+              <li class="flex items-start gap-2">
+                <i class="bx bx-check text-blue-600 mt-0.5"></i>
+                <span><strong>Be specific</strong> about what you're offering and who can benefit</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i class="bx bx-check text-blue-600 mt-0.5"></i>
+                <span><strong>Clear pricing</strong> builds trust and sets expectations</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i class="bx bx-check text-blue-600 mt-0.5"></i>
+                <span><strong>Clear timeframe</strong> helps Ambassadors plan their commitments</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i class="bx bx-check text-blue-600 mt-0.5"></i>
+                <span><strong>Use professional categories</strong> consistently for better discovery</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i class="bx bx-check text-blue-600 mt-0.5"></i>
+                <span>You can <strong>edit or close</strong> services anytime from "My Services"</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" id="successModal">
+          <div class="bg-white rounded-xl max-w-md w-full p-6 text-center">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i class="bx bx-check text-3xl text-green-600"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900 mb-2">Service Created Successfully!</h3>
+            <p class="text-gray-600 mb-6">Your service is now visible to all T4L Ambassadors and Partners.</p>
+            
+            <div class="flex gap-3">
+              <button onclick="window.location.href='/services.html'" class="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 py-3 rounded-lg font-medium transition-colors">View All Services</button>
+              <button onclick="window.location.href='/my-services.html'" class="flex-1 bg-[#4b0d7f] hover:bg-[#3a0a66] text-white py-3 rounded-lg font-medium transition-colors">Manage My Services</button>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+
+    <script>
+      const API_URL = '/api';
+      let currentUser = null;
+
+      async function init() {
+        await loadCurrentUser();
+        setupEventListeners();
+        setupPricingLogic();
+      }
+
+      async function loadCurrentUser() {
+        try {
+          const response = await fetch(`${API_URL}/me`, { 
+            credentials: 'include' 
+          });
+          
+          if (response.ok) {
+            currentUser = await response.json();
+            
+            if (currentUser.role !== 'partner') {
+              alert('Only T4L Partners can create services');
+              window.location.href = '/services.html';
+              return;
+            }
+            
+            updateUIForUser();
+          } else {
+            window.location.href = '/partner-signin';
+          }
+        } catch (error) {
+          console.error('Error loading user:', error);
+          window.location.href = '/partner-signin';
+        }
+      }
+
+      function updateUIForUser() {
+        if (!currentUser) return;
+        
+        const userAvatar = document.getElementById('userAvatar');
+        const initials = (currentUser.name || 'AP').substring(0, 2).toUpperCase();
+        userAvatar.textContent = initials;
+      }
+
+      function setupPricingLogic() {
+        const pricingType = document.getElementById('pricingType');
+        const priceInputSection = document.getElementById('priceInputSection');
+        const freeServiceNote = document.getElementById('freeServiceNote');
+        const negotiableNote = document.getElementById('negotiableNote');
+        const priceLabel = document.getElementById('priceLabel');
+        const priceAmount = document.getElementById('priceAmount');
+        
+        pricingType.addEventListener('change', function() {
+          const selectedType = this.value;
+          
+          // Clear any previous errors
+          clearError('pricingType');
+          clearError('priceAmount');
+          
+          // Hide all sections first
+          priceInputSection.classList.add('hidden');
+          freeServiceNote.classList.add('hidden');
+          negotiableNote.classList.add('hidden');
+          
+          // Show relevant sections and update requirements
+          if (selectedType === 'free') {
+            freeServiceNote.classList.remove('hidden');
+            priceAmount.removeAttribute('required');
+            priceAmount.value = '';
+          } else if (selectedType === 'negotiable') {
+            negotiableNote.classList.remove('hidden');
+            priceAmount.removeAttribute('required');
+            priceAmount.value = '';
+          } else if (selectedType === 'fixed') {
+            priceInputSection.classList.remove('hidden');
+            priceLabel.textContent = 'Fixed Price *';
+            priceAmount.setAttribute('required', 'required');
+          } else if (selectedType === 'hourly') {
+            priceInputSection.classList.remove('hidden');
+            priceLabel.textContent = 'Hourly Rate *';
+            priceAmount.setAttribute('required', 'required');
+          } else if (selectedType === 'package') {
+            priceInputSection.classList.remove('hidden');
+            priceLabel.textContent = 'Package Price *';
+            priceAmount.setAttribute('required', 'required');
+          }
+        });
+      }
+
+      function setupEventListeners() {
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.getElementById('overlay');
+        
+        if (sidebarToggle) {
+          sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.add('active');
+            overlay.classList.add('active');
+          });
+        }
+        
+        if (overlay) {
+          overlay.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+          });
+        }
+        
+        const capacityLimited = document.getElementById('capacityLimited');
+        const capacityUnlimited = document.getElementById('capacityUnlimited');
+        const maxParticipants = document.getElementById('maxParticipants');
+        
+        capacityLimited.addEventListener('change', function() {
+          maxParticipants.disabled = !this.checked;
+          if (this.checked) maxParticipants.focus();
+        });
+        
+        capacityUnlimited.addEventListener('change', function() {
+          maxParticipants.disabled = this.checked;
+        });
+        
+        const createServiceForm = document.getElementById('createServiceForm');
+        createServiceForm.addEventListener('submit', handleSubmit);
+        
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+          try {
+            await fetch(`${API_URL}/logout`, { 
+              method: 'POST', 
+              credentials: 'include' 
+            });
+            window.location.href = '/partner-signin';
+          } catch (error) {
+            window.location.href = '/partner-signin';
+          }
+        });
+      }
+
+      function showError(fieldId, message) {
+        const field = document.getElementById(fieldId);
+        const errorElement = document.getElementById(fieldId + 'Error');
+        
+        if (field) field.classList.add('input-error');
+        if (errorElement) {
+          errorElement.textContent = message;
+          errorElement.classList.add('show');
+        }
+      }
+
+      function clearError(fieldId) {
+        const field = document.getElementById(fieldId);
+        const errorElement = document.getElementById(fieldId + 'Error');
+        
+        if (field) field.classList.remove('input-error');
+        if (errorElement) errorElement.classList.remove('show');
+      }
+
+      function validateForm() {
+        let isValid = true;
+        
+        // Clear all previous errors
+        ['serviceTitle', 'serviceType', 'serviceDescription', 'pricingType', 'priceAmount'].forEach(clearError);
+        
+        // Validate title
+        const title = document.getElementById('serviceTitle').value.trim();
+        if (!title) {
+          showError('serviceTitle', 'Please enter a service title');
+          isValid = false;
+        }
+        
+        // Validate type
+        const type = document.getElementById('serviceType').value;
+        if (!type) {
+          showError('serviceType', 'Please select a service type');
+          isValid = false;
+        }
+        
+        // Validate description
+        const description = document.getElementById('serviceDescription').value.trim();
+        if (!description) {
+          showError('serviceDescription', 'Please enter a service description');
+          isValid = false;
+        }
+        
+        // Validate pricing type
+        const pricingType = document.getElementById('pricingType').value;
+        if (!pricingType) {
+          showError('pricingType', 'Please select a pricing type');
+          isValid = false;
+        }
+        
+        // Validate price amount if required
+        if (pricingType === 'fixed' || pricingType === 'hourly' || pricingType === 'package') {
+          const priceAmount = document.getElementById('priceAmount').value;
+          if (!priceAmount || parseFloat(priceAmount) <= 0) {
+            showError('priceAmount', 'Please enter a valid price amount');
+            isValid = false;
+          }
+        }
+        
+        return isValid;
+      }
+
+      async function handleSubmit(e) {
+        e.preventDefault();
+        
+        // Validate form
+        if (!validateForm()) {
+          return;
+        }
+        
+        if (!currentUser || currentUser.role !== 'partner') {
+          alert('Only partners can create services');
+          return;
+        }
+        
+        // Disable submit button
+        const submitBtn = document.getElementById('submitBtn');
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Creating...';
+        
+        try {
+          const pricingType = document.getElementById('pricingType').value;
+          let pricingData = {
+            pricing_type: pricingType
+          };
+          
+          // Add pricing details based on type
+          if (pricingType === 'fixed' || pricingType === 'hourly' || pricingType === 'package') {
+            const priceAmount = document.getElementById('priceAmount').value;
+            pricingData.price = parseFloat(priceAmount);
+            pricingData.currency = document.getElementById('currency').value;
+          }
+          
+          const priceNote = document.getElementById('priceNote').value.trim();
+          if (priceNote) {
+            pricingData.price_note = priceNote;
+          }
+          
+          const capacityType = document.querySelector('input[name="capacity"]:checked').value;
+          const capacity = capacityType === 'unlimited' 
+            ? null 
+            : parseInt(document.getElementById('maxParticipants').value) || null;
+          
+          const formData = {
+            title: document.getElementById('serviceTitle').value.trim(),
+            type: document.getElementById('serviceType').value,
+            description: document.getElementById('serviceDescription').value.trim(),
+            duration: document.getElementById('serviceDuration').value.trim() || null,
+            capacity: capacity,
+            externalLink: document.getElementById('externalLink').value.trim() || null,
+            status: document.querySelector('input[name="status"]:checked').value,
+            ...pricingData
+          };
+          
+          console.log('Submitting service data:', formData);
+          
+          const response = await fetch(`${API_URL}/services`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(formData)
+          });
+          
+          const result = await response.json();
+          
+          if (response.ok) {
+            console.log('Service created successfully:', result);
+            document.getElementById('successModal').classList.remove('hidden');
+          } else {
+            console.error('Error response:', result);
+            alert(`Error: ${result.error || 'Failed to create service'}`);
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+          }
+        } catch (error) {
+          console.error('Error creating service:', error);
+          alert('Failed to create service. Please check your connection and try again.');
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }
+      }
+
+      init();
+    </script>
+  </body>
+</html>

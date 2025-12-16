@@ -60,6 +60,47 @@
           display: block;
         }
       }
+      
+      /* Add line clamp utility */
+      .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      
+      .truncate {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      
+      /* Video specific styles */
+      .video-preview {
+        transition: all 0.3s ease;
+      }
+      
+      .video-preview:hover {
+        transform: scale(1.02);
+      }
+      
+      .play-button {
+        transition: all 0.3s ease;
+      }
+      
+      .play-button:hover {
+        transform: scale(1.1);
+      }
+      
+      /* Loading animation */
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+      
+      .animate-pulse {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
     </style>
   </head>
   <body class="bg-gray-50 font-sans">
@@ -94,13 +135,13 @@
             <i class="bx bx-briefcase text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Partners</span>
           </a>
+        <a href="/services.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <i class="bx bx-briefcase-alt-2 text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+          <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Services</span>
+        </a>
           <a href="https://www.t4leader.com/event" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
             <i class="bx bx-calendar-event text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Events</span>
-          </a>
-          <a href="/chat-pillar.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
-            <i class="bx bx-chat text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
-            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Chat</span>
           </a>
           <a href="/profile.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
             <i class="bx bx-user text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
@@ -176,7 +217,7 @@
               class="flex items-center justify-center gap-4 bg-white/20 backdrop-blur-md px-4 md:px-6 py-4 rounded-lg shadow-sm hover:shadow-md transition-all flex-1"
             >
             <i class="bx bx-microphone text-xl"></i>
-              <span class="font-medium">Discover Our Podcast Channel              </span>
+              <span class="font-medium">Discover Our Podcast Channel</span>
           </a>
           </div>
         </section>
@@ -235,9 +276,9 @@
             </div>
 
             <!-- Video Container -->
-            <div id="videoContainer" class="bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex flex-col items-center justify-center min-h-[16rem] relative overflow-hidden">
+            <div id="videoContainer" class="rounded-2xl min-h-[16rem] relative overflow-hidden">
               <!-- Loading State -->
-              <div class="flex flex-col items-center justify-center">
+              <div class="flex flex-col items-center justify-center h-full bg-gradient-to-br from-purple-50 to-pink-50">
                 <div class="animate-pulse flex flex-col items-center">
                   <div class="bg-white rounded-full p-4 mb-4">
                     <i class="bx bx-loader-alt text-3xl text-purple-600 animate-spin"></i>
@@ -253,26 +294,7 @@
               <p class="text-sm text-gray-500" id="videoMeta">Preparing your journey content</p>
             </div>
 
-            <!-- Gap between Video and Journey Courses -->
-            <div class="mt-8">
-              <!-- Journey Courses Section -->
-              <h4 class="font-semibold text-gray-900 text-lg mb-4">Journey Courses</h4>
-              <div class="flex flex-col md:flex-row gap-4">
-                <!-- LinkedIn Warrior -->
-                <div class="border border-gray-200 rounded-2xl p-4 hover:border-purple-300 hover:shadow-sm transition-all flex-1">
-                  <p class="font-medium text-gray-900">LinkedIn Warrior</p>
-                </div>
 
-                <!-- AI Stacking -->
-                <div class="border border-gray-200 rounded-2xl p-4 flex justify-between items-center hover:border-purple-300 hover:shadow-sm transition-all flex-1">
-                  <div>
-                    <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Premium</p>
-                    <p class="font-semibold text-gray-900">AI Stacking</p>
-                  </div>
-                  <button class="text-purple-600 text-sm font-medium hover:text-purple-700 transition-colors">Learn More</button>
-                </div>
-              </div>
-            </div>
           </div>
 
           <!-- Events + Partner Calls Column -->
@@ -280,7 +302,7 @@
             <!-- Events -->
             <div class="bg-white rounded-2xl p-4 md:p-6 border border-gray-100">
               <div class="flex justify-between items-center mb-4">
-                <h4 class="font-semibold text-gray-900 text-lg">Events</h4>
+                <h4 class="font-semibold text-gray-900 text-lg">Tasks</h4>
               </div>
               <div class="space-y-3">
                 <!-- Event 1 -->
@@ -301,7 +323,7 @@
                 <!-- Event 2 - Shameless Podcast -->
                 <a href="https://cal.com/shameless-podcast-t4l/20-mins-shameless-guest-pre-interview-call?month=2025-11" 
                    target="_blank"
-                   rel="noopener noreferrer"
+                   renderer="_blank"
                    class="block">
                   <div class="border border-gray-200 rounded-2xl p-4 hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer">
                     <div class="flex items-start gap-3">
@@ -339,318 +361,240 @@
           </div>
         </section>
 
-        <!-- Upcoming Actions -->
-        <section class="bg-white rounded-2xl p-4 md:p-6 mb-6">
-          <h4 class="font-semibold text-gray-800 text-lg mb-4">Upcoming Actions</h4>
-          <div class="space-y-4">
-            <!-- Action 1 -->
-            <div class="flex flex-col border-l-4 border-yellow-400 bg-yellow-50 p-4 rounded-xl shadow hover:shadow-lg transition-shadow duration-200">
-              <div class="flex justify-between items-center mb-1">
-                <p class="font-semibold text-gray-800">Social Media Audit Results</p>
-                <span class="text-xs text-yellow-700 font-semibold uppercase">Pending</span>
-              </div>
-              <p class="text-sm text-gray-600">
-                Review your LinkedIn audit findings <br />Oct 12, 2025
-              </p>
-            </div>
 
-            <!-- Action 2 -->
-            <div class="flex flex-col border-l-4 border-blue-400 bg-blue-50 p-4 rounded-xl shadow hover:shadow-lg transition-shadow duration-200">
-              <div class="flex justify-between items-center mb-1">
-                <p class="font-semibold text-gray-800">Speaker Profile Review</p>
-                <span class="text-xs text-blue-700 font-semibold uppercase">Todo</span>
-              </div>
-              <p class="text-sm text-gray-600">
-                Submit updated speaker profile for review <br />Oct 20, 2025
-              </p>
-            </div>
-          </div>
-        </section>
       </main>
     </div>
 
     <script>
-      // Global function to play video
+      // ============================================
+      // VIDEO CONFIGURATION - MATCHES SERVER.JS EXACTLY
+      // ============================================
+      const VIDEO_CONFIG = [
+        {
+          month: 1,
+          title: "FOUNDATION",
+          url: "https://www.canva.com/design/DAG1M6MU20c/C1-a9vTfy3AOESPfRhyxfQ/watch?embed",
+          description: "Foundation Set: Onboarding complete, first course done",
+          duration: "5:30 mins"
+        },
+        {
+          month: 2,
+          title: "OPTIMIZE",
+          url: "https://www.canva.com/design/DAGymyxxfQs/vtkXrZ8joa0giowAh60-zg/watch?embed",
+          description: "Optimized Presence: Profile updated, first article submitted",
+          duration: "6:15 mins"
+        },
+        {
+          month: 3,
+          title: "ENGAGE",
+          url: "https://www.canva.com/design/DAGym0x892o/YmDTuaFm1nNjSaJYa93ePA/watch?embed",
+          description: "Engaged Member: Building relationships, consistent content",
+          duration: "5:45 mins"
+        },
+        {
+          month: 4,
+          title: "LEAD",
+          url: "https://www.canva.com/design/DAGymzmB9zo/Oz_eCZ8_EDoXnTeseB6R-A/watch?embed",
+          description: "Leadership Activated: Growing visibility, all courses complete",
+          duration: "7:00 mins"
+        },
+        {
+          month: 5,
+          title: "AMPLIFY",
+          url: "https://www.canva.com/design/DAGym1aI8Gw/Sf85oXevN7qOm5zvehr9dQ/watch?embed",
+          description: "Amplified Impact: Leading initiatives, consistent support",
+          duration: "6:30 mins"
+        },
+        {
+          month: 6,
+          title: "MIDPOINT",
+          url: "https://www.canva.com/design/DAGym9YIUZk/OIRe6vWYWkaZjWLuMomzrg/watch?embed",
+          description: "Halfway Strong: Story shared, momentum building",
+          duration: "8:00 mins"
+        },
+        {
+          month: 7,
+          title: "VISIBILITY",
+          url: "https://www.canva.com/design/DAGym2_NkFI/NLk8fNcIBNm7mX3lT5mJGQ/watch?embed",
+          description: "Visible Leader: Podcast prep, strong content cadence",
+          duration: "6:45 mins"
+        },
+        {
+          month: 8,
+          title: "EXPAND",
+          url: "https://www.canva.com/design/DAGzJ0qBXKM/JeRKp6jCYA88iE3RJBUvGA/watch?embed",
+          description: "Expanded Reach: Podcast recorded, portfolio growing",
+          duration: "7:15 mins"
+        },
+        {
+          month: 9,
+          title: "CONNECT",
+          url: "https://www.canva.com/design/DAGynDXe7nM/XwF5fSUo3GJfpJBR4sO4Vg/watch?embed",
+          description: "Connected Leader: Deep relationships, podcast live",
+          duration: "6:00 mins"
+        },
+        {
+          month: 10,
+          title: "ACCELERATE",
+          url: "https://www.canva.com/design/DAGynMCn0XU/-9LPKLzn5Zc6W5bJS8ktXQ/watch?embed",
+          description: "Accelerating: Final articles, opportunities in pipeline",
+          duration: "7:30 mins"
+        },
+        {
+          month: 11,
+          title: "CELEBRATE",
+          url: "https://www.canva.com/design/DAGynKgil_I/FVdnkZFWNsKo1iBsbX7omg/watch?embed",
+          description: "Celebrating: Year documented, impact quantified",
+          duration: "8:15 mins"
+        },
+        {
+          month: 12,
+          title: "RENEW",
+          url: "https://www.canva.com/design/DAGynMcNxQI/INWdK-bvAm30aMLK45OMfw/watch?embed",
+          description: "Transformation Complete: Full year tracked, portfolio built",
+          duration: "9:00 mins"
+        }
+      ];
+
+      // ============================================
+      // PLAY VIDEO FUNCTION - FIXED WITH AUTOPLAY
+      // ============================================
       function playVideo() {
-        console.log('Play button clicked!');
+        console.log('🎬 Play button clicked!');
         const videoContainer = document.getElementById('videoContainer');
-        const videoUrl = window.currentVideoUrl;
+        const currentVideo = window.currentVideo;
         
-        if (videoContainer && videoUrl) {
-          console.log('Loading video:', videoUrl);
+        if (videoContainer && currentVideo) {
+          console.log('▶️ Loading video with AUTOPLAY:', currentVideo.title);
+          
+          // Clean URL and ensure autoplay is enabled
+          let playUrl = currentVideo.url.split('?')[0];
+          playUrl += '?autoplay=1'; // Add autoplay parameter
+          
+          console.log('🔊 Final URL:', playUrl);
+          
           videoContainer.innerHTML = `
-            <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl" style="padding-top: 56.25%;">
+            <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl video-preview" style="padding-top: 56.25%;">
               <iframe 
                 class="absolute top-0 left-0 w-full h-full border-0"
-                src="${videoUrl}&autoplay=1"
-                allow="autoplay; fullscreen"
-                allowfullscreen>
+                src="${playUrl}"
+                allow="autoplay; fullscreen; accelerometer; gyroscope; picture-in-picture; clipboard-write"
+                allowfullscreen
+                frameborder="0"
+                title="Month ${currentVideo.month}: ${currentVideo.title}">
               </iframe>
             </div>
-          `;
-        } else {
-          console.error('Video container or URL not found');
-        }
-      }
-
-      document.addEventListener('DOMContentLoaded', function() {
-        // Mobile sidebar toggle functionality
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        const sidebar = document.querySelector('.sidebar');
-        const overlay = document.getElementById('overlay');
-        
-        sidebarToggle.addEventListener('click', function() {
-          sidebar.classList.toggle('active');
-          overlay.classList.toggle('active');
-        });
-        
-        overlay.addEventListener('click', function() {
-          sidebar.classList.remove('active');
-          overlay.classList.remove('active');
-        });
-
-        // Fetch and display user data
-        fetch('/api/me')
-          .then(response => {
-            if (!response.ok) {
-              throw new Error('Not authenticated');
-            }
-            return response.json();
-          })
-          .then(data => {
-            // Update the welcome message with user's name
-            const welcomeHeading = document.getElementById('welcomeHeading');
-            if (welcomeHeading && data.name) {
-              welcomeHeading.textContent = `Welcome back, ${data.name}!`;
-            }
             
-            // Update the avatar initials
-            const avatarElement = document.getElementById('userAvatar');
-            if (avatarElement && data.name) {
-              const initials = data.name.split(' ')
-                .map(word => word[0])
-                .join('')
-                .toUpperCase()
-                .substring(0, 2);
-              avatarElement.textContent = initials;
-            }
-          })
-          .catch(error => {
-            console.error('Error fetching user data:', error);
-            window.location.href = '/signin';
-          });
-
-        // Logout functionality
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-          logoutBtn.addEventListener('click', function() {
-            fetch('/logout', { method: 'POST' })
-              .then(() => {
-                window.location.href = '/signin';
-              })
-              .catch(error => {
-                console.error('Logout error:', error);
-                window.location.href = '/signin';
-              });
-          });
-        }
-
-        // Load current month's video
-        loadCurrentMonthVideo();
-        
-        // Load latest partner calls
-        loadPartnerCalls();
-      });
-      
-      async function loadPartnerCalls() {
-        try {
-          const response = await fetch('/api/posts?limit=2');
-          
-          if (!response.ok) {
-            throw new Error('Failed to load partner calls');
-          }
-          
-          const data = await response.json();
-          const partnerCallsContainer = document.getElementById('partnerCallsContainer');
-          
-          if (!partnerCallsContainer) return;
-          
-          if (!data.items || data.items.length === 0) {
-            partnerCallsContainer.innerHTML = `
-              <div class="text-center py-8">
-                <i class="bx bx-info-circle text-4xl text-gray-400 mb-2"></i>
-                <p class="text-gray-500 text-sm">No partner opportunities available yet</p>
-              </div>
-            `;
-            return;
-          }
-          
-          // Build the HTML for partner calls
-          partnerCallsContainer.innerHTML = data.items.map(post => {
-            // Format date
-            const postDate = new Date(post.createdAt);
-            const formattedDate = postDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            
-            // Get icon based on post type
-            const getIcon = (type) => {
-              const icons = {
-                'speaking': 'bxs-microphone',
-                'workshop': 'bx-chalkboard',
-                'mentoring': 'bx-user-voice',
-                'collaboration': 'bxs-group'
-              };
-              return icons[type?.toLowerCase()] || 'bxs-group';
-            };
-            
-            return `
-              <a href="/Partner-Calls.html" class="block">
-                <div class="border border-gray-200 rounded-2xl p-4 hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer">
-                  <div class="flex items-start gap-3">
-                    <div class="bg-purple-100 rounded-xl p-2 flex-shrink-0">
-                      <i class="bx ${getIcon(post.postType)} text-purple-600 text-xl"></i>
-                    </div>
-                    <div class="flex-1">
-                      <p class="font-semibold text-gray-900 text-sm mb-1">${post.title}</p>
-                      <p class="text-xs text-gray-500 mb-2">${post.format || 'Online'} • ${formattedDate}</p>
-                      ${post.spotsAvailable ? `
-                        <div class="flex items-center gap-1">
-                          <div class="flex -space-x-2">
-                            <div class="w-6 h-6 rounded-full bg-purple-500 border-2 border-white"></div>
-                            <div class="w-6 h-6 rounded-full bg-purple-400 border-2 border-white"></div>
-                            <div class="w-6 h-6 rounded-full bg-purple-300 border-2 border-white"></div>
-                          </div>
-                          <span class="text-xs text-gray-500 ml-1">${post.spotsAvailable} spots available</span>
-                        </div>
-                      ` : ''}
-                    </div>
-                  </div>
+            <!-- Autoplay info message -->
+            <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div class="flex items-start gap-2">
+                <i class="bx bx-check-circle text-green-600 text-lg mt-0.5"></i>
+                <div>
+                  <p class="text-sm text-green-800 font-medium">Video is playing automatically</p>
+                  <p class="text-xs text-green-600 mt-1">If you don't hear sound, check your browser's autoplay settings</p>
                 </div>
-              </a>
-            `;
-          }).join('');
-          
-        } catch (error) {
-          console.error('Error loading partner calls:', error);
-          const partnerCallsContainer = document.getElementById('partnerCallsContainer');
-          if (partnerCallsContainer) {
-            partnerCallsContainer.innerHTML = `
-              <div class="text-center py-8">
-                <i class="bx bx-error-circle text-4xl text-red-400 mb-2"></i>
-                <p class="text-gray-500 text-sm">Unable to load partner opportunities</p>
               </div>
-            `;
-          }
+            </div>
+          `;
+          
+          console.log('✅ Video loaded with autoplay enabled');
+          
+        } else {
+          console.error('❌ Video container or current video not found');
+          showVideoError();
         }
       }
 
+      // ============================================
+      // SHOW VIDEO ERROR STATE
+      // ============================================
+      function showVideoError() {
+        const videoContainer = document.getElementById('videoContainer');
+        if (videoContainer) {
+          videoContainer.innerHTML = `
+            <div class="flex flex-col items-center justify-center p-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl">
+              <i class="bx bx-error-circle text-5xl text-red-500 mb-4"></i>
+              <p class="text-gray-700 font-medium mb-2">Unable to load video</p>
+              <p class="text-gray-500 text-sm text-center mb-4">Please refresh the page or contact support</p>
+              <button onclick="loadCurrentMonthVideo()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                <i class="bx bx-refresh mr-2"></i> Try Again
+              </button>
+            </div>
+          `;
+        }
+      }
+
+      // Helper functions
+      function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      function getPostTypeIcon(postType) {
+        const icons = {
+          'speaking': 'bx-microphone',
+          'podcast': 'bx-podcast',
+          'webinar': 'bx-video',
+          'volunteering': 'bx-heart',
+          'general': 'bx-briefcase'
+        };
+        return icons[postType?.toLowerCase()] || 'bx-briefcase';
+      }
+
+      function formatDate(dateString) {
+        try {
+          const date = new Date(dateString);
+          return date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric',
+            year: 'numeric'
+          });
+        } catch (e) {
+          return 'Recently';
+        }
+      }
+
+      // ============================================
+      // LOAD CURRENT MONTH'S VIDEO - FIXED
+      // ============================================
       async function loadCurrentMonthVideo() {
         try {
-          // Fetch the user's current journey progress
-          const response = await fetch('/api/ambassador/journey');
+          console.log('🎥 Loading video for current month...');
+          
+          const response = await fetch('/api/journey');
           
           if (!response.ok) {
             throw new Error('Failed to load journey data');
           }
           
           const journeyData = await response.json();
-          const currentMonth = journeyData.currentMonth || 1;
           
-          // Video mapping for all 12 months
-          const videos = [
-            {
-              month: 1,
-              title: "FOUNDATION",
-              url: "https://www.canva.com/design/DAG1M6MU20c/C1-a9vTfy3AOESPfRhyxfQ/watch?embed",
-              description: "Foundation Set: Onboarding complete, first course done",
-              duration: "5:30 mins"
-            },
-            {
-              month: 2,
-              title: "OPTIMIZE",
-              url: "https://www.canva.com/design/DAGymyxxfQs/vtkXrZ8joa0giowAh60-zg/watch?embed",
-              description: "Optimized Presence: Profile updated, first article submitted",
-              duration: "6:15 mins"
-            },
-            {
-              month: 3,
-              title: "ENGAGE",
-              url: "https://www.canva.com/design/DAGym0x892o/YmDTuaFm1nNjSaJYa93ePA/watch?embed",
-              description: "Engaged Member: Building relationships, consistent content",
-              duration: "5:45 mins"
-            },
-            {
-              month: 4,
-              title: "LEAD",
-              url: "https://www.canva.com/design/DAGymzmB9zo/Oz_eCZ8_EDoXnTeseB6R-A/watch?embed",
-              description: "Leadership Activated: Growing visibility, all courses complete",
-              duration: "7:00 mins"
-            },
-            {
-              month: 5,
-              title: "AMPLIFY",
-              url: "https://www.canva.com/design/DAGym1aI8Gw/Sf85oXevN7qOm5zvehr9dQ/watch?embed",
-              description: "Amplified Impact: Leading initiatives, consistent support",
-              duration: "6:30 mins"
-            },
-            {
-              month: 6,
-              title: "MIDPOINT",
-              url: "https://www.canva.com/design/DAGym9YIUZk/OIRe6vWYWkaZjWLuMomzrg/watch?embed",
-              description: "Halfway Strong: Story shared, momentum building",
-              duration: "8:00 mins"
-            },
-            {
-              month: 7,
-              title: "VISIBILITY",
-              url: "https://www.canva.com/design/DAGym2_NkFI/NLk8fNcIBNm7mX3lT5mJGQ/watch?embed",
-              description: "Visible Leader: Podcast prep, strong content cadence",
-              duration: "6:45 mins"
-            },
-            {
-              month: 8,
-              title: "EXPAND",
-              url: "https://www.canva.com/design/DAGzJ0qBXKM/JeRKp6jCYA88iE3RJBUvGA/watch?embed",
-              description: "Expanded Reach: Podcast recorded, portfolio growing",
-              duration: "7:15 mins"
-            },
-            {
-              month: 9,
-              title: "CONNECT",
-              url: "https://www.canva.com/design/DAGynDXe7nM/XwF5fSUo3GJfpJBR4sO4Vg/watch?embed",
-              description: "Connected Leader: Deep relationships, podcast live",
-              duration: "6:00 mins"
-            },
-            {
-              month: 10,
-              title: "ACCELERATE",
-              url: "https://www.canva.com/design/DAGynMCn0XU/-9LPKLzn5Zc6W5bJS8ktXQ/watch?embed",
-              description: "Accelerating: Final articles, opportunities in pipeline",
-              duration: "7:30 mins"
-            },
-            {
-              month: 11,
-              title: "CELEBRATE",
-              url: "https://www.canva.com/design/DAGynKgil_I/FVdnkZFWNsKo1iBsbX7omg/watch?embed",
-              description: "Celebrating: Year documented, impact quantified",
-              duration: "8:15 mins"
-            },
-            {
-              month: 12,
-              title: "RENEW",
-              url: "https://www.canva.com/design/DAGynMcNxQI/INWdK-bvAm30aMLK45OMfw/watch?embed",
-              description: "Transformation Complete: Full year tracked, portfolio built",
-              duration: "9:00 mins"
-            }
-          ];
+          // Get currentMonth from API response
+          let currentMonth = journeyData.currentMonth || 1;
+          currentMonth = Math.max(1, Math.min(12, currentMonth));
           
-          // Get the video for the current month
-          const currentVideo = videos.find(v => v.month === currentMonth) || videos[0];
+          console.log(`📅 User is in Month ${currentMonth}`);
           
-          // Update stats section
+          // Get the correct video for this month
+          const currentVideo = VIDEO_CONFIG.find(v => v.month === currentMonth);
+          
+          if (!currentVideo) {
+            throw new Error('Video configuration missing');
+          }
+          
+          console.log('🎬 Selected video:', currentVideo.title);
+          
+          // Store current video globally
+          window.currentVideo = currentVideo;
+          
+          // ============================================
+          // UPDATE STATS SECTION
+          // ============================================
           const journeyProgress = document.getElementById('journeyProgress');
-          if (journeyProgress) {
-            const percentage = Math.round((currentMonth / 12) * 100);
-            journeyProgress.textContent = `${percentage}%`;
+          if (journeyProgress && journeyData.statistics) {
+            journeyProgress.textContent = `${journeyData.statistics.overallProgress}%`;
           }
 
           const journeyMonth = document.getElementById('journeyMonth');
@@ -658,17 +602,21 @@
             journeyMonth.textContent = `Month ${currentMonth} of 12`;
           }
 
-          // Update hero description
+          // ============================================
+          // UPDATE HERO DESCRIPTION
+          // ============================================
           const heroDescription = document.getElementById('heroDescription');
-          if (heroDescription && journeyData.months && journeyData.months[currentMonth - 1]) {
-            const monthData = journeyData.months[currentMonth - 1];
+          if (heroDescription) {
+            const milestone = journeyData.currentMonthMilestone || currentVideo.description;
             heroDescription.innerHTML = `
-              You're in Month ${currentMonth} <span class="font-semibold">${monthData.title} Stage</span><br />
-              ${monthData.milestone}
+              You're in Month ${currentMonth} <span class="font-semibold">${journeyData.currentMonthTitle || currentVideo.title} Stage</span><br />
+              ${milestone}
             `;
           }
           
-          // Update video section
+          // ============================================
+          // UPDATE VIDEO SECTION
+          // ============================================
           const videoTitle = document.getElementById('videoTitle');
           if (videoTitle) {
             videoTitle.textContent = `Month ${currentMonth}: ${currentVideo.title}`;
@@ -684,31 +632,36 @@
             videoMeta.textContent = `${currentVideo.duration} • Month ${currentMonth}`;
           }
           
-          // Load the video with YouTube-style player
+          // ============================================
+          // RENDER VIDEO PREVIEW WITH PLAY BUTTON
+          // ============================================
           const videoContainer = document.getElementById('videoContainer');
           if (videoContainer) {
-            console.log('Loading video for month:', currentMonth);
-            console.log('Video URL:', currentVideo.url);
+            console.log('🎨 Rendering video preview');
             
-            // Create video preview with play button overlay
             videoContainer.innerHTML = `
-              <div class="relative w-full rounded-2xl overflow-hidden cursor-pointer group" style="padding-top: 56.25%;" onclick="playVideo()">
-                <!-- Actual Video Preview (no autoplay) -->
-                <iframe 
-                  class="absolute top-0 left-0 w-full h-full border-0"
-                  src="${currentVideo.url}"
-                  allow="fullscreen"
-                  style="pointer-events: none;">
-                </iframe>
+              <div class="relative w-full rounded-2xl overflow-hidden cursor-pointer video-preview" style="padding-top: 56.25%;" onclick="playVideo()">
+                <!-- Video Preview Background -->
+                <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-purple-900 to-purple-700 flex items-center justify-center">
+                  <div class="text-center text-white p-8">
+                    <div class="text-4xl mb-4">🎥</div>
+                    <p class="text-xl font-bold mb-2">Month ${currentMonth}</p>
+                    <p class="text-sm opacity-90">${currentVideo.title}</p>
+                    <p class="text-xs opacity-80 mt-2">${currentVideo.duration}</p>
+                  </div>
+                </div>
                 
-                <!-- Dark Overlay on hover -->
-                <div class="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all duration-300"></div>
+                <!-- Dark Overlay -->
+                <div class="absolute inset-0 bg-black/30 hover:bg-black/40 transition-all duration-300"></div>
                 
-                <!-- Play Button (YouTube style) -->
-                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div class="relative">
-                    <!-- Main play button -->
-                    <div class="relative bg-red-600 group-hover:bg-red-700 rounded-full w-20 h-20 md:w-24 md:h-24 flex items-center justify-center shadow-2xl group-hover:scale-110 transition-all duration-300">
+                <!-- Play Button -->
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <div class="relative group">
+                    <!-- Outer glow effect -->
+                    <div class="absolute inset-0 bg-red-600 rounded-full blur-xl opacity-50 group-hover:opacity-70 transition-all duration-300"></div>
+                    
+                    <!-- Play button -->
+                    <div class="relative bg-red-600 group-hover:bg-red-700 rounded-full w-20 h-20 md:w-24 md:h-24 flex items-center justify-center shadow-2xl group-hover:scale-110 transition-all duration-300 transform play-button">
                       <svg class="w-10 h-10 md:w-12 md:h-12 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M8 5v14l11-7z"/>
                       </svg>
@@ -716,39 +669,196 @@
                   </div>
                 </div>
                 
-                <!-- Video Info Overlay -->
-                <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
-                  <div class="flex items-center gap-2 text-white">
-                    <i class="bx bx-play-circle text-2xl"></i>
-                    <div>
-                      <p class="font-semibold text-sm">${currentVideo.title}</p>
-                      <p class="text-xs opacity-80">${currentVideo.duration}</p>
+                <!-- Video Info -->
+                <div class="absolute bottom-4 left-4 right-4 pointer-events-none">
+                  <div class="flex items-center justify-between">
+                    <div class="text-white">
+                      <p class="font-semibold text-sm">Click to Play</p>
+                      <p class="text-xs opacity-80">Autoplay with sound enabled</p>
                     </div>
+                    <div class="bg-black/50 text-white text-xs px-2 py-1 rounded">
+                      Month ${currentMonth}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Instructions -->
+              <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="flex items-start gap-2">
+                  <i class="bx bx-info-circle text-blue-600 text-lg mt-0.5"></i>
+                  <div>
+                    <p class="text-sm text-blue-800 font-medium">Click the red play button to start video</p>
+                    <p class="text-xs text-blue-600 mt-1">Video will play automatically with sound</p>
                   </div>
                 </div>
               </div>
             `;
             
-            // Store video URL globally for the click handler
-            window.currentVideoUrl = currentVideo.url;
+            console.log('✅ Video preview rendered successfully');
           }
           
         } catch (error) {
-          console.error('Error loading video:', error);
+          console.error('❌ Error loading video:', error);
+          showVideoError();
+        }
+      }
+
+      // ============================================
+      // LOAD PARTNER CALLS
+      // ============================================
+      async function loadPartnerCalls() {
+        try {
+          console.log('🔄 Loading partner calls...');
           
-          // Show error state
-          const videoContainer = document.getElementById('videoContainer');
-          if (videoContainer) {
-            videoContainer.innerHTML = `
-              <div class="flex flex-col items-center justify-center p-8">
-                <i class="bx bx-error-circle text-5xl text-red-500 mb-4"></i>
-                <p class="text-gray-700 font-medium mb-2">Unable to load video</p>
-                <p class="text-gray-500 text-sm">Please refresh the page or contact support</p>
+          const response = await fetch('/api/posts');
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          const partnerCallsContainer = document.getElementById('partnerCallsContainer');
+          
+          if (!partnerCallsContainer) return;
+          
+          const posts = data.posts || [];
+          console.log(`Found ${posts.length} posts`);
+          
+          const latestPosts = posts.slice(0, 2);
+          
+          if (latestPosts.length === 0) {
+            partnerCallsContainer.innerHTML = `
+              <div class="text-center py-8">
+                <i class="bx bx-info-circle text-4xl text-gray-400 mb-2"></i>
+                <p class="text-gray-500 text-sm">No partner opportunities available yet</p>
+              </div>
+            `;
+            return;
+          }
+          
+          partnerCallsContainer.innerHTML = latestPosts.map(post => {
+            const formattedDate = formatDate(post.created_at);
+            const icon = getPostTypeIcon(post.category);
+            const title = escapeHtml(post.title || 'Partner Opportunity');
+            const content = escapeHtml(post.content || '');
+            
+            return `
+              <a href="/Partner-Calls.html" class="block">
+                <div class="border border-gray-200 rounded-2xl p-4 hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer">
+                  <div class="flex items-start gap-3">
+                    <div class="bg-purple-100 rounded-xl p-2 flex-shrink-0">
+                      <i class="bx ${icon} text-purple-600 text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                      <p class="font-semibold text-gray-900 text-sm mb-1 truncate">${title}</p>
+                      <p class="text-xs text-gray-500 mb-1">${formattedDate} • ${post.category || 'General'}</p>
+                      <p class="text-xs text-gray-600 line-clamp-2">${content}</p>
+                    </div>
+                  </div>
+                </div>
+              </a>
+            `;
+          }).join('');
+          
+          console.log('✅ Partner calls loaded');
+          
+        } catch (error) {
+          console.error('❌ Error loading partner calls:', error);
+          const partnerCallsContainer = document.getElementById('partnerCallsContainer');
+          if (partnerCallsContainer) {
+            partnerCallsContainer.innerHTML = `
+              <div class="text-center py-8">
+                <i class="bx bx-error-circle text-4xl text-red-400 mb-2"></i>
+                <p class="text-gray-500 text-sm">Unable to load partner opportunities</p>
+                <button onclick="loadPartnerCalls()" class="mt-2 text-purple-600 text-xs font-medium hover:text-purple-700 transition-colors">
+                  Try Again
+                </button>
               </div>
             `;
           }
         }
       }
+
+      // ============================================
+      // INITIALIZE ON PAGE LOAD
+      // ============================================
+      document.addEventListener('DOMContentLoaded', function() {
+        console.log('🚀 Dashboard initializing...');
+        
+        // Mobile sidebar toggle
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.getElementById('overlay');
+        
+        if (sidebarToggle && sidebar && overlay) {
+          sidebarToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+          });
+          
+          overlay.addEventListener('click', function() {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+          });
+        }
+
+        // Fetch user data
+        fetch('/api/me')
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Not authenticated');
+            }
+            return response.json();
+          })
+          .then(data => {
+            console.log('👤 User data loaded:', data);
+            
+            // Update welcome message
+            const welcomeHeading = document.getElementById('welcomeHeading');
+            if (welcomeHeading && data.name) {
+              welcomeHeading.textContent = `Welcome back, ${data.name}!`;
+            }
+            
+            // Update avatar initials
+            const avatarElement = document.getElementById('userAvatar');
+            if (avatarElement && data.name) {
+              const initials = data.name.split(' ')
+                .map(word => word[0])
+                .join('')
+                .toUpperCase()
+                .substring(0, 2);
+              avatarElement.textContent = initials;
+            }
+          })
+          .catch(error => {
+            console.error('❌ Error fetching user data:', error);
+            window.location.href = '/signin';
+          });
+
+        // Logout functionality
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+          logoutBtn.addEventListener('click', function() {
+            fetch('/api/logout', { method: 'POST' })
+              .then(() => {
+                window.location.href = '/signin';
+              })
+              .catch(error => {
+                console.error('Logout error:', error);
+                window.location.href = '/signin';
+              });
+          });
+        }
+
+        // Load current month's video
+        loadCurrentMonthVideo();
+        
+        // Load partner calls
+        loadPartnerCalls();
+        
+        console.log('✅ Dashboard initialized');
+      });
     </script>
   </body>
 </html>

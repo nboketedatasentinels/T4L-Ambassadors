@@ -35,11 +35,11 @@
       </div>
 
       <!-- Form -->
-      <form class="space-y-5" method="POST" action="/register/ambassador" id="amb-signup-form">
+      <form class="space-y-5" id="amb-signup-form">
         <!-- Name -->
         <div>
           <label class="text-sm font-semibold text-gray-800 block mb-2">Name</label>
-          <input type="text" name="name" placeholder="Your full name"
+          <input type="text" name="name" id="name" placeholder="Your full name"
             class="w-full border border-gray-300 rounded-lg px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:ring-2 focus:border-transparent focus:outline-none transition"
             required />
         </div>
@@ -47,7 +47,7 @@
         <!-- Email -->
         <div>
           <label class="text-sm font-semibold text-gray-800 block mb-2">Email Address</label>
-          <input type="email" name="email" placeholder="you@company.com"
+          <input type="email" name="email" id="email" placeholder="you@company.com"
             class="w-full border border-gray-300 rounded-lg px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:ring-2 focus:border-transparent focus:outline-none transition"
             required />
         </div>
@@ -58,7 +58,7 @@
             <label class="text-sm font-semibold text-gray-800">Access Code</label>
             <span class="text-[11px] text-gray-500">Request from T4L admin</span>
           </div>
-          <input type="text" name="access_code" placeholder="T4LA-XXXX"
+          <input type="text" name="access_code" id="access_code" placeholder="T4LA-XXXX"
             class="w-full border border-gray-300 rounded-lg px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:ring-2 focus:border-transparent focus:outline-none transition uppercase"
             required />
         </div>
@@ -66,7 +66,7 @@
         <!-- Password -->
         <div>
           <label class="text-sm font-semibold text-gray-800 block mb-2">Password</label>
-          <input type="password" name="password" minlength="8" placeholder="••••••••"
+          <input type="password" name="password" id="password" minlength="8" placeholder="••••••••"
             class="w-full border border-gray-300 rounded-lg px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:ring-2 focus:border-transparent focus:outline-none transition"
             required />
         </div>
@@ -74,7 +74,7 @@
         <!-- Confirm Password -->
         <div>
           <label class="text-sm font-semibold text-gray-800 block mb-2">Confirm Password</label>
-          <input type="password" name="confirmPassword" minlength="8" placeholder="••••••••"
+          <input type="password" name="confirmPassword" id="confirmPassword" minlength="8" placeholder="••••••••"
             class="w-full border border-gray-300 rounded-lg px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:ring-2 focus:border-transparent focus:outline-none transition"
             required />
           <p id="amb-password-error" class="mt-2 text-sm text-red-600 hidden">Passwords do not match.</p>
@@ -88,8 +88,13 @@
               style="color:#4b0d7f">Terms & Conditions</a></label>
         </div>
 
+        <!-- Error message -->
+        <div id="error-message" class="hidden px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+          <span id="error-text"></span>
+        </div>
+
         <!-- Submit Button -->
-        <button type="submit"
+        <button type="submit" id="submit-btn"
           class="w-full text-white font-semibold py-3.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.01] hover:opacity-95"
           style="background-color:#4b0d7f">
           Create Ambassador Account
@@ -135,44 +140,93 @@
     (function () {
       const form = document.getElementById('amb-signup-form');
       const errorEl = document.getElementById('amb-password-error');
-      form.addEventListener('submit', function (e) {
-        const pwd = form.querySelector('input[name="password"]').value;
-        const confirm = form.querySelector('input[name="confirmPassword"]').value;
-        const terms = form.querySelector('input[name="terms"]').checked;
-        let valid = true;
-        if (pwd !== confirm) {
+      const errorMsg = document.getElementById('error-message');
+      const errorText = document.getElementById('error-text');
+      const submitBtn = document.getElementById('submit-btn');
+
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault(); // Always prevent default
+
+        // Hide previous errors
+        errorEl.classList.add('hidden');
+        errorMsg.classList.add('hidden');
+
+        // Get form values
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const access_code = document.getElementById('access_code').value.trim();
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        const terms = document.getElementById('amb-terms').checked;
+
+        // Validation
+        if (password !== confirmPassword) {
           errorEl.classList.remove('hidden');
-          valid = false;
-        } else {
-          errorEl.classList.add('hidden');
+          return;
         }
+
         if (!terms) {
-          valid = false;
+          errorText.textContent = 'Please accept the Terms & Conditions';
+          errorMsg.classList.remove('hidden');
+          return;
         }
-        if (!valid) {
-          e.preventDefault();
-        } else {
-          // Store fields for signin autofill with timestamp for security
-          try {
-            const email = form.querySelector('input[name="email"]').value || '';
-            const access_code = form.querySelector('input[name="access_code"]').value || '';
-            const password = form.querySelector('input[name="password"]').value || '';
-            const name = form.querySelector('input[name="name"]').value || '';
-            const data = {
-              email: email,
-              access_code: access_code,
-              password: password,
-              name: name,
-            };
-            fetch('/register/ambassador', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(data)
+
+        // Disable submit button
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Creating Account...';
+
+        try {
+          // Send registration request
+          const response = await fetch('/register/ambassador', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              name,
+              email,
+              access_code,
+              password
             })
-            // localStorage.setItem('autoPopulateEmail', JSON.stringify(data));
-          } catch (_) { }
+          });
+
+          // Check if server redirected (handle server-side redirects)
+          if (response.redirected) {
+            // Server is redirecting us, follow the redirect
+            window.location.href = response.url;
+            return; // Exit early since we're redirecting
+          }
+
+          // If we get here, server sent a JSON response
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || 'Registration failed');
+          }
+
+          // Success! Store credentials for auto-fill
+          sessionStorage.setItem('signupCredentials', JSON.stringify({
+            email,
+            access_code,
+            password,
+            timestamp: Date.now()
+          }));
+
+          // Redirect to signin (either from server response or default)
+          if (data.redirect) {
+            window.location.href = data.redirect;
+          } else {
+            window.location.href = '/signin?registered=true';
+          }
+
+        } catch (error) {
+          console.error('Registration error:', error);
+          errorText.textContent = error.message || 'Registration failed. Please try again.';
+          errorMsg.classList.remove('hidden');
+          
+          // Re-enable submit button
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Create Ambassador Account';
         }
       });
     })();

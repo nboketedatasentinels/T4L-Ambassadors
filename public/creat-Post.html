@@ -1092,14 +1092,14 @@
         });
         
         const postData = {
-          postType,
-          title,
-          description,
-          format,
-          location: format === 'virtual' ? null : location,  // Set location to null if virtual
-          deadline,
-          liftPillars
-        };
+            title: title,
+            content: description,  // ✅ Changed 'description' to 'content'
+            category: postType,    // ✅ Changed 'postType' to 'category'
+            format: format,
+            location: format === 'virtual' ? null : location,
+            deadline: deadline,
+            liftPillars: liftPillars
+          };
         
         submitButton.disabled = true;
         const originalText = submitButton.innerHTML;

@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Services | T4L Partners</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+    <style>
+      .sidebar-toggle { display: none; }
+      @media (max-width: 768px) {
+        .sidebar-toggle {
+          display: flex;
+          position: fixed;
+          top: 1rem;
+          left: 1rem;
+          z-index: 50;
+          background: #4b0d7f;
+          color: white;
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .sidebar {
+          transform: translateX(-100%);
+          transition: transform 0.3s ease;
+          position: fixed;
+          height: 100vh;
+          z-index: 40;
+        }
+        .sidebar.active { transform: translateX(0); }
+        .overlay {
+          display: none;
+          position: fixed;
+          inset: 0;
+          background-color: rgba(0, 0, 0, 0.5);
+          z-index: 30;
+        }
+        .overlay.active { display: block; }
+      }
+      
+      .service-type-photography { background-color: #f0f9ff; color: #0369a1; border-color: #bae6fd; }
+      .service-type-videography { background-color: #f5f3ff; color: #5b21b6; border-color: #c4b5fd; }
+      .service-type-graphic-design { background-color: #fef7cd; color: #854d0e; border-color: #fde68a; }
+      .service-type-web-development { background-color: #dcfce7; color: #166534; border-color: #bbf7d0; }
+      .service-type-event-production { background-color: #fce7f3; color: #9d174d; border-color: #f9a8d4; }
+      .service-type-copywriting { background-color: #e8f4fd; color: #0c4a6e; border-color: #7dd3fc; }
+      .service-type-legal-services { background-color: #fef3c7; color: #92400e; border-color: #fde68a; }
+      .service-type-accounting { background-color: #f3e8ff; color: #6b21a8; border-color: #d8b4fe; }
+      .service-type-other { background-color: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+      
+      .status-active { background-color: #d1fae5; color: #065f46; }
+      .status-closed { background-color: #fef2f2; color: #991b1b; }
+      .status-draft { background-color: #f3f4f6; color: #4b5563; }
+      .status-pending { background-color: #fef3c7; color: #92400e; }
+      .status-approved { background-color: #d1fae5; color: #065f46; }
+      .status-declined { background-color: #fef2f2; color: #991b1b; }
+      
+      .line-clamp-1 {
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 1;
+      }
+      
+      .line-clamp-2 {
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 font-sans">
+    <button class="sidebar-toggle" id="sidebarToggle">
+      <i class="bx bx-menu text-xl"></i>
+    </button>
+    
+    <div class="overlay" id="overlay"></div>
+    
+    <div class="flex min-h-screen">
+      <aside class="sidebar w-20 bg-white shadow-md flex flex-col items-center py-6 space-y-6 z-40">
+        <div class="mb-4">
+          <div class="bg-[#4b0d7f] text-white px-3 py-2 rounded-xl font-semibold text-sm">T4L</div>
+        </div>
+        <nav class="flex flex-col space-y-4 text-gray-700 w-full">
+          <a href="/partner-dashboard.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bxs-home text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Home</span>
+          </a>
+          <a href="/services.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg bg-purple-50">
+            <i class="bx bx-briefcase-alt-2 text-2xl text-[#4b0d9f] group-hover:scale-110 transition-transform duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-[#4b0d9f] transition-colors duration-200">Services</span>
+          </a>
+          <a href="/article-amb.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-edit-alt text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Publishing</span>
+          </a>
+          <a href="/journey.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-line-chart text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Impact Log</span>
+          </a>
+          <a href="/Partner-Calls.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-briefcase text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Partners</span>
+          </a>
+          <a href="https://www.t4leader.com/event" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-calendar-event text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Events</span>
+          </a>
+          <a href="/profile.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-user text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Profile</span>
+          </a>
+          <a href="/profile.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-cog text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Settings</span>
+          </a>
+          <div id="logoutBtn" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-red-50">
+            <i class="bx bx-log-out text-2xl text-gray-600 group-hover:text-red-600 group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-red-600 transition-colors duration-200">Logout</span>
+          </div>
+        </nav>
+      </aside>
+
+      <main class="flex-1 p-4 md:p-6 lg:p-6">
+        <header class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900">My Services</h1>
+            <p class="text-gray-600 text-sm mt-1">Manage your service offerings and requests</p>
+          </div>
+          <div class="flex items-center space-x-4 w-full md:w-auto">
+            <a href="/create-service.html" class="bg-[#4b0d7f] hover:bg-[#3a0a66] text-white px-4 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors">
+              <i class="bx bx-plus"></i>
+              Create New Service
+            </a>
+            <a href="/services.html" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors">
+              <i class="bx bx-grid-alt"></i>
+              Browse All
+            </a>
+            <div class="flex items-center space-x-2">
+              <i class="bx bx-bell text-2xl text-gray-900"></i>
+              <div class="w-10 h-10 bg-[#4b0d7f] flex items-center justify-center rounded-full font-bold text-white" id="userAvatar">AP</div>
+            </div>
+          </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6" id="statsContainer">
+          <div class="bg-white rounded-xl p-5 border border-gray-200">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-500 text-sm">Total Services</p>
+                <p class="text-2xl font-bold text-gray-900" id="statTotal">0</p>
+              </div>
+              <div class="bg-purple-100 p-3 rounded-lg">
+                <i class="bx bx-briefcase-alt-2 text-xl text-purple-600"></i>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-white rounded-xl p-5 border border-gray-200">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-500 text-sm">Active Services</p>
+                <p class="text-2xl font-bold text-gray-900" id="statActive">0</p>
+              </div>
+              <div class="bg-green-100 p-3 rounded-lg">
+                <i class="bx bx-check-circle text-xl text-green-600"></i>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-white rounded-xl p-5 border border-gray-200">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-500 text-sm">Total Requests</p>
+                <p class="text-2xl font-bold text-gray-900" id="statRequests">0</p>
+              </div>
+              <div class="bg-blue-100 p-3 rounded-lg">
+                <i class="bx bx-user-plus text-xl text-blue-600"></i>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bg-white rounded-xl p-5 border border-gray-200">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-gray-500 text-sm">Pending Actions</p>
+                <p class="text-2xl font-bold text-gray-900" id="statPending">0</p>
+              </div>
+              <div class="bg-yellow-100 p-3 rounded-lg">
+                <i class="bx bx-time text-xl text-yellow-600"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl border border-gray-200 mb-6">
+          <div class="border-b border-gray-200">
+            <div class="flex overflow-x-auto">
+              <button class="tab-btn active px-6 py-4 font-medium text-[#4b0d9f] border-b-2 border-[#4b0d9f] whitespace-nowrap" data-filter="all">
+                All Services (<span id="tabCountAll">0</span>)
+              </button>
+              <button class="tab-btn px-6 py-4 font-medium text-gray-500 hover:text-gray-700 whitespace-nowrap" data-filter="active">
+                Active (<span id="tabCountActive">0</span>)
+              </button>
+              <button class="tab-btn px-6 py-4 font-medium text-gray-500 hover:text-gray-700 whitespace-nowrap" data-filter="draft">
+                Drafts (<span id="tabCountDraft">0</span>)
+              </button>
+              <button class="tab-btn px-6 py-4 font-medium text-gray-500 hover:text-gray-700 whitespace-nowrap" data-filter="closed">
+                Closed (<span id="tabCountClosed">0</span>)
+              </button>
+            </div>
+          </div>
+
+          <div class="p-6">
+            <div class="overflow-x-auto">
+              <table class="w-full" id="servicesTable">
+                <thead>
+                  <tr class="border-b border-gray-200">
+                    <th class="text-left py-3 px-4 text-sm font-medium text-gray-700">Service</th>
+                    <th class="text-left py-3 px-4 text-sm font-medium text-gray-700">Type</th>
+                    <th class="text-left py-3 px-4 text-sm font-medium text-gray-700">Status</th>
+                    <th class="text-left py-3 px-4 text-sm font-medium text-gray-700">Requests</th>
+                    <th class="text-left py-3 px-4 text-sm font-medium text-gray-700">Created</th>
+                    <th class="text-left py-3 px-4 text-sm font-medium text-gray-700">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100" id="servicesTableBody">
+                  <tr>
+                    <td colspan="6" class="py-12 text-center text-gray-500">
+                      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4b0d7f] mx-auto mb-4"></div>
+                      Loading services...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="hidden" id="emptyState">
+          <div class="text-center py-12">
+            <div class="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i class="bx bx-briefcase-alt-2 text-3xl text-gray-400"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">No services created yet</h3>
+            <p class="text-gray-500 max-w-md mx-auto mb-6">Start offering your expertise to T4L Ambassadors by creating your first service.</p>
+            <a href="/create-service.html" class="bg-[#4b0d7f] hover:bg-[#3a0a66] text-white px-6 py-3 rounded-lg font-medium inline-flex items-center gap-2 transition-colors">
+              <i class="bx bx-plus"></i>
+              Create Your First Service
+            </a>
+          </div>
+        </div>
+
+        <div class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" id="requestsModal">
+          <div class="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-gray-200">
+              <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-900" id="modalServiceTitle">Service Requests</h3>
+                <button class="close-requests-modal text-gray-400 hover:text-gray-600">
+                  <i class="bx bx-x text-2xl"></i>
+                </button>
+              </div>
+              <p class="text-gray-600 text-sm mt-1" id="modalServiceDesc">View and manage requests for this service</p>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6" id="requestsList">
+              <div class="text-center py-8 text-gray-500">Loading requests...</div>
+            </div>
+            
+            <div class="p-6 border-t border-gray-200">
+              <div class="flex justify-between items-center">
+                <div>
+                  <p class="text-sm text-gray-600" id="requestsStats">Loading...</p>
+                </div>
+                <button class="close-requests-modal border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition-colors">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- NEW: Ambassador Portfolio Modal -->
+        <div class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" id="portfolioModal">
+          <div class="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-gray-200">
+              <div class="flex justify-between items-center">
+                <div>
+                  <h3 class="text-lg font-bold text-gray-900" id="portfolioAmbassadorName">Ambassador Portfolio</h3>
+                  <p class="text-gray-600 text-sm mt-1" id="portfolioAmbassadorEmail">Loading...</p>
+                </div>
+                <button class="close-portfolio-modal text-gray-400 hover:text-gray-600">
+                  <i class="bx bx-x text-2xl"></i>
+                </button>
+              </div>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto" id="portfolioContent">
+              <div class="p-6">
+                <div class="text-center py-8 text-gray-500">
+                  <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4b0d7f] mx-auto mb-4"></div>
+                  Loading portfolio...
+                </div>
+              </div>
+            </div>
+            
+            <div class="p-6 border-t border-gray-200">
+              <div class="flex justify-end">
+                <button class="close-portfolio-modal border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition-colors">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+
+    <script>
+      // Configuration
+      const API_URL = '/api';
+      
+      // State
+      let currentUser = null;
+      let myServices = [];
+      let myServiceRequests = [];
+      let currentFilter = 'all';
+      let selectedServiceId = null;
+      
+      // DOM Elements
+      const sidebarToggle = document.getElementById('sidebarToggle');
+      const sidebar = document.querySelector('.sidebar');
+      const overlay = document.getElementById('overlay');
+      const userAvatar = document.getElementById('userAvatar');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      const statsContainer = document.getElementById('statsContainer');
+      const servicesTableBody = document.getElementById('servicesTableBody');
+      const emptyState = document.getElementById('emptyState');
+      
+      // Modals
+      const requestsModal = document.getElementById('requestsModal');
+      const closeRequestsModalBtns = document.querySelectorAll('.close-requests-modal');
+      const modalServiceTitle = document.getElementById('modalServiceTitle');
+      const modalServiceDesc = document.getElementById('modalServiceDesc');
+      const requestsList = document.getElementById('requestsList');
+      const requestsStats = document.getElementById('requestsStats');
+      
+      // NEW: Portfolio Modal Elements
+      const portfolioModal = document.getElementById('portfolioModal');
+      const closePortfolioModalBtns = document.querySelectorAll('.close-portfolio-modal');
+      const portfolioAmbassadorName = document.getElementById('portfolioAmbassadorName');
+      const portfolioAmbassadorEmail = document.getElementById('portfolioAmbassadorEmail');
+      const portfolioContent = document.getElementById('portfolioContent');
+      
+      // Helper functions
+      function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+      
+      function formatServiceType(type) {
+        return type
+          .replace(/-/g, ' ')
+          .replace(/\b\w/g, l => l.toUpperCase());
+      }
+      
+      function getStatusClass(status) {
+        switch(status) {
+          case 'active': return 'status-active';
+          case 'draft': return 'status-draft';
+          case 'closed': return 'status-closed';
+          case 'pending': return 'status-pending';
+          case 'approved': return 'status-approved';
+          case 'declined': return 'status-declined';
+          case 'accepted': return 'status-approved';
+          case 'rejected': return 'status-declined';
+          case 'completed': return 'status-active';
+          default: return 'status-draft';
+        }
+      }
+      
+      function getServiceTypeClass(type) {
+        switch(type) {
+          case 'photography': return 'service-type-photography';
+          case 'videography': return 'service-type-videography';
+          case 'graphic-design': return 'service-type-graphic-design';
+          case 'web-development': return 'service-type-web-development';
+          case 'event-production': return 'service-type-event-production';
+          case 'copywriting': return 'service-type-copywriting';
+          case 'legal-services': return 'service-type-legal-services';
+          case 'accounting': return 'service-type-accounting';
+          default: return 'service-type-other';
+        }
+      }
+      
+      // Initialize app
+      document.addEventListener('DOMContentLoaded', async () => {
+        // Setup UI interactions
+        setupSidebar();
+        setupTabs();
+        setupModals();
+        setupPortfolioModal(); // NEW
+        setupLogout();
+        
+        // Load data
+        await loadCurrentUser();
+        await loadMyServices();
+        await loadServiceRequests();
+        
+        // Update UI
+        updateStats();
+        renderServicesTable();
+        
+        // Show/hide based on data
+        if (myServices.length === 0) {
+          showEmptyState();
+        } else {
+          hideEmptyState();
+        }
+      });
+      
+      // Sidebar functionality
+      function setupSidebar() {
+        if (sidebarToggle && sidebar && overlay) {
+          sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.add('active');
+            overlay.classList.add('active');
+          });
+          
+          overlay.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+          });
+        }
+      }
+      
+      // Tabs functionality
+      function setupTabs() {
+        tabBtns.forEach(btn => {
+          btn.addEventListener('click', function() {
+            // Remove active class from all tabs
+            tabBtns.forEach(b => {
+              b.classList.remove('active', 'text-[#4b0d9f]', 'border-[#4b0d9f]', 'border-b-2');
+              b.classList.add('text-gray-500', 'hover:text-gray-700');
+            });
+            
+            // Add active class to clicked tab
+            this.classList.remove('text-gray-500', 'hover:text-gray-700');
+            this.classList.add('active', 'text-[#4b0d9f]', 'border-[#4b0d9f]', 'border-b-2');
+            
+            // Update filter and re-render
+            currentFilter = this.dataset.filter;
+            renderServicesTable();
+          });
+        });
+      }
+      
+      // Modal functionality
+      function setupModals() {
+        // Close modal buttons - Requests Modal
+        closeRequestsModalBtns.forEach(btn => {
+          btn.addEventListener('click', () => {
+            requestsModal.classList.add('hidden');
+          });
+        });
+        
+        // Close modal when clicking outside - Requests Modal
+        requestsModal.addEventListener('click', (e) => {
+          if (e.target === requestsModal) {
+            requestsModal.classList.add('hidden');
+          }
+        });
+        
+        // Close modal with ESC key
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            requestsModal.classList.add('hidden');
+            portfolioModal.classList.add('hidden');
+          }
+        });
+      }
+      
+      // NEW: Portfolio Modal functionality
+      function setupPortfolioModal() {
+        // Close modal buttons - Portfolio Modal
+        closePortfolioModalBtns.forEach(btn => {
+          btn.addEventListener('click', () => {
+            portfolioModal.classList.add('hidden');
+          });
+        });
+        
+        // Close modal when clicking outside - Portfolio Modal
+        portfolioModal.addEventListener('click', (e) => {
+          if (e.target === portfolioModal) {
+            portfolioModal.classList.add('hidden');
+          }
+        });
+      }
+      
+      // Logout functionality
+      function setupLogout() {
+        logoutBtn.addEventListener('click', async () => {
+          try {
+            await fetch(`${API_URL}/logout`, { 
+              method: 'POST', 
+              credentials: 'include' 
+            });
+            window.location.href = '/partner-signin';
+          } catch (error) {
+            console.error('Logout error:', error);
+            window.location.href = '/partner-signin';
+          }
+        });
+      }
+      
+      // Data loading functions
+      async function loadCurrentUser() {
+        try {
+          const response = await fetch(`${API_URL}/me`, { 
+            credentials: 'include' 
+          });
+          
+          if (!response.ok) {
+            if (response.status === 401) {
+              window.location.href = '/partner-signin';
+            }
+            throw new Error('Failed to load user data');
+          }
+          
+          currentUser = await response.json();
+          
+          // Update user avatar
+          if (currentUser && userAvatar) {
+            let initials = 'AP'; // Default
+            if (currentUser.name) {
+              initials = currentUser.name.substring(0, 2).toUpperCase();
+            }
+            userAvatar.textContent = initials;
+          }
+          
+          // Verify user is a partner
+          if (currentUser.role !== 'partner') {
+            alert('Only T4L Partners can manage services');
+            window.location.href = '/services.html';
+          }
+          
+        } catch (error) {
+          console.error('Error loading user:', error);
+          alert('Failed to load user data. Please log in again.');
+          window.location.href = '/partner-signin';
+        }
+      }
+      
+      async function loadMyServices() {
+        try {
+          if (!currentUser) {
+            console.error('No user data available');
+            return;
+          }
+          
+          const response = await fetch(`${API_URL}/partner/services`, {
+            credentials: 'include'
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to load services');
+          }
+          
+          const data = await response.json();
+          myServices = data.services || [];
+          
+          // Update tab counts
+          updateTabCounts();
+          
+        } catch (error) {
+          console.error('Error loading services:', error);
+          alert('Failed to load services. Please try again.');
+          myServices = [];
+        }
+      }
+      
+      async function loadServiceRequests() {
+        try {
+          if (!currentUser) {
+            return;
+          }
+          
+          // Get all service requests across all services
+          const allRequests = [];
+          for (const service of myServices) {
+            try {
+              const response = await fetch(`${API_URL}/services/${service.service_id}/requests`, {
+                credentials: 'include'
+              });
+              
+              if (response.ok) {
+                const data = await response.json();
+                allRequests.push(...(data.requests || []));
+              }
+            } catch (error) {
+              console.error(`Error loading requests for service ${service.service_id}:`, error);
+            }
+          }
+          
+          myServiceRequests = allRequests;
+        } catch (error) {
+          console.error('Error loading service requests:', error);
+          myServiceRequests = [];
+        }
+      }
+      
+      // UI update functions
+      function updateStats() {
+        if (!myServices.length) {
+          document.getElementById('statTotal').textContent = '0';
+          document.getElementById('statActive').textContent = '0';
+          document.getElementById('statRequests').textContent = '0';
+          document.getElementById('statPending').textContent = '0';
+          return;
+        }
+        
+        const total = myServices.length;
+        const active = myServices.filter(s => s.status === 'active').length;
+        
+        // Calculate requests
+        let totalRequests = 0;
+        let pendingRequests = 0;
+        
+        myServices.forEach(service => {
+          const serviceRequests = myServiceRequests.filter(r => r.service_id === service.service_id);
+          totalRequests += serviceRequests.length;
+          pendingRequests += serviceRequests.filter(r => r.status === 'pending').length;
+        });
+        
+        document.getElementById('statTotal').textContent = total;
+        document.getElementById('statActive').textContent = active;
+        document.getElementById('statRequests').textContent = totalRequests;
+        document.getElementById('statPending').textContent = pendingRequests;
+      }
+      
+      function updateTabCounts() {
+        if (!myServices.length) {
+          document.getElementById('tabCountAll').textContent = '0';
+          document.getElementById('tabCountActive').textContent = '0';
+          document.getElementById('tabCountDraft').textContent = '0';
+          document.getElementById('tabCountClosed').textContent = '0';
+          return;
+        }
+        
+        const total = myServices.length;
+        const active = myServices.filter(s => s.status === 'active').length;
+        const draft = myServices.filter(s => s.status === 'draft').length;
+        const closed = myServices.filter(s => s.status === 'closed').length;
+        
+        document.getElementById('tabCountAll').textContent = total;
+        document.getElementById('tabCountActive').textContent = active;
+        document.getElementById('tabCountDraft').textContent = draft;
+        document.getElementById('tabCountClosed').textContent = closed;
+      }
+      
+      function renderServicesTable() {
+        if (!myServices.length) {
+          showEmptyState();
+          return;
+        }
+        
+        hideEmptyState();
+        
+        let filteredServices = myServices;
+        if (currentFilter !== 'all') {
+          filteredServices = myServices.filter(s => s.status === currentFilter);
+        }
+        
+        if (filteredServices.length === 0) {
+          servicesTableBody.innerHTML = `
+            <tr>
+              <td colspan="6" class="py-12 text-center text-gray-500">
+                No services found in this category
+              </td>
+            </tr>
+          `;
+          return;
+        }
+        
+        servicesTableBody.innerHTML = filteredServices.map(service => {
+          // Get request count for this service
+          const serviceRequests = myServiceRequests.filter(r => r.service_id === service.service_id);
+          const requestCount = serviceRequests.length;
+          const pendingRequests = serviceRequests.filter(r => r.status === 'pending').length;
+          
+          return `
+            <tr class="hover:bg-gray-50">
+              <td class="py-4 px-4">
+                <div>
+                  <p class="font-medium text-gray-900">${service.title}</p>
+                  <p class="text-sm text-gray-500 line-clamp-1">${service.description}</p>
+                </div>
+              </td>
+              <td class="py-4 px-4">
+                <span class="${getServiceTypeClass(service.type)} px-3 py-1 rounded-full text-xs font-medium border">
+                  ${formatServiceType(service.type)}
+                </span>
+              </td>
+              <td class="py-4 px-4">
+                <span class="${getStatusClass(service.status)} px-3 py-1 rounded-full text-xs font-medium">
+                  ${service.status.charAt(0).toUpperCase() + service.status.slice(1)}
+                </span>
+              </td>
+              <td class="py-4 px-4">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium">${requestCount}</span>
+                  ${requestCount > 0 ? `
+                    <button class="text-[#4b0d9f] hover:text-[#3a0a66] text-sm font-medium view-requests" 
+                            data-id="${service.service_id}" 
+                            data-title="${service.title}">
+                      View
+                    </button>
+                  ` : ''}
+                </div>
+              </td>
+              <td class="py-4 px-4 text-sm text-gray-500">${formatDate(service.created_at)}</td>
+              <td class="py-4 px-4">
+                <div class="flex items-center gap-2">
+                  <button class="text-blue-600 hover:text-blue-800 p-1.5 rounded hover:bg-blue-50" 
+                          title="Edit" 
+                          onclick="editService('${service.service_id}')">
+                    <i class="bx bx-edit text-lg"></i>
+                  </button>
+                  ${service.status === 'active' ? `
+                    <button class="text-gray-600 hover:text-gray-800 p-1.5 rounded hover:bg-gray-100" 
+                            title="Close" 
+                            onclick="toggleServiceStatus('${service.service_id}', 'closed')">
+                      <i class="bx bx-pause text-lg"></i>
+                    </button>
+                  ` : service.status === 'closed' ? `
+                    <button class="text-green-600 hover:text-green-800 p-1.5 rounded hover:bg-green-50" 
+                            title="Reopen" 
+                            onclick="toggleServiceStatus('${service.service_id}', 'active')">
+                      <i class="bx bx-play text-lg"></i>
+                    </button>
+                  ` : `
+                    <button class="text-green-600 hover:text-green-800 p-1.5 rounded hover:bg-green-50" 
+                            title="Publish" 
+                            onclick="toggleServiceStatus('${service.service_id}', 'active')">
+                      <i class="bx bx-upload text-lg"></i>
+                    </button>
+                  `}
+                  <button class="text-red-600 hover:text-red-800 p-1.5 rounded hover:bg-red-50" 
+                          title="Delete" 
+                          onclick="deleteService('${service.service_id}')">
+                    <i class="bx bx-trash text-lg"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+        
+        // Attach event listeners to view requests buttons
+        document.querySelectorAll('.view-requests').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const serviceId = this.dataset.id;
+            const serviceTitle = this.dataset.title;
+            viewServiceRequests(serviceId, serviceTitle);
+          });
+        });
+      }
+      
+      function showEmptyState() {
+        emptyState.classList.remove('hidden');
+        document.getElementById('servicesTable').style.display = 'none';
+      }
+      
+      function hideEmptyState() {
+        emptyState.classList.add('hidden');
+        document.getElementById('servicesTable').style.display = 'table';
+      }
+      
+      // Service actions
+      async function editService(serviceId) {
+        window.location.href = `/edit-service.html?id=${serviceId}`;
+      }
+      
+      async function toggleServiceStatus(serviceId, newStatus) {
+        const action = newStatus === 'active' ? 'publish' : 'close';
+        const confirmation = newStatus === 'active' 
+          ? 'Are you sure you want to publish this service?'
+          : 'Are you sure you want to close this service to new requests?';
+        
+        if (!confirm(confirmation)) {
+          return;
+        }
+        
+        try {
+          const response = await fetch(`${API_URL}/services/${serviceId}`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status: newStatus })
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to update service status');
+          }
+          
+          // Update local state
+          const serviceIndex = myServices.findIndex(s => s.service_id === serviceId);
+          if (serviceIndex !== -1) {
+            myServices[serviceIndex].status = newStatus;
+          }
+          
+          // Update UI
+          updateStats();
+          updateTabCounts();
+          renderServicesTable();
+          
+          alert(`Service ${action}ed successfully!`);
+          
+        } catch (error) {
+          console.error('Error updating service status:', error);
+          alert('Failed to update service status. Please try again.');
+        }
+      }
+      
+      async function deleteService(serviceId) {
+        const service = myServices.find(s => s.service_id === serviceId);
+        if (!service) return;
+        
+        if (!confirm(`Are you sure you want to delete "${service.title}"? This action cannot be undone.`)) {
+          return;
+        }
+        
+        try {
+          const response = await fetch(`${API_URL}/services/${serviceId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to delete service');
+          }
+          
+          // Remove from local state
+          myServices = myServices.filter(s => s.service_id !== serviceId);
+          
+          // Update UI
+          updateStats();
+          updateTabCounts();
+          renderServicesTable();
+          
+          if (myServices.length === 0) {
+            showEmptyState();
+          }
+          
+          alert('Service deleted successfully!');
+          
+        } catch (error) {
+          console.error('Error deleting service:', error);
+          alert('Failed to delete service. Please try again.');
+        }
+      }
+      
+      async function viewServiceRequests(serviceId, serviceTitle) {
+        selectedServiceId = serviceId;
+        
+        // Set modal title
+        modalServiceTitle.textContent = `Requests for "${serviceTitle}"`;
+        modalServiceDesc.textContent = `View and manage requests for ${serviceTitle}`;
+        
+        // Show modal
+        requestsModal.classList.remove('hidden');
+        
+        // Load and display requests
+        try {
+          const response = await fetch(`${API_URL}/services/${serviceId}/requests`, {
+            credentials: 'include'
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to load requests');
+          }
+          
+          const data = await response.json();
+          renderRequestsList(data.requests || []);
+          
+        } catch (error) {
+          console.error('Error loading requests:', error);
+          requestsList.innerHTML = `
+            <div class="text-center py-8 text-gray-500">
+              <i class="bx bx-error text-3xl mb-2"></i>
+              <p>Failed to load requests</p>
+            </div>
+          `;
+        }
+      }
+      
+      function renderRequestsList(requests) {
+        if (requests.length === 0) {
+          requestsList.innerHTML = `
+            <div class="text-center py-8 text-gray-500">
+              <i class="bx bx-user-check text-3xl mb-2"></i>
+              <p>No requests for this service yet</p>
+            </div>
+          `;
+          
+          requestsStats.textContent = '0 total requests';
+          return;
+        }
+        
+        // Calculate stats
+        const total = requests.length;
+        const approved = requests.filter(r => r.status === 'approved' || r.status === 'accepted').length;
+        const pending = requests.filter(r => r.status === 'pending').length;
+        const declined = requests.filter(r => r.status === 'declined' || r.status === 'rejected').length;
+        
+        requestsStats.textContent = `${total} total requests • ${approved} approved • ${pending} pending • ${declined} declined`;
+        
+        // Render requests with portfolio links
+        requestsList.innerHTML = requests.map(request => {
+          const ambassadorName = request.ambassador?.name || 'Ambassador';
+          const ambassadorEmail = request.ambassador?.email || '';
+          const ambassadorId = request.ambassador_id;
+          
+          return `
+            <div class="bg-gray-50 rounded-lg p-4 mb-4">
+              <div class="flex justify-between items-start mb-3">
+                <div>
+                  <h4 class="font-medium text-gray-900">${ambassadorName}</h4>
+                  ${ambassadorEmail ? `<p class="text-sm text-gray-500">${ambassadorEmail}</p>` : ''}
+                  <p class="text-sm text-gray-500">Requested ${formatDate(request.created_at)}</p>
+                </div>
+                <span class="${getStatusClass(request.status)} px-3 py-1 rounded-full text-xs font-medium">
+                  ${request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                </span>
+              </div>
+              ${request.message ? `
+                <p class="text-gray-700 text-sm mb-4">"${request.message}"</p>
+              ` : ''}
+              <div class="flex flex-wrap gap-3">
+                <!-- View Portfolio Button -->
+                <button class="text-sm bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors view-portfolio"
+                        data-id="${ambassadorId}"
+                        data-name="${ambassadorName}"
+                        data-email="${ambassadorEmail || ''}">
+                  <i class="bx bx-folder-open mr-1"></i> View Work
+                </button>
+                
+                ${request.status === 'pending' ? `
+                  <button class="text-sm bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                          onclick="updateRequestStatus('${request.request_id}', 'accepted')">
+                    <i class="bx bx-check mr-1"></i> Approve
+                  </button>
+                  <button class="text-sm bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                          onclick="updateRequestStatus('${request.request_id}', 'rejected')">
+                    <i class="bx bx-x mr-1"></i> Decline
+                  </button>
+                ` : ''}
+                
+                ${request.status === 'accepted' || request.status === 'approved' ? `
+                  <button class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                          onclick="updateRequestStatus('${request.request_id}', 'completed')">
+                    <i class="bx bx-check-circle mr-1"></i> Mark Complete
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+        // Attach portfolio view event listeners
+        document.querySelectorAll('.view-portfolio').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const ambassadorId = this.dataset.id;
+            const ambassadorName = this.dataset.name;
+            const ambassadorEmail = this.dataset.email;
+            viewAmbassadorPortfolio(ambassadorId, ambassadorName, ambassadorEmail);
+          });
+        });
+      }
+      
+      // NEW: View ambassador portfolio
+      async function viewAmbassadorPortfolio(ambassadorId, ambassadorName, ambassadorEmail) {
+        console.log('📖 Viewing ambassador portfolio:', ambassadorId);
+        
+        // Set modal title
+        portfolioAmbassadorName.textContent = `${ambassadorName}'s Portfolio`;
+        portfolioAmbassadorEmail.textContent = ambassadorEmail || 'No email provided';
+        
+        // Show modal
+        portfolioModal.classList.remove('hidden');
+        
+        // Load and display portfolio
+        try {
+          const response = await fetch(`${API_URL}/ambassadors/${ambassadorId}/portfolio`, {
+            credentials: 'include'
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to load portfolio');
+          }
+          
+          const data = await response.json();
+          renderPortfolioContent(data);
+          
+        } catch (error) {
+          console.error('Error loading portfolio:', error);
+          portfolioContent.innerHTML = `
+            <div class="p-6 text-center text-gray-500">
+              <i class="bx bx-error text-3xl mb-2"></i>
+              <p>Failed to load portfolio</p>
+              <p class="text-sm mt-2">${error.message}</p>
+            </div>
+          `;
+        }
+      }
+      
+      // NEW: Render portfolio content
+      function renderPortfolioContent(data) {
+        const { ambassador, portfolio, journey } = data;
+        
+        let portfolioHTML = `
+          <div class="p-6">
+            <!-- Ambassador Info -->
+            <div class="bg-gray-50 rounded-lg p-6 mb-6">
+              <div class="flex items-start gap-4">
+                <div class="w-16 h-16 bg-[#4b0d7f] text-white rounded-full flex items-center justify-center text-xl font-bold">
+                  ${ambassador.name.substring(0, 2).toUpperCase()}
+                </div>
+                <div class="flex-1">
+                  <h4 class="font-bold text-lg text-gray-900">${ambassador.name}</h4>
+                  <p class="text-gray-600 mb-3">${ambassador.bio}</p>
+                  
+                  <!-- Skills -->
+                  <div class="mb-4">
+                    <h5 class="text-sm font-medium text-gray-700 mb-2">Skills & Expertise</h5>
+                    <div class="flex flex-wrap gap-2">
+                      ${ambassador.skills.map(skill => `
+                        <span class="bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full">
+                          ${skill}
+                        </span>
+                      `).join('')}
+                    </div>
+                  </div>
+                  
+                  <!-- Links -->
+                  <div class="flex flex-wrap gap-4">
+                    ${ambassador.linkedinUrl ? `
+                      <a href="${ambassador.linkedinUrl}" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1">
+                        <i class="bx bxl-linkedin"></i> LinkedIn
+                      </a>
+                    ` : ''}
+                    
+                    ${ambassador.portfolioUrl ? `
+                      <a href="${ambassador.portfolioUrl}" target="_blank" class="text-purple-600 hover:text-purple-800 text-sm flex items-center gap-1">
+                        <i class="bx bx-globe"></i> Portfolio
+                      </a>
+                    ` : ''}
+                    
+                    ${ambassador.cvFilename ? `
+                      <a href="/uploads/cvs/${ambassador.cvFilename}" target="_blank" class="text-green-600 hover:text-green-800 text-sm flex items-center gap-1">
+                        <i class="bx bx-file"></i> CV/Resume
+                      </a>
+                    ` : ''}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Journey Progress -->
+            ${journey ? `
+              <div class="mb-6">
+                <h5 class="text-sm font-medium text-gray-700 mb-3">T4L Journey Progress</h5>
+                <div class="bg-gray-100 rounded-lg p-4">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm text-gray-600">Current Month</span>
+                    <span class="font-medium">${journey.current_month}</span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">Completed Tasks</span>
+                    <span class="font-medium">${Object.keys(journey.completed_tasks || {}).length}</span>
+                  </div>
+                </div>
+              </div>
+            ` : ''}
+            
+            <!-- Published Articles -->
+            <div>
+              <h5 class="text-sm font-medium text-gray-700 mb-3">Published Articles (${portfolio.totalArticles})</h5>
+        `;
+        
+        if (portfolio.articles && portfolio.articles.length > 0) {
+          portfolioHTML += `
+            <div class="space-y-4">
+              ${portfolio.articles.map(article => `
+                <div class="border border-gray-200 rounded-lg p-4">
+                  <h6 class="font-medium text-gray-900 mb-1">${article.title}</h6>
+                  <p class="text-sm text-gray-600 mb-2 line-clamp-2">${article.excerpt || (article.content ? article.content.substring(0, 150) : 'No content available')}...</p>
+                  <div class="flex items-center justify-between text-xs text-gray-500">
+                    <span>${formatDate(article.created_at)}</span>
+                    <div class="flex items-center gap-4">
+                      <span class="flex items-center gap-1">
+                        <i class="bx bx-show"></i> ${article.views || 0}
+                      </span>
+                      <span class="flex items-center gap-1">
+                        <i class="bx bx-heart"></i> ${article.likes || 0}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        } else {
+          portfolioHTML += `
+            <div class="text-center py-6 text-gray-500">
+              <i class="bx bx-edit text-3xl mb-2"></i>
+              <p>No published articles yet</p>
+            </div>
+          `;
+        }
+        
+        portfolioHTML += `
+            </div>
+          </div>
+        `;
+        
+        portfolioContent.innerHTML = portfolioHTML;
+      }
+      
+      async function updateRequestStatus(requestId, status) {
+        try {
+          const response = await fetch(`${API_URL}/service-requests/${requestId}/status`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status })
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to update request status');
+          }
+          
+          // Update local state
+          const requestIndex = myServiceRequests.findIndex(r => r.request_id === requestId);
+          if (requestIndex !== -1) {
+            myServiceRequests[requestIndex].status = status;
+          }
+          
+          // Update UI
+          const service = myServices.find(s => s.service_id === selectedServiceId);
+          if (service) {
+            viewServiceRequests(selectedServiceId, service.title);
+          }
+          
+          // Update stats
+          updateStats();
+          
+          alert(`Request ${status} successfully!`);
+          
+        } catch (error) {
+          console.error('Error updating request status:', error);
+          alert('Failed to update request status. Please try again.');
+        }
+      }
+      
+      // Make functions available globally
+      window.editService = editService;
+      window.toggleServiceStatus = toggleServiceStatus;
+      window.deleteService = deleteService;
+      window.updateRequestStatus = updateRequestStatus;
+      window.viewAmbassadorPortfolio = viewAmbassadorPortfolio;
+      
+    </script>
+  </body>
+</html>

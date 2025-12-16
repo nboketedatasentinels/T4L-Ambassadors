@@ -15,9 +15,6 @@
       font-family: 'Inter', sans-serif;
     }
   </style>
-  <script src="signin.js">
-
-  </script>
 </head>
 
 <body class="bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center min-h-screen p-4">
@@ -46,26 +43,31 @@
         <span>Credentials auto-filled from registration</span>
       </div>
 
+      <!-- Error message -->
+      <div id="error-message" class="hidden mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+        <span id="error-text"></span>
+      </div>
+
       <!-- Form -->
       <form class="space-y-5" id="signinForm">
         <!-- Email -->
         <div>
           <label class="text-sm font-semibold text-gray-800 block mb-2">Email Address</label>
-          <input id="email" type="email" name="email" placeholder="you@company.com"
+          <input id="email" type="email" name="email" placeholder="you@company.com" required
             class="w-full border border-gray-300 rounded-lg px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent focus:outline-none transition" />
         </div>
 
         <!-- Access Code -->
         <div>
           <label class="text-sm font-semibold text-gray-800 block mb-2">Access Code</label>
-          <input id="access_code" type="text" name="access_code" placeholder="T4L8-X9QP"
+          <input id="access_code" type="text" name="access_code" placeholder="T4LA-XXXX" required
             class="w-full border border-gray-300 rounded-lg px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent focus:outline-none transition uppercase" />
         </div>
 
         <!-- Password -->
         <div>
           <label class="text-sm font-semibold text-gray-800 block mb-2">Password</label>
-          <input id="password" type="password" name="password" placeholder="••••••••"
+          <input id="password" type="password" name="password" placeholder="••••••••" required
             class="w-full border border-gray-300 rounded-lg px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent focus:outline-none transition" />
         </div>
 
@@ -80,7 +82,7 @@
         </div>
 
         <!-- Sign In Button -->
-        <button type="submit"
+        <button type="submit" id="submit-btn"
           class="w-full text-white font-semibold py-3.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-[1.01] hover:opacity-95"
           style="background-color:#4b0d7f">
           Sign In
@@ -124,7 +126,105 @@
       bg-gradient-to-tr from-yellow-200 to-yellow-400 
       opacity-30 blur-3xl rounded-full z-0"></div>
 
-</body>
+  <script>
+    (function () {
+      const form = document.getElementById('signinForm');
+      const errorMsg = document.getElementById('error-message');
+      const errorText = document.getElementById('error-text');
+      const submitBtn = document.getElementById('submit-btn');
+      const autoFillIndicator = document.getElementById('autoFillIndicator');
 
+      // Check for auto-fill credentials from registration
+      const urlParams = new URLSearchParams(window.location.search);
+      const isRegistered = urlParams.get('registered');
+      
+      if (isRegistered) {
+        const credentials = sessionStorage.getItem('signupCredentials');
+        if (credentials) {
+          try {
+            const data = JSON.parse(credentials);
+            const age = Date.now() - data.timestamp;
+            
+            // Only auto-fill if credentials are less than 5 minutes old
+            if (age < 5 * 60 * 1000) {
+              document.getElementById('email').value = data.email;
+              document.getElementById('access_code').value = data.access_code;
+              document.getElementById('password').value = data.password;
+              autoFillIndicator.classList.remove('hidden');
+              
+              // Clear credentials after use
+              sessionStorage.removeItem('signupCredentials');
+            }
+          } catch (e) {
+            console.error('Failed to parse credentials:', e);
+          }
+        }
+      }
+
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        // Hide previous errors
+        errorMsg.classList.add('hidden');
+
+        // Get form values
+        const email = document.getElementById('email').value.trim();
+        const access_code = document.getElementById('access_code').value.trim();
+        const password = document.getElementById('password').value;
+        const rememberMe = document.getElementById('rememberMe').checked;
+
+        // Basic validation
+        if (!email || !access_code || !password) {
+          errorText.textContent = 'Please fill in all fields';
+          errorMsg.classList.remove('hidden');
+          return;
+        }
+
+        // Disable submit button
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Signing In...';
+
+        try {
+          // Send sign-in request
+          const response = await fetch('/signin', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              email,
+              access_code,
+              password,
+              rememberMe
+            })
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || 'Sign in failed');
+          }
+
+          // Success! Redirect to dashboard
+          if (data.redirect) {
+            window.location.href = data.redirect;
+          } else {
+            window.location.href = '/ambassador-dashboard.html';
+          }
+
+        } catch (error) {
+          console.error('Sign in error:', error);
+          errorText.textContent = error.message || 'Sign in failed. Please check your credentials.';
+          errorMsg.classList.remove('hidden');
+          
+          // Re-enable submit button
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Sign In';
+        }
+      });
+    })();
+  </script>
+</body>
 
 </html>
