@@ -581,14 +581,67 @@ const cvUpload = multer({
 app.post(
   '/api/applications/submit',
   requireAuth,
-  cvUpload.single('cv'),
+  // Wrap upload middleware in error handling
+  (req, res, next) => {
+    console.log('📁 File upload middleware starting...');
+    cvUpload.single('cv')(req, res, (err) => {
+      if (err) {
+        console.error('❌ File upload middleware error:', err.message);
+        console.error('Error code:', err.code);
+        
+        // Multer-specific errors
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ 
+            success: false,
+            error: 'File too large',
+            details: 'Maximum file size is 10MB'
+          });
+        }
+        
+        if (err.code === 'LIMIT_FILE_TYPE' || err.code === 'LIMIT_UNEXPECTED_FILE') {
+          return res.status(400).json({ 
+            success: false,
+            error: 'Invalid file type',
+            details: 'Only PDF, DOC, DOCX, and TXT files are allowed'
+          });
+        }
+        
+        // Disk storage errors
+        if (err.code === 'ENOENT' || err.code === 'EACCES') {
+          console.error('Storage error:', err);
+          return res.status(500).json({ 
+            success: false,
+            error: 'Server storage error',
+            details: 'Unable to save file. Please try again later.'
+          });
+        }
+        
+        // Other multer errors
+        return res.status(400).json({ 
+          success: false,
+          error: 'File upload failed',
+          details: err.message 
+        });
+      }
+      
+      // File uploaded successfully
+      console.log('✅ File upload middleware completed');
+      console.log('Uploaded file:', req.file ? req.file.filename : 'No file');
+      next();
+    });
+  },
   async (req, res) => {
     console.log('\n🚀 ========== APPLICATION SUBMISSION START ==========');
     
     try {
       console.log('📋 Step 1: Request received');
       console.log('   Body:', JSON.stringify(req.body, null, 2));
-      console.log('   File:', req.file ? req.file.filename : 'NO FILE');
+      console.log('   File:', req.file ? {
+        filename: req.file.filename,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+        path: req.file.path
+      } : 'NO FILE');
       console.log('   Auth:', { userId: req.auth.userId, role: req.auth.role });
       
       const { postId, postTitle, subscribeToNewsletter, termsAccepted } = req.body;
@@ -599,25 +652,37 @@ app.post(
       console.log('\n✅ Step 2: Validation');
       if (!postId) {
         console.log('   ❌ Missing postId');
-        return res.status(400).json({ error: 'Post ID is required' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'Post ID is required' 
+        });
       }
       console.log('   ✓ postId:', postId);
 
       if (!req.file) {
         console.log('   ❌ Missing CV file');
-        return res.status(400).json({ error: 'CV file is required' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'CV file is required' 
+        });
       }
       console.log('   ✓ CV file:', req.file.filename);
 
       if (termsAccepted !== 'true' && termsAccepted !== true) {
         console.log('   ❌ Terms not accepted');
-        return res.status(400).json({ error: 'Terms must be accepted' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'Terms must be accepted' 
+        });
       }
       console.log('   ✓ Terms accepted');
 
       if (userRole !== 'ambassador') {
         console.log('   ❌ Wrong role:', userRole);
-        return res.status(403).json({ error: 'Only ambassadors can submit applications' });
+        return res.status(403).json({ 
+          success: false,
+          error: 'Only ambassadors can submit applications' 
+        });
       }
       console.log('   ✓ Role verified: ambassador');
 
@@ -634,6 +699,7 @@ app.post(
       if (ambassadorError) {
         console.error('   ❌ Database error:', ambassadorError);
         return res.status(500).json({ 
+          success: false,
           error: 'Database error',
           details: ambassadorError.message 
         });
@@ -641,7 +707,10 @@ app.post(
 
       if (!ambassador) {
         console.error('   ❌ No ambassador found');
-        return res.status(404).json({ error: 'Ambassador profile not found' });
+        return res.status(404).json({ 
+          success: false,
+          error: 'Ambassador profile not found' 
+        });
       }
 
       console.log('   ✅ Ambassador found:');
@@ -659,7 +728,10 @@ app.post(
 
       if (postError || !post) {
         console.error('   ❌ Post not found:', postError);
-        return res.status(404).json({ error: 'Opportunity not found' });
+        return res.status(404).json({ 
+          success: false,
+          error: 'Opportunity not found' 
+        });
       }
 
       console.log('   ✅ Post found:', post.title);
@@ -675,7 +747,10 @@ app.post(
 
       if (existingApp) {
         console.log('   ⚠️ Already applied');
-        return res.status(400).json({ error: 'You have already applied to this opportunity' });
+        return res.status(400).json({ 
+          success: false,
+          error: 'You have already applied to this opportunity' 
+        });
       }
 
       console.log('   ✅ No duplicate found');
@@ -706,7 +781,19 @@ app.post(
 
       if (dbError) {
         console.error('   ❌ Database error:', dbError);
+        
+        // Try to delete the uploaded file if DB insert fails
+        try {
+          if (req.file && req.file.path) {
+            fs.unlinkSync(req.file.path);
+            console.log('   🗑️ Deleted orphaned file:', req.file.path);
+          }
+        } catch (cleanupError) {
+          console.error('   ⚠️ Failed to delete orphaned file:', cleanupError.message);
+        }
+        
         return res.status(500).json({ 
+          success: false,
           error: 'Failed to save application',
           details: dbError.message 
         });
@@ -729,6 +816,7 @@ app.post(
         console.log('   ✅ Ambassador notification sent');
       } catch (notifError) {
         console.error('   ⚠️ Notification failed:', notifError.message);
+        // Don't fail the whole request if notification fails
       }
 
       console.log('\n🎉 ========== SUCCESS ==========\n');
@@ -740,14 +828,25 @@ app.post(
       });
 
     } catch (error) {
-      console.error('\n❌ ========== ERROR ==========');
+      console.error('\n❌ ========== UNEXPECTED ERROR ==========');
       console.error('Error:', error.message);
       console.error('Stack:', error.stack);
-      console.error('=============================\n');
+      console.error('=========================================\n');
+      
+      // Try to clean up uploaded file if something unexpected happened
+      try {
+        if (req.file && req.file.path) {
+          fs.unlinkSync(req.file.path);
+          console.log('🗑️ Cleaned up uploaded file due to error');
+        }
+      } catch (cleanupError) {
+        console.error('Failed to clean up file:', cleanupError.message);
+      }
       
       return res.status(500).json({ 
+        success: false,
         error: 'Failed to submit application',
-        details: error.message 
+        details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
       });
     }
   }
