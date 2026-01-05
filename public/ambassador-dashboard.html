@@ -104,6 +104,10 @@
     </style>
   </head>
   <body class="bg-gray-50 font-sans">
+    <!-- Global Notification Script -->
+    <script src="/js/notifications.js"></script>
+    <!-- Global Ambassador Sidebar -->
+    <script src="/js/ambassador-sidebar.js"></script>
     <!-- Mobile Sidebar Toggle -->
     <button class="sidebar-toggle" id="sidebarToggle">
       <i class="bx bx-menu text-xl"></i>
@@ -194,22 +198,24 @@
           <div class="flex flex-col md:flex-row gap-4 items-stretch">
             <div
               class="flex-1 bg-white/20 backdrop-blur-md px-4 md:px-6 py-4 rounded-lg flex flex-col justify-center shadow-sm"
+              id="nextMilestoneCard"
             >
               <p class="font-semibold text-sm flex items-center gap-2">
-                <i class="bx bx-microphone text-xl"></i>
+                <i class="bx bx-target-lock text-xl"></i>
                 Next Milestone
               </p>
-              <p class="text-base mt-1 font-medium">Book for your Podcast Recording</p>
+              <p class="text-base mt-1 font-medium" id="nextMilestoneText">Loading...</p>
             </div>
 
             <div
               class="flex-1 bg-white/20 backdrop-blur-md px-4 md:px-6 py-4 rounded-lg flex flex-col justify-center shadow-sm"
+              id="journeyStatsCard"
             >
               <p class="font-semibold text-sm flex items-center gap-2">
                 <i class="bx bx-calendar text-xl"></i>
-                3 days remaining
+                <span id="daysInProgramLabel">Journey Progress</span>
               </p>
-              <p class="text-base mt-1 font-medium">Webinar Oct 25 • Register Now</p>
+              <p class="text-base mt-1 font-medium" id="daysInProgramText">Loading...</p>
             </div>
 
             <!-- Join Your Tribe Button -->
@@ -235,34 +241,34 @@
         </a>
 
           <!-- Completed Tasks -->
-          <div
+          <a href="/journey.html"
             class="bg-white border border-green-300 shadow hover:shadow-2xl rounded-xl p-4 md:p-5 text-center transition-all hover:-translate-y-1 hover:border-green-500"
           >
             <i class="bx bx-check-circle text-3xl text-green-600 mx-auto mb-2"></i>
-            <p class="font-bold text-black text-lg">12</p>
+            <p class="font-bold text-black text-lg" id="completedTasksCount">--</p>
             <p class="text-black text-sm">Completed Tasks</p>
-            <p class="text-black text-xs">8 upcoming</p>
-          </div>
+            <p class="text-black text-xs" id="upcomingTasksCount">-- upcoming</p>
+          </a>
 
           <!-- Article Due -->
-          <div
+          <a href="/article-amb.html"
             class="bg-white border border-blue-300 shadow hover:shadow-2xl rounded-xl p-4 md:p-5 text-center transition-all hover:-translate-y-1 hover:border-blue-500"
           >
             <i class="bx bx-edit text-3xl text-blue-600 mx-auto mb-2"></i>
-            <p class="font-bold text-black text-lg">1</p>
-            <p class="text-black text-sm">Article Due</p>
-            <p class="text-black text-xs">2025-09-30</p>
-          </div>
+            <p class="font-bold text-black text-lg" id="articlesPendingCount">--</p>
+            <p class="text-black text-sm">Articles Pending</p>
+            <p class="text-black text-xs" id="nextArticleDue">Next due: --</p>
+          </a>
 
           <!-- Partner Application -->
-          <div
+          <a href="/Partner-Calls.html"
             class="bg-white border border-yellow-300 shadow hover:shadow-2xl rounded-xl p-4 md:p-5 text-center transition-all hover:-translate-y-1 hover:border-yellow-500"
           >
             <i class="bx bx-briefcase text-3xl text-yellow-600 mx-auto mb-2"></i>
-            <p class="font-bold text-black text-lg">1</p>
-            <p class="text-black text-sm">Partner Application</p>
-            <p class="text-black text-xs">Under Review</p>
-          </div>
+            <p class="font-bold text-black text-lg" id="applicationsCount">--</p>
+            <p class="text-black text-sm">Partner Applications</p>
+            <p class="text-black text-xs" id="applicationsStatus">--</p>
+          </a>
         </section>
 
         <!-- Middle Section -->
@@ -588,11 +594,20 @@
           window.currentVideo = currentVideo;
           
           // ============================================
-          // UPDATE STATS SECTION
+          // UPDATE STATS SECTION - SAME CALCULATION AS JOURNEY PAGE
           // ============================================
+          const completedTasks = journeyData.completedTasks || {};
+          const months = journeyData.months || [];
+          
+          // Calculate overall progress EXACTLY like journey page (lines 3032-3035)
+          const overallProgress = months.length > 0 ? months.reduce((acc, m) => {
+            const completed = m.tasks.filter(task => completedTasks[`${m.month}-${task.id}`]).length;
+            return acc + (completed / m.tasks.length);
+          }, 0) / months.length * 100 : 0;
+          
           const journeyProgress = document.getElementById('journeyProgress');
-          if (journeyProgress && journeyData.statistics) {
-            journeyProgress.textContent = `${journeyData.statistics.overallProgress}%`;
+          if (journeyProgress) {
+            journeyProgress.textContent = `${Math.round(overallProgress)}%`;
           }
 
           const journeyMonth = document.getElementById('journeyMonth');
@@ -779,6 +794,176 @@
       }
 
       // ============================================
+      // LOAD DASHBOARD STATS - Uses same APIs as respective pages
+      // ============================================
+      async function loadDashboardStats() {
+        try {
+          console.log('📊 Loading dashboard stats from source APIs...');
+          
+          // 1. Load journey data (same as journey page) for completed tasks
+          const journeyResponse = await fetch('/api/journey', { credentials: 'include' });
+          console.log('Journey API response status:', journeyResponse.status);
+          
+          if (journeyResponse.ok) {
+            const journeyData = await journeyResponse.json();
+            console.log('✅ Journey data loaded:', journeyData);
+            
+            // EXACT SAME CALCULATION AS JOURNEY PAGE
+            const currentMonth = journeyData.currentMonth || 1;
+            const completedTasks = journeyData.completedTasks || {};
+            const months = journeyData.months || [];
+            
+            // Find current month data from months array (SAME AS JOURNEY PAGE)
+            const currentMonthData = months.find(m => m.month === currentMonth);
+            
+            // Calculate overall progress (SAME AS JOURNEY PAGE LINE 3032-3035)
+            const overallProgress = months.reduce((acc, m) => {
+              const completed = m.tasks.filter(task => completedTasks[`${m.month}-${task.id}`]).length;
+              return acc + (completed / m.tasks.length);
+            }, 0) / months.length * 100;
+            
+            // Calculate current month stats (SAME AS JOURNEY PAGE LINE 2540-2542)
+            let currentMonthCompleted = 0;
+            let currentMonthTotal = 0;
+            if (currentMonthData && currentMonthData.tasks) {
+              currentMonthCompleted = currentMonthData.tasks.filter(task => 
+                completedTasks[`${currentMonth}-${task.id}`]
+              ).length;
+              currentMonthTotal = currentMonthData.tasks.length;
+            }
+            const currentMonthRemaining = currentMonthTotal - currentMonthCompleted;
+            
+            console.log(`📊 Overall Progress: ${Math.round(overallProgress)}%`);
+            console.log(`📊 Month ${currentMonth}: ${currentMonthCompleted}/${currentMonthTotal} tasks (${Math.round((currentMonthCompleted/currentMonthTotal)*100)}%)`);
+            
+            // Update Journey Progress card
+            const journeyProgress = document.getElementById('journeyProgress');
+            const journeyMonth = document.getElementById('journeyMonth');
+            if (journeyProgress) {
+              journeyProgress.textContent = `${Math.round(overallProgress)}%`;
+            }
+            if (journeyMonth) {
+              journeyMonth.textContent = `Month ${currentMonth} of 12`;
+            }
+            
+            // Update Completed Tasks card (shows CURRENT MONTH's progress like journey page)
+            const completedTasksCount = document.getElementById('completedTasksCount');
+            const upcomingTasksCount = document.getElementById('upcomingTasksCount');
+            if (completedTasksCount) {
+              completedTasksCount.textContent = currentMonthCompleted;
+            }
+            if (upcomingTasksCount) {
+              upcomingTasksCount.textContent = `${currentMonthRemaining} remaining`;
+            }
+            
+            // Update Hero Milestone Cards
+            const nextMilestoneText = document.getElementById('nextMilestoneText');
+            const daysInProgramLabel = document.getElementById('daysInProgramLabel');
+            const daysInProgramText = document.getElementById('daysInProgramText');
+            
+            if (nextMilestoneText && currentMonthData) {
+              nextMilestoneText.textContent = currentMonthData.milestone || journeyData.currentMonthMilestone || 'Continue your journey';
+            }
+            
+            if (daysInProgramLabel && daysInProgramText) {
+              const daysIn = journeyData.statistics?.daysInProgram || 0;
+              const daysRemaining = Math.max(0, 365 - daysIn);
+              daysInProgramLabel.textContent = `Day ${daysIn} of 365`;
+              daysInProgramText.textContent = `${daysRemaining} days remaining`;
+            }
+          } else {
+            console.error('❌ Journey API failed:', journeyResponse.status, await journeyResponse.text());
+          }
+          
+          // 2. Load articles data (same as article-amb page)
+          const articlesResponse = await fetch('/api/ambassador/articles?limit=100', { credentials: 'include' });
+          console.log('Articles API response status:', articlesResponse.status);
+          
+          if (articlesResponse.ok) {
+            const articlesData = await articlesResponse.json();
+            console.log('✅ Articles loaded:', articlesData);
+            
+            const articles = articlesData.items || [];
+            const pendingArticles = articles.filter(a => 
+              a.status === 'pending' || a.status === 'needs_update' || a.status === 'draft'
+            );
+            const publishedArticles = articles.filter(a => a.status === 'published');
+            
+            // Update Articles card
+            const articlesPendingCount = document.getElementById('articlesPendingCount');
+            const nextArticleDue = document.getElementById('nextArticleDue');
+            
+            if (articlesPendingCount) {
+              articlesPendingCount.textContent = pendingArticles.length;
+            }
+            if (nextArticleDue) {
+              if (publishedArticles.length > 0) {
+                nextArticleDue.textContent = `${publishedArticles.length} published`;
+              } else if (articles.length > 0) {
+                nextArticleDue.textContent = `${articles.length} total`;
+              } else {
+                nextArticleDue.textContent = 'Write your first!';
+              }
+            }
+          } else {
+            console.error('❌ Articles API failed:', articlesResponse.status);
+          }
+          
+          // 3. Load applications data (same as applications page)
+          const appsResponse = await fetch('/api/ambassador/applications', { credentials: 'include' });
+          console.log('Applications API response status:', appsResponse.status);
+          
+          if (appsResponse.ok) {
+            const appsData = await appsResponse.json();
+            console.log('✅ Applications loaded:', appsData);
+            
+            const applications = appsData.items || [];
+            const pendingApps = applications.filter(a => a.status === 'pending');
+            const acceptedApps = applications.filter(a => a.status === 'accepted' || a.status === 'approved');
+            
+            // Update Applications card
+            const applicationsCount = document.getElementById('applicationsCount');
+            const applicationsStatus = document.getElementById('applicationsStatus');
+            
+            if (applicationsCount) {
+              applicationsCount.textContent = applications.length;
+            }
+            if (applicationsStatus) {
+              if (pendingApps.length > 0) {
+                applicationsStatus.textContent = `${pendingApps.length} pending review`;
+              } else if (acceptedApps.length > 0) {
+                applicationsStatus.textContent = `${acceptedApps.length} accepted`;
+              } else if (applications.length > 0) {
+                applicationsStatus.textContent = `${applications.length} submitted`;
+              } else {
+                applicationsStatus.textContent = 'Apply to opportunities';
+              }
+            }
+          } else {
+            console.error('❌ Applications API failed:', appsResponse.status);
+          }
+          
+          console.log('✅ Dashboard stats loaded successfully');
+          
+        } catch (error) {
+          console.error('❌ Error loading dashboard stats:', error);
+          // Set fallback values
+          const fallbacks = {
+            'completedTasksCount': '0',
+            'upcomingTasksCount': '-- remaining',
+            'articlesPendingCount': '0',
+            'nextArticleDue': '--',
+            'applicationsCount': '0',
+            'applicationsStatus': '--'
+          };
+          Object.keys(fallbacks).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = fallbacks[id];
+          });
+        }
+      }
+
+      // ============================================
       // INITIALIZE ON PAGE LOAD
       // ============================================
       document.addEventListener('DOMContentLoaded', function() {
@@ -854,6 +1039,9 @@
         
         // Load partner calls
         loadPartnerCalls();
+        
+        // Load dashboard stats (dynamic data)
+        loadDashboardStats();
         
         console.log('✅ Dashboard initialized');
       });
