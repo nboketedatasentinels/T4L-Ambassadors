@@ -481,6 +481,10 @@
     </style>
 </head>
 <body class="bg-gray-50">
+    <!-- Global Notification Script -->
+    <script src="/js/notifications.js"></script>
+    <!-- Global Ambassador Sidebar -->
+    <script src="/js/ambassador-sidebar.js"></script>
     <!-- Mobile Menu Toggle -->
     <button id="mobileMenuBtn" class="md:hidden fixed top-4 left-4 z-50 bg-purple-600 text-white p-3 rounded-xl shadow-lg">
         <i class="bx bx-menu text-2xl"></i>
@@ -765,43 +769,75 @@
 
         // Load published articles
         async function loadPublishedArticles() {
-            try {
-                const response = await fetch('/api/ambassador/articles?limit=50', {
-                    credentials: 'include'
-                });
+        try {
+            const response = await fetch('/api/ambassador/articles?limit=50', {
+            credentials: 'include'
+            });
 
-                if (!response.ok) throw new Error('Failed to load articles');
+            if (!response.ok) throw new Error('Failed to load articles');
 
-                const data = await response.json();
-                const publishedArticles = data.items.filter(a => a.status === 'published');
+            const data = await response.json();
+            const publishedArticles = data.items.filter(a => a.status === 'published');
 
-                const container = document.getElementById('publishedArticlesList');
+            const container = document.getElementById('publishedArticlesList');
 
-                if (publishedArticles.length === 0) {
-                    container.innerHTML = `
-                        <div class="empty-state">
-                            <i class="bx bx-file"></i>
-                            <p>No published articles yet</p>
-                        </div>
-                    `;
-                    return;
-                }
-
-                container.innerHTML = publishedArticles.map(article => `
-                    <a href="/ambassador-review.html?articleId=${article.id}" class="article-item">
-                        <h4 class="article-title">${article.title || 'Untitled Article'}</h4>
-                        <div class="article-meta">
-                            <span class="article-badge">Article</span>
-                            <span class="article-date">${formatDate(article.createdAt)}</span>
-                        </div>
-                    </a>
-                `).join('');
-
-            } catch (error) {
-                console.error('Error loading published articles:', error);
+            if (publishedArticles.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                <i class="bx bx-file"></i>
+                <p>No published articles yet</p>
+                </div>
+            `;
+            return;
             }
-        }
 
+            container.innerHTML = publishedArticles.map(article => {
+            const hasLink = article.publication_link || article.publicationLink;
+            const pubLink = article.publication_link || article.publicationLink;
+            
+            return `
+                <div class="article-item" style="background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%); border-color: #10b981;">
+                    <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                        <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i class="bx bx-check-circle" style="font-size: 1.5rem; color: white;"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <h4 class="article-title" style="margin-bottom: 0.5rem;">${article.title || 'Untitled Article'}</h4>
+                            <div class="article-meta" style="margin-bottom: 0.75rem;">
+                                <span class="article-badge" style="background: #10b981; color: white;">
+                                    <i class="bx bx-check mr-1"></i> Published
+                                </span>
+                                <span class="article-date">${formatDate(article.createdAt)}</span>
+                            </div>
+                            ${hasLink ? `
+                                <a href="${pubLink}" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.625rem 1rem; background: linear-gradient(135deg, #4b0d7f 0%, #6b1fa0 100%); color: white; border-radius: 8px; font-weight: 600; font-size: 0.875rem; text-decoration: none; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(75, 13, 127, 0.3);">
+                                    <i class="bx bx-link-external"></i>
+                                    View Live Article
+                                </a>
+                                <p style="margin-top: 0.75rem; font-size: 0.8125rem; color: #6b7280; word-break: break-all;">
+                                    <i class="bx bx-link" style="margin-right: 0.25rem;"></i>
+                                    ${pubLink}
+                                </p>
+                            ` : `
+                                <p style="font-size: 0.875rem; color: #9ca3af; font-style: italic;">
+                                    <i class="bx bx-time-five" style="margin-right: 0.25rem;"></i>
+                                    Publication link will be added soon
+                                </p>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            `;
+            }).join('');
+
+        } catch (error) {
+            console.error('Error loading published articles:', error);
+        }
+    }
+                
         // Load article progress
         async function loadArticleProgress() {
             let articleId = getArticleIdFromUrl();
@@ -823,13 +859,38 @@
                 return;
             }
 
+            console.log('🔍 Attempting to load article:', articleId);
+
             try {
+                // First, check if article exists
+                try {
+                    const debugResponse = await fetch(`/api/debug/article-notifications/${articleId}`, {
+                        credentials: 'include'
+                    });
+                    if (debugResponse.ok) {
+                        const debugData = await debugResponse.json();
+                        console.log('🔍 DEBUG - Article check:', debugData);
+                        
+                        if (debugData.totalNotifications === 0 && !debugData.userNotifications) {
+                            console.log('⚠️ Article might not exist or you have no notifications for it');
+                        }
+                    }
+                } catch (debugError) {
+                    console.log('⚠️ Debug endpoint not available:', debugError.message);
+                }
+
                 const response = await fetch(`/api/ambassador/articles/${articleId}`, {
                     credentials: 'include'
                 });
 
+                console.log('📊 API Response status:', response.status);
+                
                 if (!response.ok) {
-                    throw new Error('Failed to load article');
+                    if (response.status === 404) {
+                        throw new Error('Article not found or you do not have permission to view it');
+                    } else {
+                        throw new Error('Failed to load article');
+                    }
                 }
 
                 const data = await response.json();
@@ -857,11 +918,17 @@
                 showToast('Failed to load article progress', true);
                 document.getElementById('loadingState').innerHTML = `
                     <i class="bx bx-error-circle text-6xl text-red-500 mb-4"></i>
-                    <p class="text-gray-600">Failed to load article. Please try again.</p>
-                    <button onclick="location.reload()" class="btn btn-primary mt-4">
-                        <i class="bx bx-refresh"></i>
-                        Retry
-                    </button>
+                    <p class="text-gray-600">${error.message}</p>
+                    <div class="mt-4 space-y-2">
+                        <button onclick="location.reload()" class="btn btn-primary">
+                            <i class="bx bx-refresh"></i>
+                            Retry
+                        </button>
+                        <a href="/article-amb.html" class="btn btn-secondary block">
+                            <i class="bx bx-arrow-back"></i>
+                            Back to Articles
+                        </a>
+                    </div>
                 `;
             }
         }

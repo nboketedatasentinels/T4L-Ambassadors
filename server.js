@@ -8,100 +8,213 @@ const JOURNEY_MONTHS = require("./journey-db.js");
 const app = express();
 const { v4: uuidv4 } = require("uuid");
 
-// ========== MAILSLURP EMAIL SERVICE ==========
-const { MailSlurp } = require('mailslurp-client');
+// ========== EMAIL SERVICE (NODEMAILER) ==========
+const nodemailer = require("nodemailer");
+
+// Gmail SMTP Configuration (hardcoded)
+const SMTP_CONFIG = {
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // true for 465, false for other ports
+  auth: {
+    user: "syntichemusawu645@gmail.com",
+    pass: "ouwkdejtuwqryqf", // Gmail App Password (spaces removed automatically)
+  },
+};
+
+const SMTP_FROM = "syntichemusawu645@gmail.com";
 
 class EmailService {
   constructor() {
-    if (!process.env.MAILSLURP_API_KEY) {
-      console.warn('⚠️  MailSlurp API key missing - emails disabled');
-      this.client = null;
-      return;
-    }
-    
-    try {
-      this.client = new MailSlurp({
-        apiKey: process.env.MAILSLURP_API_KEY
-      });
-      console.log('✅ MailSlurp email service initialized');
-    } catch (error) {
-      console.error('❌ MailSlurp init failed:', error.message);
-      this.client = null;
+    // Initialize Nodemailer with hardcoded Gmail credentials
+    this.nodemailerTransporter = null;
+    this.etherealAccount = null;
+
+    // Check if Ethereal should be used for testing
+    if (process.env.USE_ETHEREAL === "true") {
+      console.log("🔄 Ethereal mode enabled - will initialize on startup");
+      // Ethereal will be initialized asynchronously after EmailService is created
+    } else {
+      // Use Gmail SMTP (hardcoded credentials)
+      try {
+        // Remove spaces from password if present (Gmail shows them with spaces)
+        const smtpPass = SMTP_CONFIG.auth.pass.replace(/\s+/g, "");
+
+        this.nodemailerTransporter = nodemailer.createTransport({
+          host: SMTP_CONFIG.host,
+          port: SMTP_CONFIG.port,
+          secure: SMTP_CONFIG.secure,
+          auth: {
+            user: SMTP_CONFIG.auth.user,
+            pass: smtpPass,
+          },
+        });
+
+        // Verify connection
+        this.nodemailerTransporter.verify((error, success) => {
+          if (error) {
+            console.error(
+              "❌ SMTP connection verification failed:",
+              error.message
+            );
+            console.error("   Please check:");
+            console.error(
+              "   1. App password is correct (16 characters, no spaces)"
+            );
+            console.error("   2. 2-Step Verification is enabled on Gmail");
+            console.error("   3. App password hasn't been revoked");
+          } else {
+            console.log("✅ Nodemailer email service initialized (Gmail SMTP)");
+            console.log(
+              `   Connected to: ${SMTP_CONFIG.host}:${SMTP_CONFIG.port}`
+            );
+            console.log(`   From: ${SMTP_CONFIG.auth.user}`);
+          }
+        });
+      } catch (error) {
+        console.error("❌ Nodemailer init failed:", error.message);
+        this.nodemailerTransporter = null;
+      }
     }
   }
 
-  // Send ambassador welcome email
+  // Initialize Ethereal for testing
+  async initializeEthereal() {
+    try {
+      console.log("🔄 Creating Ethereal test account...");
+      this.etherealAccount = await nodemailer.createTestAccount();
+
+      this.nodemailerTransporter = nodemailer.createTransport({
+        host: "smtp.ethereal.email",
+        port: 587,
+        secure: false,
+        auth: {
+          user: this.etherealAccount.user,
+          pass: this.etherealAccount.pass,
+        },
+      });
+
+      console.log("✅ Ethereal email service initialized");
+      console.log("📧 Test account created:");
+      console.log(`   Email: ${this.etherealAccount.user}`);
+      console.log(`   Password: ${this.etherealAccount.pass}`);
+      console.log(`   Web UI: https://ethereal.email`);
+    } catch (error) {
+      console.error("❌ Ethereal init failed:", error.message);
+      this.nodemailerTransporter = null;
+      this.etherealAccount = null;
+    }
+  }
+
+  // Send ambassador welcome email using Nodemailer
   async sendAmbassadorWelcome(ambassadorData) {
-      console.log('=== AMBASSADOR EMAIL START ===');
-      console.log('To:', ambassadorData.email);
-      console.log('Name:', ambassadorData.name);
-      console.log('Code:', ambassadorData.access_code);
-    if (!this.client) {
-      console.log('⚠️  MailSlurp not available - skipping email');
-      return { success: false, error: 'Email service not configured' };
+    console.log("=== AMBASSADOR EMAIL START ===");
+    console.log("To:", ambassadorData.email);
+    console.log("Name:", ambassadorData.name);
+    console.log("Code:", ambassadorData.access_code);
+
+    if (!this.nodemailerTransporter) {
+      console.log("⚠️  Nodemailer not available - skipping email");
+      return { success: false, error: "Email service not configured" };
     }
 
     try {
-      // Create a sender inbox
-      const inbox = await this.client.createInbox();
-      
-      // Send to the actual ambassador email
-        const email = await this.client.sendEmail(inbox.id, {
-          to: [ambassadorData.email],  // Ambassador's email
-          subject: `🎉 Welcome ${ambassadorData.name} to T4LA Ambassador Program!`,
-          body: this.createAmbassadorEmailBody(ambassadorData),
-          isHTML: true
-       });
-      
-
-      console.log(`✅ Ambassador email sent to ${ambassadorData.email}`);
-      console.log(`📧 View email: https://app.mailslurp.com/inboxes/${inbox.id}`);
-      
-      return {
-        success: true,
-        emailId: email.id,
-        inboxId: inbox.id,
-        viewUrl: `https://app.mailslurp.com/inboxes/${inbox.id}`
+      const mailOptions = {
+        from: this.etherealAccount?.user || SMTP_FROM,
+        to: ambassadorData.email,
+        subject: `🎉 Welcome ${ambassadorData.name} to T4LA Ambassador Program!`,
+        html: this.createAmbassadorEmailBody(ambassadorData),
       };
+
+      const info = await this.nodemailerTransporter.sendMail(mailOptions);
+
+      // If using Ethereal, get the preview URL
+      if (this.etherealAccount) {
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        console.log(
+          `✅ Ambassador email sent via Ethereal to ${ambassadorData.email}`
+        );
+        console.log(`📧 Preview URL: ${previewUrl}`);
+        return {
+          success: true,
+          method: "ethereal",
+          messageId: info.messageId,
+          previewUrl: previewUrl,
+          etherealAccount: {
+            user: this.etherealAccount.user,
+            pass: this.etherealAccount.pass,
+          },
+        };
+      } else {
+        console.log(
+          `✅ Ambassador email sent via Nodemailer to ${ambassadorData.email}`
+        );
+        console.log(`📧 Message ID: ${info.messageId}`);
+        return {
+          success: true,
+          method: "nodemailer",
+          messageId: info.messageId,
+        };
+      }
     } catch (error) {
-      console.error(`❌ Failed to send ambassador email:`, error.message);
+      console.error(`❌ Nodemailer failed:`, error.message);
       return { success: false, error: error.message };
     }
   }
 
-  // Send partner welcome email
+  // Send partner welcome email using Nodemailer
   async sendPartnerWelcome(partnerData) {
-      console.log('=== PARTNER EMAIL START ===');
-      console.log('To:', partnerData.email);
-      console.log('Name:', partnerData.name);
-      console.log('Company:', partnerData.company);
-      console.log('Code:', partnerData.access_code);
-    if (!this.client) {
-      console.log('⚠️  MailSlurp not available - skipping email');
-      return { success: false, error: 'Email service not configured' };
+    console.log("=== PARTNER EMAIL START ===");
+    console.log("To:", partnerData.email);
+    console.log("Name:", partnerData.name);
+    console.log("Company:", partnerData.company);
+    console.log("Code:", partnerData.access_code);
+
+    if (!this.nodemailerTransporter) {
+      console.log("⚠️  Nodemailer not available - skipping email");
+      return { success: false, error: "Email service not configured" };
     }
 
     try {
-      const inbox = await this.client.createInbox();
-      
-      const email = await this.client.sendEmail(inbox.id, {
-        to: [partnerData.email],  // Partner's email
+      const mailOptions = {
+        from: this.etherealAccount?.user || SMTP_FROM,
+        to: partnerData.email,
         subject: `🤝 Welcome ${partnerData.name} to T4LA Partner Network!`,
-        body: this.createPartnerEmailBody(partnerData),
-        isHTML: true
-      });
-
-      console.log(`✅ Partner email sent to ${partnerData.email}`);
-      console.log(`📧 View email: https://app.mailslurp.com/inboxes/${inbox.id}`);
-      
-      return {
-        success: true,
-        emailId: email.id,
-        inboxId: inbox.id,
-        viewUrl: `https://app.mailslurp.com/inboxes/${inbox.id}`
+        html: this.createPartnerEmailBody(partnerData),
       };
+
+      const info = await this.nodemailerTransporter.sendMail(mailOptions);
+
+      // If using Ethereal, get the preview URL
+      if (this.etherealAccount) {
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        console.log(
+          `✅ Partner email sent via Ethereal to ${partnerData.email}`
+        );
+        console.log(`📧 Preview URL: ${previewUrl}`);
+        return {
+          success: true,
+          method: "ethereal",
+          messageId: info.messageId,
+          previewUrl: previewUrl,
+          etherealAccount: {
+            user: this.etherealAccount.user,
+            pass: this.etherealAccount.pass,
+          },
+        };
+      } else {
+        console.log(
+          `✅ Partner email sent via Nodemailer to ${partnerData.email}`
+        );
+        console.log(`📧 Message ID: ${info.messageId}`);
+        return {
+          success: true,
+          method: "nodemailer",
+          messageId: info.messageId,
+        };
+      }
     } catch (error) {
-      console.error(`❌ Failed to send partner email:`, error.message);
+      console.error(`❌ Nodemailer failed:`, error.message);
       return { success: false, error: error.message };
     }
   }
@@ -135,13 +248,19 @@ class EmailService {
           <div class="credentials">
             <h3>Your Login Credentials:</h3>
             <p><strong>Email:</strong> ${data.email}</p>
-            <p><strong>Access Code:</strong> <span class="code">${data.access_code}</span></p>
-            <p><strong>Default Password:</strong> welcome123</p>
+            <p><strong>Access Code:</strong> <span class="code">${
+              data.access_code
+            }</span></p>
+            <p><strong>Password:</strong> <span class="code">${
+              data.password || "welcome123"
+            }</span></p>
             <p><em>Please change your password after first login</em></p>
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.APP_URL || 'http://localhost:3000'}/signin" class="button">
+            <a href="${
+              process.env.APP_URL || "http://localhost:3000"
+            }/signin" class="button">
               Sign In Now →
             </a>
           </div>
@@ -176,7 +295,7 @@ class EmailService {
       <body>
         <div class="header">
           <h1>Welcome to T4LA Partner Network!</h1>
-          ${data.company ? `<p>Welcome from ${data.company}</p>` : ''}
+          ${data.company ? `<p>Welcome from ${data.company}</p>` : ""}
         </div>
         
         <div class="content">
@@ -186,13 +305,19 @@ class EmailService {
           <div class="credentials">
             <h3>Your Partner Login:</h3>
             <p><strong>Email:</strong> ${data.email}</p>
-            <p><strong>Partner Access Code:</strong> <span class="code">${data.access_code}</span></p>
-            <p><strong>Default Password:</strong> welcome123</p>
+            <p><strong>Partner Access Code:</strong> <span class="code">${
+              data.access_code
+            }</span></p>
+            <p><strong>Password:</strong> <span class="code">${
+              data.password || "welcome123"
+            }</span></p>
             <p><em>Please change your password after first login</em></p>
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.APP_URL || 'http://localhost:3000'}/partner-signin" class="button">
+            <a href="${
+              process.env.APP_URL || "http://localhost:3000"
+            }/partner-signin" class="button">
               Access Partner Dashboard →
             </a>
           </div>
@@ -213,28 +338,38 @@ class EmailService {
 // Initialize the email service
 const emailService = new EmailService();
 
+// Initialize Ethereal if requested (async initialization)
+if (process.env.USE_ETHEREAL === "true") {
+  emailService.initializeEthereal().catch((error) => {
+    console.error("Failed to initialize Ethereal:", error);
+  });
+}
+
 // ========== TEST ENDPOINT ==========
-app.get('/api/test-mailslurp', async (req, res) => {
+app.get("/api/test-email", async (req, res) => {
   try {
     const testData = {
-      name: 'Test Ambassador',
-      email: process.env.EMAIL_USER || 'test@example.com',
-      access_code: 'TEST123'
+      name: "Test Ambassador",
+      email: process.env.EMAIL_USER || "test@example.com",
+      access_code: "TEST123",
     };
-    
+
     const result = await emailService.sendAmbassadorWelcome(testData);
-    
+
     res.json({
       success: true,
-      message: 'Test email sent via MailSlurp',
+      message: "Test email sent via Nodemailer",
       result: result,
-      note: 'Check MailSlurp dashboard to see the email'
+      note:
+        result.method === "ethereal"
+          ? `Check preview URL: ${result.previewUrl}`
+          : "Check the recipient's email inbox",
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: error.message,
-      note: 'Make sure MAILSLURP_API_KEY is set in .env'
+      note: "Make sure Gmail SMTP credentials are configured in server.js",
     });
   }
 });
@@ -277,10 +412,25 @@ const {
 // ============================================
 // NOTIFICATION HELPER FUNCTION
 // ============================================
-async function createNotification(recipientId, recipientType, notificationType, title, message, link = null, applicationId = null, requestId = null, articleId = null) {
+async function createNotification(
+  recipientId,
+  recipientType,
+  notificationType,
+  title,
+  message,
+  link = null,
+  applicationId = null,
+  requestId = null,
+  articleId = null
+) {
   try {
-    console.log('📬 Creating notification for:', recipientId, '- Type:', notificationType);
-    
+    console.log(
+      "📬 Creating notification for:",
+      recipientId,
+      "- Type:",
+      notificationType
+    );
+
     // 🚨 IMPORTANT: Prepare data with all reference IDs null by default
     const notificationData = {
       notification_id: uuidv4(),
@@ -294,9 +444,9 @@ async function createNotification(recipientId, recipientType, notificationType, 
       created_at: new Date().toISOString(),
       application_id: null,
       request_id: null,
-      article_id: null
+      article_id: null,
     };
-    
+
     // 🚨 CRITICAL: Set ONLY ONE reference ID based on what's provided
     // This ensures the database constraint is satisfied
     if (applicationId) {
@@ -310,33 +460,33 @@ async function createNotification(recipientId, recipientType, notificationType, 
       // Leave application_id and request_id as null
     } else {
       // If no reference ID is provided, this might violate the constraint
-      console.log('⚠️ Warning: No reference ID provided for notification');
+      console.log("⚠️ Warning: No reference ID provided for notification");
     }
-    
-    console.log('📝 Notification data:', {
+
+    console.log("📝 Notification data:", {
       type: notificationType,
       hasApplicationId: !!notificationData.application_id,
       hasRequestId: !!notificationData.request_id,
-      hasArticleId: !!notificationData.article_id
+      hasArticleId: !!notificationData.article_id,
     });
 
     // Try to create notification
     const { data, error } = await supabase
-      .from('notifications')
+      .from("notifications")
       .insert([notificationData])
       .select()
       .single();
 
     if (error) {
-      console.log('⚠️ Notification failed:', error.message);
-      console.log('📋 Failed notification data:', notificationData);
+      console.log("⚠️ Notification failed:", error.message);
+      console.log("📋 Failed notification data:", notificationData);
       return null;
     }
 
-    console.log('✅ Notification created successfully');
+    console.log("✅ Notification created successfully");
     return data;
   } catch (error) {
-    console.log('⚠️ Notification error:', error.message);
+    console.log("⚠️ Notification error:", error.message);
     return null;
   }
 }
@@ -349,7 +499,7 @@ app.use(express.json());
 
 // Add debug middleware to see incoming requests
 app.use((req, res, next) => {
-  if (req.path === '/register/partner' && req.method === 'POST') {
+  if (req.path === "/register/partner" && req.method === "POST") {
     console.log("=== REGISTER PARTNER REQUEST ===");
     console.log("Request body:", req.body);
     console.log("=== END REQUEST ===");
@@ -526,13 +676,16 @@ function saveJourneyToDisk() {
 // ============================================
 function ensureUploadsDir() {
   try {
-    const uploadsDir = path.join(__dirname, 'uploads', 'cvs');
+    const uploadsDir = path.join(__dirname, "uploads", "cvs");
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
       console.log(`[uploads] Created directory: ${uploadsDir}`);
     }
   } catch (err) {
-    console.warn('[uploads] Failed to ensure uploads directory:', err?.message || err);
+    console.warn(
+      "[uploads] Failed to ensure uploads directory:",
+      err?.message || err
+    );
   }
 }
 
@@ -543,7 +696,7 @@ function ensureUploadsDir() {
 // Multer configuration for CV uploads
 const cvStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadsDir = path.join(__dirname, 'uploads', 'cvs');
+    const uploadsDir = path.join(__dirname, "uploads", "cvs");
     // Ensure directory exists
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
@@ -551,9 +704,9 @@ const cvStorage = multer.diskStorage({
     cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, 'cv-' + uniqueSuffix + path.extname(file.originalname));
-  }
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, "cv-" + uniqueSuffix + path.extname(file.originalname));
+  },
 });
 
 const cvUpload = multer({
@@ -561,15 +714,17 @@ const cvUpload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
   fileFilter: (req, file, cb) => {
     const allowedTypes = /pdf|doc|docx|txt/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const extname = allowedTypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
     const mimetype = allowedTypes.test(file.mimetype);
-    
+
     if (extname && mimetype) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF, DOC, DOCX, and TXT files are allowed'));
+      cb(new Error("Only PDF, DOC, DOCX, and TXT files are allowed"));
     }
-  }
+  },
 });
 
 // POST: Submit an application
@@ -579,274 +734,294 @@ const cvUpload = multer({
 // ============================================
 
 app.post(
-  '/api/applications/submit',
+  "/api/applications/submit",
   requireAuth,
   // Wrap upload middleware in error handling
   (req, res, next) => {
-    console.log('📁 File upload middleware starting...');
-    cvUpload.single('cv')(req, res, (err) => {
+    console.log("📁 File upload middleware starting...");
+    cvUpload.single("cv")(req, res, (err) => {
       if (err) {
-        console.error('❌ File upload middleware error:', err.message);
-        console.error('Error code:', err.code);
-        
+        console.error("❌ File upload middleware error:", err.message);
+        console.error("Error code:", err.code);
+
         // Multer-specific errors
-        if (err.code === 'LIMIT_FILE_SIZE') {
-          return res.status(400).json({ 
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({
             success: false,
-            error: 'File too large',
-            details: 'Maximum file size is 10MB'
+            error: "File too large",
+            details: "Maximum file size is 10MB",
           });
         }
-        
-        if (err.code === 'LIMIT_FILE_TYPE' || err.code === 'LIMIT_UNEXPECTED_FILE') {
-          return res.status(400).json({ 
+
+        if (
+          err.code === "LIMIT_FILE_TYPE" ||
+          err.code === "LIMIT_UNEXPECTED_FILE"
+        ) {
+          return res.status(400).json({
             success: false,
-            error: 'Invalid file type',
-            details: 'Only PDF, DOC, DOCX, and TXT files are allowed'
+            error: "Invalid file type",
+            details: "Only PDF, DOC, DOCX, and TXT files are allowed",
           });
         }
-        
+
         // Disk storage errors
-        if (err.code === 'ENOENT' || err.code === 'EACCES') {
-          console.error('Storage error:', err);
-          return res.status(500).json({ 
+        if (err.code === "ENOENT" || err.code === "EACCES") {
+          console.error("Storage error:", err);
+          return res.status(500).json({
             success: false,
-            error: 'Server storage error',
-            details: 'Unable to save file. Please try again later.'
+            error: "Server storage error",
+            details: "Unable to save file. Please try again later.",
           });
         }
-        
+
         // Other multer errors
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          error: 'File upload failed',
-          details: err.message 
+          error: "File upload failed",
+          details: err.message,
         });
       }
-      
+
       // File uploaded successfully
-      console.log('✅ File upload middleware completed');
-      console.log('Uploaded file:', req.file ? req.file.filename : 'No file');
+      console.log("✅ File upload middleware completed");
+      console.log("Uploaded file:", req.file ? req.file.filename : "No file");
       next();
     });
   },
   async (req, res) => {
-    console.log('\n🚀 ========== APPLICATION SUBMISSION START ==========');
-    
+    console.log("\n🚀 ========== APPLICATION SUBMISSION START ==========");
+
     try {
-      console.log('📋 Step 1: Request received');
-      console.log('   Body:', JSON.stringify(req.body, null, 2));
-      console.log('   File:', req.file ? {
-        filename: req.file.filename,
-        size: req.file.size,
-        mimetype: req.file.mimetype,
-        path: req.file.path
-      } : 'NO FILE');
-      console.log('   Auth:', { userId: req.auth.userId, role: req.auth.role });
-      
-      const { postId, postTitle, subscribeToNewsletter, termsAccepted } = req.body;
+      console.log("📋 Step 1: Request received");
+      console.log("   Body:", JSON.stringify(req.body, null, 2));
+      console.log(
+        "   File:",
+        req.file
+          ? {
+              filename: req.file.filename,
+              size: req.file.size,
+              mimetype: req.file.mimetype,
+              path: req.file.path,
+            }
+          : "NO FILE"
+      );
+      console.log("   Auth:", { userId: req.auth.userId, role: req.auth.role });
+
+      const { postId, postTitle, subscribeToNewsletter, termsAccepted } =
+        req.body;
       const userId = req.auth.userId;
       const userRole = req.auth.role;
 
       // Validation
-      console.log('\n✅ Step 2: Validation');
+      console.log("\n✅ Step 2: Validation");
       if (!postId) {
-        console.log('   ❌ Missing postId');
-        return res.status(400).json({ 
+        console.log("   ❌ Missing postId");
+        return res.status(400).json({
           success: false,
-          error: 'Post ID is required' 
+          error: "Post ID is required",
         });
       }
-      console.log('   ✓ postId:', postId);
+      console.log("   ✓ postId:", postId);
 
       if (!req.file) {
-        console.log('   ❌ Missing CV file');
-        return res.status(400).json({ 
+        console.log("   ❌ Missing CV file");
+        return res.status(400).json({
           success: false,
-          error: 'CV file is required' 
+          error: "CV file is required",
         });
       }
-      console.log('   ✓ CV file:', req.file.filename);
+      console.log("   ✓ CV file:", req.file.filename);
 
-      if (termsAccepted !== 'true' && termsAccepted !== true) {
-        console.log('   ❌ Terms not accepted');
-        return res.status(400).json({ 
+      if (termsAccepted !== "true" && termsAccepted !== true) {
+        console.log("   ❌ Terms not accepted");
+        return res.status(400).json({
           success: false,
-          error: 'Terms must be accepted' 
+          error: "Terms must be accepted",
         });
       }
-      console.log('   ✓ Terms accepted');
+      console.log("   ✓ Terms accepted");
 
-      if (userRole !== 'ambassador') {
-        console.log('   ❌ Wrong role:', userRole);
-        return res.status(403).json({ 
+      if (userRole !== "ambassador") {
+        console.log("   ❌ Wrong role:", userRole);
+        return res.status(403).json({
           success: false,
-          error: 'Only ambassadors can submit applications' 
+          error: "Only ambassadors can submit applications",
         });
       }
-      console.log('   ✓ Role verified: ambassador');
+      console.log("   ✓ Role verified: ambassador");
 
       // Lookup ambassador
-      console.log('\n🔍 Step 3: Looking up ambassador');
-      console.log('   Searching for user_id:', userId);
+      console.log("\n🔍 Step 3: Looking up ambassador");
+      console.log("   Searching for user_id:", userId);
 
       const { data: ambassador, error: ambassadorError } = await supabase
-        .from('ambassadors')
-        .select('ambassador_id, first_name, last_name, email, user_id')
-        .eq('user_id', userId)
+        .from("ambassadors")
+        .select("ambassador_id, first_name, last_name, email, user_id")
+        .eq("user_id", userId)
         .single();
 
       if (ambassadorError) {
-        console.error('   ❌ Database error:', ambassadorError);
-        return res.status(500).json({ 
+        console.error("   ❌ Database error:", ambassadorError);
+        return res.status(500).json({
           success: false,
-          error: 'Database error',
-          details: ambassadorError.message 
+          error: "Database error",
+          details: ambassadorError.message,
         });
       }
 
       if (!ambassador) {
-        console.error('   ❌ No ambassador found');
-        return res.status(404).json({ 
+        console.error("   ❌ No ambassador found");
+        return res.status(404).json({
           success: false,
-          error: 'Ambassador profile not found' 
+          error: "Ambassador profile not found",
         });
       }
 
-      console.log('   ✅ Ambassador found:');
-      console.log('      ambassador_id:', ambassador.ambassador_id);
-      console.log('      Name:', `${ambassador.first_name} ${ambassador.last_name}`);
-      console.log('      Email:', ambassador.email);
+      console.log("   ✅ Ambassador found:");
+      console.log("      ambassador_id:", ambassador.ambassador_id);
+      console.log(
+        "      Name:",
+        `${ambassador.first_name} ${ambassador.last_name}`
+      );
+      console.log("      Email:", ambassador.email);
 
       // Check post exists
-      console.log('\n🔍 Step 4: Verifying post');
+      console.log("\n🔍 Step 4: Verifying post");
       const { data: post, error: postError } = await supabase
-        .from('posts')
-        .select('post_id, title, partner_id')
-        .eq('post_id', postId)
+        .from("posts")
+        .select("post_id, title, partner_id")
+        .eq("post_id", postId)
         .single();
 
       if (postError || !post) {
-        console.error('   ❌ Post not found:', postError);
-        return res.status(404).json({ 
+        console.error("   ❌ Post not found:", postError);
+        return res.status(404).json({
           success: false,
-          error: 'Opportunity not found' 
+          error: "Opportunity not found",
         });
       }
 
-      console.log('   ✅ Post found:', post.title);
+      console.log("   ✅ Post found:", post.title);
 
       // Check for existing application
-      console.log('\n🔍 Step 5: Checking for duplicate');
+      console.log("\n🔍 Step 5: Checking for duplicate");
       const { data: existingApp } = await supabase
-        .from('applications')
-        .select('application_id')
-        .eq('post_id', postId)
-        .eq('ambassador_id', ambassador.ambassador_id)
+        .from("applications")
+        .select("application_id")
+        .eq("post_id", postId)
+        .eq("ambassador_id", ambassador.ambassador_id)
         .single();
 
       if (existingApp) {
-        console.log('   ⚠️ Already applied');
-        return res.status(400).json({ 
+        console.log("   ⚠️ Already applied");
+        return res.status(400).json({
           success: false,
-          error: 'You have already applied to this opportunity' 
+          error: "You have already applied to this opportunity",
         });
       }
 
-      console.log('   ✅ No duplicate found');
+      console.log("   ✅ No duplicate found");
 
       // Create application
-      console.log('\n💾 Step 6: Creating application');
+      console.log("\n💾 Step 6: Creating application");
       const applicationId = uuidv4();
-      
+
       const applicationData = {
         application_id: applicationId,
         post_id: postId,
         ambassador_id: ambassador.ambassador_id,
         partner_id: post.partner_id,
         cv_filename: req.file.filename,
-        status: 'pending',
+        status: "pending",
         applied_at: new Date().toISOString(),
-        subscribe_to_newsletter: subscribeToNewsletter === 'true' || subscribeToNewsletter === true,
-        terms_accepted: true
+        subscribe_to_newsletter:
+          subscribeToNewsletter === "true" || subscribeToNewsletter === true,
+        terms_accepted: true,
       };
 
-      console.log('   Data:', JSON.stringify(applicationData, null, 2));
+      console.log("   Data:", JSON.stringify(applicationData, null, 2));
 
       const { data: savedApp, error: dbError } = await supabase
-        .from('applications')
+        .from("applications")
         .insert([applicationData])
         .select()
         .single();
 
       if (dbError) {
-        console.error('   ❌ Database error:', dbError);
-        
+        console.error("   ❌ Database error:", dbError);
+
         // Try to delete the uploaded file if DB insert fails
         try {
           if (req.file && req.file.path) {
             fs.unlinkSync(req.file.path);
-            console.log('   🗑️ Deleted orphaned file:', req.file.path);
+            console.log("   🗑️ Deleted orphaned file:", req.file.path);
           }
         } catch (cleanupError) {
-          console.error('   ⚠️ Failed to delete orphaned file:', cleanupError.message);
+          console.error(
+            "   ⚠️ Failed to delete orphaned file:",
+            cleanupError.message
+          );
         }
-        
-        return res.status(500).json({ 
+
+        return res.status(500).json({
           success: false,
-          error: 'Failed to save application',
-          details: dbError.message 
+          error: "Failed to save application",
+          details: dbError.message,
         });
       }
 
-      console.log('   ✅ Application saved:', savedApp.application_id);
+      console.log("   ✅ Application saved:", savedApp.application_id);
 
       // Create notifications
-      console.log('\n📬 Step 7: Creating notifications');
+      console.log("\n📬 Step 7: Creating notifications");
       try {
         await createNotification(
           userId,
-          'ambassador',
-          'application_submitted',
-          '✅ Application Submitted',
-          `Your application for "${postTitle || post.title}" has been received.`,
+          "ambassador",
+          "application_submitted",
+          "✅ Application Submitted",
+          `Your application for "${
+            postTitle || post.title
+          }" has been received.`,
           `/Partner-Calls.html`,
           applicationId
         );
-        console.log('   ✅ Ambassador notification sent');
+        console.log("   ✅ Ambassador notification sent");
       } catch (notifError) {
-        console.error('   ⚠️ Notification failed:', notifError.message);
+        console.error("   ⚠️ Notification failed:", notifError.message);
         // Don't fail the whole request if notification fails
       }
 
-      console.log('\n🎉 ========== SUCCESS ==========\n');
+      console.log("\n🎉 ========== SUCCESS ==========\n");
 
       return res.json({
         success: true,
         applicationId: savedApp.application_id,
-        message: 'Application submitted successfully!'
+        message: "Application submitted successfully!",
       });
-
     } catch (error) {
-      console.error('\n❌ ========== UNEXPECTED ERROR ==========');
-      console.error('Error:', error.message);
-      console.error('Stack:', error.stack);
-      console.error('=========================================\n');
-      
+      console.error("\n❌ ========== UNEXPECTED ERROR ==========");
+      console.error("Error:", error.message);
+      console.error("Stack:", error.stack);
+      console.error("=========================================\n");
+
       // Try to clean up uploaded file if something unexpected happened
       try {
         if (req.file && req.file.path) {
           fs.unlinkSync(req.file.path);
-          console.log('🗑️ Cleaned up uploaded file due to error');
+          console.log("🗑️ Cleaned up uploaded file due to error");
         }
       } catch (cleanupError) {
-        console.error('Failed to clean up file:', cleanupError.message);
+        console.error("Failed to clean up file:", cleanupError.message);
       }
-      
-      return res.status(500).json({ 
+
+      return res.status(500).json({
         success: false,
-        error: 'Failed to submit application',
-        details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        error: "Failed to submit application",
+        details:
+          process.env.NODE_ENV === "development"
+            ? error.message
+            : "Internal server error",
       });
     }
   }
@@ -855,142 +1030,149 @@ app.post(
 // ============================================
 // 3. CREATE SERVICE (T4L Partners Only)
 // ============================================
-app.post('/api/services', requireAuth, requireRole('partner'), async (req, res) => {
-  try {
-    const userId = req.auth.userId;
-    const { 
-      title, 
-      type, 
-      description, 
-      duration, 
-      capacity, 
-      externalLink, 
-      status,
-      pricing_type,    // ✅ NEW
-      price,           // ✅ NEW
-      currency,        // ✅ NEW
-      price_note       // ✅ NEW
-    } = req.body;
+app.post(
+  "/api/services",
+  requireAuth,
+  requireRole("partner"),
+  async (req, res) => {
+    try {
+      const userId = req.auth.userId;
+      const {
+        title,
+        type,
+        description,
+        duration,
+        capacity,
+        externalLink,
+        status,
+        pricing_type, // ✅ NEW
+        price, // ✅ NEW
+        currency, // ✅ NEW
+        price_note, // ✅ NEW
+      } = req.body;
 
-    console.log('📝 Creating service for partner user_id:', userId);
+      console.log("📝 Creating service for partner user_id:", userId);
 
-    // Validation
-    if (!title || !type || !description) {
-      return res.status(400).json({ 
-        error: 'Title, type, and description are required' 
+      // Validation
+      if (!title || !type || !description) {
+        return res.status(400).json({
+          error: "Title, type, and description are required",
+        });
+      }
+
+      // ✅ Validate pricing_type if provided
+      if (!pricing_type) {
+        return res.status(400).json({
+          error: "Pricing type is required",
+        });
+      }
+
+      // Get partner info
+      const partner = await getUserById(userId, "partner");
+      if (!partner) {
+        return res.status(404).json({ error: "Partner not found" });
+      }
+
+      const partnerId = partner.partner_id;
+
+      const serviceData = {
+        service_id: uuidv4(),
+        partner_id: partnerId,
+        title: title.trim(),
+        type: type,
+        description: description.trim(),
+        duration: duration || null,
+        capacity: capacity || null,
+        external_link: externalLink || null,
+        status: status || "active", // ✅ FIXED: Defaults to 'active'
+        pricing_type: pricing_type,
+        price: price ? parseFloat(price) : null,
+        currency: currency || "USD",
+        price_note: price_note || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      console.log("💾 Saving service with pricing for partner_id:", partnerId);
+
+      const service = await createService(serviceData);
+
+      console.log("✅ Service created:", service.service_id);
+
+      return res.json({
+        success: true,
+        service,
+        message: "Service created successfully",
+      });
+    } catch (error) {
+      console.error("❌ Error creating service:", error);
+      return res.status(500).json({
+        error: "Failed to create service",
+        details: error.message,
       });
     }
-
-    // ✅ Validate pricing_type if provided
-    if (!pricing_type) {
-      return res.status(400).json({ 
-        error: 'Pricing type is required' 
-      });
-    }
-
-    // Get partner info
-    const partner = await getUserById(userId, 'partner');
-    if (!partner) {
-      return res.status(404).json({ error: 'Partner not found' });
-    }
-
-    const partnerId = partner.partner_id;
-
-const serviceData = {
-  service_id: uuidv4(),
-  partner_id: partnerId,
-  title: title.trim(),
-  type: type,
-  description: description.trim(),
-  duration: duration || null,
-  capacity: capacity || null,
-  external_link: externalLink || null,
-  status: status || 'active',  // ✅ FIXED: Defaults to 'active'
-  pricing_type: pricing_type,
-  price: price ? parseFloat(price) : null,
-  currency: currency || 'USD',
-  price_note: price_note || null,
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString()
-};
-
-    console.log('💾 Saving service with pricing for partner_id:', partnerId);
-
-    const service = await createService(serviceData);
-
-    console.log('✅ Service created:', service.service_id);
-
-    return res.json({
-      success: true,
-      service,
-      message: 'Service created successfully'
-    });
-  } catch (error) {
-    console.error('❌ Error creating service:', error);
-    return res.status(500).json({ 
-      error: 'Failed to create service',
-      details: error.message 
-    });
   }
-});
+);
 
-app.post('/api/services/:id/request', requireAuth, async (req, res) => {
-  console.log('🚀 ========== SERVICE REQUEST START ==========');
-  
+app.post("/api/services/:id/request", requireAuth, async (req, res) => {
+  console.log("🚀 ========== SERVICE REQUEST START ==========");
+
   try {
     const serviceId = req.params.id;
     const userId = req.auth.userId;
     const userRole = req.auth.role;
     const { message } = req.body;
 
-    console.log('📮 Requesting service:', { serviceId, userId, userRole });
+    console.log("📮 Requesting service:", { serviceId, userId, userRole });
 
     // 1. Only ambassadors can request
-    if (userRole !== 'ambassador') {
-      return res.status(403).json({ 
-        error: 'Only ambassadors can request services' 
+    if (userRole !== "ambassador") {
+      return res.status(403).json({
+        error: "Only ambassadors can request services",
       });
     }
 
-    console.log('✅ Step 1: Role check passed');
+    console.log("✅ Step 1: Role check passed");
 
     // 2. Get service
     const service = await getServiceById(serviceId);
     if (!service) {
-      return res.status(404).json({ error: 'Service not found' });
+      return res.status(404).json({ error: "Service not found" });
     }
 
-    if (service.status !== 'active') {
-      return res.status(400).json({ error: 'Service is not accepting requests' });
+    if (service.status !== "active") {
+      return res
+        .status(400)
+        .json({ error: "Service is not accepting requests" });
     }
 
-    console.log('✅ Step 2: Service found -', service.title);
+    console.log("✅ Step 2: Service found -", service.title);
 
     // 3. Get ambassador
-    const ambassador = await getUserById(userId, 'ambassador');
+    const ambassador = await getUserById(userId, "ambassador");
     if (!ambassador) {
-      return res.status(404).json({ error: 'Ambassador profile not found' });
+      return res.status(404).json({ error: "Ambassador profile not found" });
     }
 
     const ambassadorId = ambassador.ambassador_id;
-    console.log('✅ Step 3: Ambassador found -', ambassadorId);
+    console.log("✅ Step 3: Ambassador found -", ambassadorId);
 
     // 4. Check if already requested
     const { data: existingRequest } = await supabase
-      .from('service_requests')
-      .select('request_id')
-      .eq('service_id', serviceId)
-      .eq('ambassador_id', ambassadorId)
+      .from("service_requests")
+      .select("request_id")
+      .eq("service_id", serviceId)
+      .eq("ambassador_id", ambassadorId)
       .single();
 
     if (existingRequest) {
-      console.log('⚠️ Already requested');
-      return res.status(400).json({ 
-        error: 'You have already requested this service' 
+      console.log("⚠️ Already requested");
+      return res.status(400).json({
+        error: "You have already requested this service",
       });
     }
 
-    console.log('✅ Step 4: No duplicate found');
+    console.log("✅ Step 4: No duplicate found");
 
     // 5. CREATE THE SERVICE REQUEST (THIS IS THE IMPORTANT PART)
     const requestId = uuidv4();
@@ -999,107 +1181,107 @@ app.post('/api/services/:id/request', requireAuth, async (req, res) => {
       service_id: serviceId,
       ambassador_id: ambassadorId,
       partner_id: service.partner_id,
-      message: message || '',
-      status: 'pending',
-      created_at: new Date().toISOString()
+      message: message || "",
+      status: "pending",
+      created_at: new Date().toISOString(),
     };
 
-    console.log('💾 Creating service request in database:', requestId);
+    console.log("💾 Creating service request in database:", requestId);
 
     const { data: serviceRequest, error: createError } = await supabase
-      .from('service_requests')
+      .from("service_requests")
       .insert([requestData])
       .select()
       .single();
 
     if (createError) {
-      console.error('❌ Database error:', createError);
+      console.error("❌ Database error:", createError);
       throw createError;
     }
 
-    console.log('✅ Step 5: Service request CREATED in database!', requestId);
+    console.log("✅ Step 5: Service request CREATED in database!", requestId);
 
     // 6. CREATE NOTIFICATIONS (WON'T FAIL IF THESE DON'T WORK)
-    const ambassadorName = ambassador.first_name 
-      ? `${ambassador.first_name} ${ambassador.last_name || ''}`.trim()
-      : 'An ambassador';
+    const ambassadorName = ambassador.first_name
+      ? `${ambassador.first_name} ${ambassador.last_name || ""}`.trim()
+      : "An ambassador";
 
-    console.log('📬 Creating notifications...');
+    console.log("📬 Creating notifications...");
 
     // Get partner user_id
-    const partnerUserId = await getPartnerUserIdFromPartnerId(service.partner_id);
-    
+    const partnerUserId = await getPartnerUserIdFromPartnerId(
+      service.partner_id
+    );
+
     if (partnerUserId) {
       // 🚨 CRITICAL FIX: application_id = null, request_id = requestId
       await createNotification(
         partnerUserId,
-        'partner',
-        'service_request',
-        '📋 New Service Request',
+        "partner",
+        "service_request",
+        "📋 New Service Request",
         `${ambassadorName} has requested your service "${service.title}"`,
         `/my-services.html`,
-        null,  // 🚨 MUST BE NULL FOR SERVICE REQUESTS
-        requestId  // 🚨 THIS IS THE SERVICE REQUEST ID
+        null, // 🚨 MUST BE NULL FOR SERVICE REQUESTS
+        requestId // 🚨 THIS IS THE SERVICE REQUEST ID
       );
-      console.log('✅ Partner notification sent');
+      console.log("✅ Partner notification sent");
     }
 
     // Notify ambassador
     await createNotification(
       userId,
-      'ambassador',
-      'service_request_sent',
-      '✅ Service Request Sent',
+      "ambassador",
+      "service_request_sent",
+      "✅ Service Request Sent",
       `Your request for "${service.title}" has been sent to the partner`,
       `/services.html`,
-      null,  // 🚨 MUST BE NULL FOR SERVICE REQUESTS
-      requestId  // 🚨 THIS IS THE SERVICE REQUEST ID
+      null, // 🚨 MUST BE NULL FOR SERVICE REQUESTS
+      requestId // 🚨 THIS IS THE SERVICE REQUEST ID
     );
-    
-    console.log('✅ Ambassador notification sent');
 
-    console.log('\n🎉 ========== SERVICE REQUEST SUCCESS ==========\n');
+    console.log("✅ Ambassador notification sent");
+
+    console.log("\n🎉 ========== SERVICE REQUEST SUCCESS ==========\n");
 
     // 7. RETURN SUCCESS RESPONSE
     return res.json({
       success: true,
       requestId: requestId,
-      message: 'Service request submitted successfully!'
+      message: "Service request submitted successfully!",
     });
-
   } catch (error) {
-    console.error('\n❌ ========== SERVICE REQUEST ERROR ==========');
-    console.error('Error:', error.message);
-    console.error('===========================================\n');
-    
-    return res.status(500).json({ 
-      error: 'Failed to submit service request',
-      details: error.message 
+    console.error("\n❌ ========== SERVICE REQUEST ERROR ==========");
+    console.error("Error:", error.message);
+    console.error("===========================================\n");
+
+    return res.status(500).json({
+      error: "Failed to submit service request",
+      details: error.message,
     });
   }
 });
-
 
 // ============================================
 // PARTNER: Get applications for specific partner - FIXED
 // ============================================
 app.get(
-  '/api/partner/applications',
+  "/api/partner/applications",
   requireAuth,
-  requireRole('partner'),
+  requireRole("partner"),
   async (req, res) => {
     try {
-      const userId = req.auth.userId;  // This is user_id
+      const userId = req.auth.userId; // This is user_id
       const limit = parseInt(req.query.limit) || 20;
       const offset = parseInt(req.query.offset) || 0;
 
-      console.log('📋 Fetching applications for user_id:', userId);
+      console.log("📋 Fetching applications for user_id:", userId);
 
       // ✅ FIX: First get the partner_id from the partners table
       const { data: partner, error: partnerError } = await supabase
-        .from('partners')
-        .select('partner_id')
-        .eq('user_id', userId)  // Lookup by user_id
+        .from("partners")
+        .select("partner_id")
+        .eq("user_id", userId) // Lookup by user_id
         .single();
 
       if (partnerError || !partner) {
@@ -1108,22 +1290,26 @@ app.get(
           items: [],
           total: 0,
           limit,
-          offset
+          offset,
         });
       }
 
-      console.log('✅ Found partner_id:', partner.partner_id);
+      console.log("✅ Found partner_id:", partner.partner_id);
 
       // ✅ Now get applications using the correct partner_id
-      const { data: applications, error, count } = await supabase
-        .from('applications')
-        .select('*', { count: 'exact' })
-        .eq('partner_id', partner.partner_id)  // ✅ Use partner_id from lookup!
-        .order('applied_at', { ascending: false })
+      const {
+        data: applications,
+        error,
+        count,
+      } = await supabase
+        .from("applications")
+        .select("*", { count: "exact" })
+        .eq("partner_id", partner.partner_id) // ✅ Use partner_id from lookup!
+        .order("applied_at", { ascending: false })
         .range(offset, offset + limit - 1);
 
       if (error) {
-        console.error('Error fetching applications:', error);
+        console.error("Error fetching applications:", error);
         throw error;
       }
 
@@ -1132,7 +1318,7 @@ app.get(
           items: [],
           total: 0,
           limit,
-          offset
+          offset,
         });
       }
 
@@ -1140,35 +1326,37 @@ app.get(
       const detailedApplications = await Promise.all(
         applications.map(async (app) => {
           // Get ambassador details
-          let ambassadorName = 'Unknown';
+          let ambassadorName = "Unknown";
           let ambassadorProfile = null;
-          
+
           if (app.ambassador_id) {
             const { data: ambassador } = await supabase
-              .from('ambassadors')
-              .select('first_name, last_name, email, cv_filename')
-              .eq('ambassador_id', app.ambassador_id)
+              .from("ambassadors")
+              .select("first_name, last_name, email, cv_filename")
+              .eq("ambassador_id", app.ambassador_id)
               .single();
-            
+
             if (ambassador) {
-              ambassadorName = `${ambassador.first_name || ''} ${ambassador.last_name || ''}`.trim();
+              ambassadorName = `${ambassador.first_name || ""} ${
+                ambassador.last_name || ""
+              }`.trim();
               ambassadorProfile = {
                 name: ambassadorName,
                 email: ambassador.email,
-                cvFilename: ambassador.cv_filename
+                cvFilename: ambassador.cv_filename,
               };
             }
           }
 
           // Get post title
-          let postTitle = 'Opportunity';
+          let postTitle = "Opportunity";
           if (app.post_id) {
             const { data: post } = await supabase
-              .from('posts')
-              .select('title')
-              .eq('post_id', app.post_id)
+              .from("posts")
+              .select("title")
+              .eq("post_id", app.post_id)
               .single();
-            
+
             if (post) {
               postTitle = post.title;
             }
@@ -1186,24 +1374,24 @@ app.get(
             appliedAt: app.applied_at,
             cvFilename: app.cv_filename,
             subscribeToNewsletter: app.subscribe_to_newsletter,
-            termsAccepted: app.terms_accepted
+            termsAccepted: app.terms_accepted,
           };
         })
       );
 
-      console.log('✅ Found', detailedApplications.length, 'applications');
+      console.log("✅ Found", detailedApplications.length, "applications");
 
       return res.json({
         items: detailedApplications,
         total: count || 0,
         limit,
-        offset
+        offset,
       });
     } catch (error) {
-      console.error('❌ Error fetching partner applications:', error);
-      return res.status(500).json({ 
-        error: 'Failed to fetch applications',
-        details: error.message 
+      console.error("❌ Error fetching partner applications:", error);
+      return res.status(500).json({
+        error: "Failed to fetch applications",
+        details: error.message,
       });
     }
   }
@@ -1211,125 +1399,128 @@ app.get(
 // ============================================
 // TEST ENDPOINT FOR PRESENTATION
 // ============================================
-app.get('/api/test-fix', async (req, res) => {
-  console.log('🧪 TEST: Checking if service request fix works...');
-  
+app.get("/api/test-fix", async (req, res) => {
+  console.log("🧪 TEST: Checking if service request fix works...");
+
   // Test the logic
   const testId = uuidv4();
-  
+
   return res.json({
-    status: 'READY',
-    fix: 'APPLIED',
-    message: 'Service requests now use request_id instead of application_id',
+    status: "READY",
+    fix: "APPLIED",
+    message: "Service requests now use request_id instead of application_id",
     test: {
       correct_format: {
         application_id: null,
-        request_id: testId
+        request_id: testId,
       },
-      timestamp: new Date().toISOString()
-    }
+      timestamp: new Date().toISOString(),
+    },
   });
 });
-
 
 // ============================================
 // PARTNER: Update application status - FIXED
 // ============================================
 app.put(
-  '/api/partner/applications/:id/status',
+  "/api/partner/applications/:id/status",
   requireAuth,
-  requireRole('partner'),
+  requireRole("partner"),
   async (req, res) => {
     try {
-      const userId = req.auth.userId;  // ✅ This is user_id from session
+      const userId = req.auth.userId; // ✅ This is user_id from session
       const applicationId = req.params.id;
       const { status } = req.body;
 
-      if (!status || !['pending', 'accepted', 'rejected'].includes(status)) {
-        return res.status(400).json({ 
-          error: 'Valid status is required (pending, accepted, or rejected)' 
+      if (!status || !["pending", "accepted", "rejected"].includes(status)) {
+        return res.status(400).json({
+          error: "Valid status is required (pending, accepted, or rejected)",
         });
       }
 
-      console.log('📝 Updating application status:', { applicationId, status, userId });
+      console.log("📝 Updating application status:", {
+        applicationId,
+        status,
+        userId,
+      });
 
       // ✅ FIX: First get the partner_id from the partners table
       const { data: partner, error: partnerError } = await supabase
-        .from('partners')
-        .select('partner_id')
-        .eq('user_id', userId)  // ✅ Lookup by user_id
+        .from("partners")
+        .select("partner_id")
+        .eq("user_id", userId) // ✅ Lookup by user_id
         .single();
 
       if (partnerError || !partner) {
         console.error("❌ Partner not found for user_id:", userId);
-        return res.status(404).json({ error: 'Partner not found' });
+        return res.status(404).json({ error: "Partner not found" });
       }
 
-      console.log('✅ Found partner_id:', partner.partner_id);
+      console.log("✅ Found partner_id:", partner.partner_id);
 
       // ✅ Check if application belongs to this partner using partner_id
       const { data: application, error: fetchError } = await supabase
-        .from('applications')
-        .select('*')
-        .eq('application_id', applicationId)
-        .eq('partner_id', partner.partner_id)  // ✅ Use partner_id from lookup!
+        .from("applications")
+        .select("*")
+        .eq("application_id", applicationId)
+        .eq("partner_id", partner.partner_id) // ✅ Use partner_id from lookup!
         .single();
 
       if (fetchError || !application) {
-        console.log('❌ Application not found or unauthorized');
-        return res.status(404).json({ error: 'Application not found' });
+        console.log("❌ Application not found or unauthorized");
+        return res.status(404).json({ error: "Application not found" });
       }
 
-      console.log('✅ Application found, updating status...');
+      console.log("✅ Application found, updating status...");
 
       // ✅ Update status
       const { data: updatedApplication, error: updateError } = await supabase
-        .from('applications')
+        .from("applications")
         .update({ status: status })
-        .eq('application_id', applicationId)
+        .eq("application_id", applicationId)
         .select()
         .single();
 
       if (updateError) {
-        console.error('❌ Error updating application:', updateError);
+        console.error("❌ Error updating application:", updateError);
         throw updateError;
       }
 
-      console.log('✅ Application status updated successfully');
+      console.log("✅ Application status updated successfully");
 
       // Get ambassador and post details for notification
       const { data: ambassador } = await supabase
-        .from('ambassadors')
-        .select('first_name, last_name, email, user_id')
-        .eq('ambassador_id', application.ambassador_id)
+        .from("ambassadors")
+        .select("first_name, last_name, email, user_id")
+        .eq("ambassador_id", application.ambassador_id)
         .single();
 
       const { data: post } = await supabase
-        .from('posts')
-        .select('title')
-        .eq('post_id', application.post_id)
+        .from("posts")
+        .select("title")
+        .eq("post_id", application.post_id)
         .single();
 
-      const ambassadorName = ambassador 
-        ? `${ambassador.first_name || ''} ${ambassador.last_name || ''}`.trim()
-        : 'Ambassador';
-      
-      const postTitle = post ? post.title : 'Opportunity';
+      const ambassadorName = ambassador
+        ? `${ambassador.first_name || ""} ${ambassador.last_name || ""}`.trim()
+        : "Ambassador";
+
+      const postTitle = post ? post.title : "Opportunity";
 
       // Create notification for ambassador
       const statusMessages = {
         accepted: {
-          title: '🎉 Application Accepted!',
-          message: `Great news! Your application for "${postTitle}" has been accepted. The partner will contact you soon.`
+          title: "🎉 Application Accepted!",
+          message: `Great news! Your application for "${postTitle}" has been accepted. The partner will contact you soon.`,
         },
         rejected: {
-          title: '❌ Application Update',
-          message: `Your application for "${postTitle}" was not selected this time. Keep applying to other opportunities!`
+          title: "❌ Application Update",
+          message: `Your application for "${postTitle}" was not selected this time. Keep applying to other opportunities!`,
         },
         pending: {
-          title: '⏳ Application Under Review',
-          message: `Your application for "${postTitle}" is being reviewed by the partner.`
-        }
+          title: "⏳ Application Under Review",
+          message: `Your application for "${postTitle}" is being reviewed by the partner.`,
+        },
       };
 
       const notificationInfo = statusMessages[status];
@@ -1337,214 +1528,259 @@ app.put(
       // ✅ IMPORTANT: Use ambassador's user_id for notification, not ambassador_id
       if (ambassador && ambassador.user_id) {
         await createNotification(
-          ambassador.user_id,  // ✅ Use user_id for notification recipient
-          'ambassador',
-          'application_status_change',
+          ambassador.user_id, // ✅ Use user_id for notification recipient
+          "ambassador",
+          "application_status_change",
           notificationInfo.title,
           notificationInfo.message,
           `/Partner-Calls.html`,
           applicationId
         );
-        console.log('✅ Notification sent to ambassador');
+        console.log("✅ Notification sent to ambassador");
       }
 
       return res.json({
         success: true,
         application: updatedApplication,
         message: `Application status updated to ${status}`,
-        notificationSent: true
+        notificationSent: true,
       });
     } catch (error) {
-      console.error('❌ Error updating application status:', error);
-      return res.status(500).json({ 
-        error: 'Failed to update application status',
-        details: error.message 
+      console.error("❌ Error updating application status:", error);
+      return res.status(500).json({
+        error: "Failed to update application status",
+        details: error.message,
       });
     }
   }
 );
 
-app.put('/api/services/:id', requireAuth, requireRole('partner'), async (req, res) => {
-  try {
-    const serviceId = req.params.id;
-    const userId = req.auth.userId;
-    const updates = req.body;
+app.put(
+  "/api/services/:id",
+  requireAuth,
+  requireRole("partner"),
+  async (req, res) => {
+    try {
+      const serviceId = req.params.id;
+      const userId = req.auth.userId;
+      const updates = req.body;
 
-    console.log('✏️ Updating service:', { serviceId, userId });
+      console.log("✏️ Updating service:", { serviceId, userId });
 
-    // Verify service exists and belongs to this partner
-    const service = await getServiceById(serviceId);
-    if (!service) {
-      return res.status(404).json({ error: 'Service not found' });
-    }
-
-    const partner = await getUserById(userId, 'partner');
-    if (!partner || (partner.partner_id !== service.partner_id && partner.id !== service.partner_id)) {
-      return res.status(403).json({ error: 'Not authorized to update this service' });
-    }
-
-    // Only allow certain fields to be updated
-    const allowedUpdates = ['title', 'description', 'type', 'duration', 'capacity', 'external_link', 'status'];
-    const filteredUpdates = {};
-    
-    allowedUpdates.forEach(field => {
-      if (updates[field] !== undefined) {
-        filteredUpdates[field] = updates[field];
+      // Verify service exists and belongs to this partner
+      const service = await getServiceById(serviceId);
+      if (!service) {
+        return res.status(404).json({ error: "Service not found" });
       }
-    });
 
-    filteredUpdates.updated_at = new Date().toISOString();
+      const partner = await getUserById(userId, "partner");
+      if (
+        !partner ||
+        (partner.partner_id !== service.partner_id &&
+          partner.id !== service.partner_id)
+      ) {
+        return res
+          .status(403)
+          .json({ error: "Not authorized to update this service" });
+      }
 
-    const updatedService = await updateService(serviceId, filteredUpdates);
+      // Only allow certain fields to be updated
+      const allowedUpdates = [
+        "title",
+        "description",
+        "type",
+        "duration",
+        "capacity",
+        "external_link",
+        "status",
+      ];
+      const filteredUpdates = {};
 
-    return res.json({
-      success: true,
-      service: updatedService,
-      message: 'Service updated successfully'
-    });
-  } catch (error) {
-    console.error('❌ Error updating service:', error);
-    return res.status(500).json({ 
-      error: 'Failed to update service',
-      details: error.message 
-    });
-  }
-});
+      allowedUpdates.forEach((field) => {
+        if (updates[field] !== undefined) {
+          filteredUpdates[field] = updates[field];
+        }
+      });
 
-app.put('/api/service-requests/:id/status', requireAuth, requireRole('partner'), async (req, res) => {
-  try {
-    const requestId = req.params.id;
-    const userId = req.auth.userId;
-    const { status } = req.body;
+      filteredUpdates.updated_at = new Date().toISOString();
 
-    console.log('📝 Updating request status:', { requestId, status, userId });
+      const updatedService = await updateService(serviceId, filteredUpdates);
 
-    if (!status || !['pending', 'accepted', 'rejected', 'completed'].includes(status)) {
-      return res.status(400).json({ 
-        error: 'Valid status is required (pending, accepted, rejected, or completed)' 
+      return res.json({
+        success: true,
+        service: updatedService,
+        message: "Service updated successfully",
+      });
+    } catch (error) {
+      console.error("❌ Error updating service:", error);
+      return res.status(500).json({
+        error: "Failed to update service",
+        details: error.message,
       });
     }
-
-    // Get request details
-    const { data: request, error: requestError } = await supabase
-      .from('service_requests')
-      .select('*, services:service_id(title, partner_id)')
-      .eq('request_id', requestId)
-      .single();
-
-    if (requestError || !request) {
-      return res.status(404).json({ error: 'Service request not found' });
-    }
-
-    // Verify partner owns the service
-    const partner = await getUserById(userId, 'partner');
-    if (!partner || (partner.partner_id !== request.partner_id && partner.id !== request.partner_id)) {
-      return res.status(403).json({ error: 'Not authorized to update this request' });
-    }
-
-    // Update status
-    const updatedRequest = await updateServiceRequestStatus(requestId, status);
-
-    // Get ambassador info for notification
-    const { data: ambassador } = await supabase
-      .from('ambassadors')
-      .select('first_name, last_name, email, user_id')
-      .eq('ambassador_id', request.ambassador_id)
-      .single();
-
-    // Create notification for ambassador
-    const statusMessages = {
-      accepted: {
-        title: '🎉 Service Request Accepted!',
-        message: `Your request for "${request.services?.title || 'service'}" has been accepted. The partner will contact you soon.`
-      },
-      rejected: {
-        title: '❌ Service Request Update',
-        message: `Your request for "${request.services?.title || 'service'}" was not accepted at this time.`
-      },
-      completed: {
-        title: '✅ Service Completed',
-        message: `Your service "${request.services?.title || 'service'}" has been marked as completed.`
-      }
-    };
-
-    const notificationInfo = statusMessages[status];
-    
-    // Get ambassador's user_id for notification
-    const ambassadorUserId = await getAmbassadorUserIdFromAmbassadorId(request.ambassador_id);
-    
-    if (ambassadorUserId && notificationInfo) {
-      await createNotification(
-        ambassadorUserId,
-        'ambassador',
-        'service_request_status',
-        notificationInfo.title,
-        notificationInfo.message,
-        `/services.html`,
-        requestId
-      );
-      console.log('✅ Notification sent to ambassador');
-    }
-
-    return res.json({
-      success: true,
-      request: updatedRequest,
-      message: `Request status updated to ${status}`
-    });
-  } catch (error) {
-    console.error('❌ Error updating request status:', error);
-    return res.status(500).json({ 
-      error: 'Failed to update request status',
-      details: error.message 
-    });
   }
-});
+);
+
+app.put(
+  "/api/service-requests/:id/status",
+  requireAuth,
+  requireRole("partner"),
+  async (req, res) => {
+    try {
+      const requestId = req.params.id;
+      const userId = req.auth.userId;
+      const { status } = req.body;
+
+      console.log("📝 Updating request status:", { requestId, status, userId });
+
+      if (
+        !status ||
+        !["pending", "accepted", "rejected", "completed"].includes(status)
+      ) {
+        return res.status(400).json({
+          error:
+            "Valid status is required (pending, accepted, rejected, or completed)",
+        });
+      }
+
+      // Get request details
+      const { data: request, error: requestError } = await supabase
+        .from("service_requests")
+        .select("*, services:service_id(title, partner_id)")
+        .eq("request_id", requestId)
+        .single();
+
+      if (requestError || !request) {
+        return res.status(404).json({ error: "Service request not found" });
+      }
+
+      // Verify partner owns the service
+      const partner = await getUserById(userId, "partner");
+      if (
+        !partner ||
+        (partner.partner_id !== request.partner_id &&
+          partner.id !== request.partner_id)
+      ) {
+        return res
+          .status(403)
+          .json({ error: "Not authorized to update this request" });
+      }
+
+      // Update status
+      const updatedRequest = await updateServiceRequestStatus(
+        requestId,
+        status
+      );
+
+      // Get ambassador info for notification
+      const { data: ambassador } = await supabase
+        .from("ambassadors")
+        .select("first_name, last_name, email, user_id")
+        .eq("ambassador_id", request.ambassador_id)
+        .single();
+
+      // Create notification for ambassador
+      const statusMessages = {
+        accepted: {
+          title: "🎉 Service Request Accepted!",
+          message: `Your request for "${
+            request.services?.title || "service"
+          }" has been accepted. The partner will contact you soon.`,
+        },
+        rejected: {
+          title: "❌ Service Request Update",
+          message: `Your request for "${
+            request.services?.title || "service"
+          }" was not accepted at this time.`,
+        },
+        completed: {
+          title: "✅ Service Completed",
+          message: `Your service "${
+            request.services?.title || "service"
+          }" has been marked as completed.`,
+        },
+      };
+
+      const notificationInfo = statusMessages[status];
+
+      // Get ambassador's user_id for notification
+      const ambassadorUserId = await getAmbassadorUserIdFromAmbassadorId(
+        request.ambassador_id
+      );
+
+      if (ambassadorUserId && notificationInfo) {
+        await createNotification(
+          ambassadorUserId,
+          "ambassador",
+          "service_request_status",
+          notificationInfo.title,
+          notificationInfo.message,
+          `/services.html`,
+          requestId
+        );
+        console.log("✅ Notification sent to ambassador");
+      }
+
+      return res.json({
+        success: true,
+        request: updatedRequest,
+        message: `Request status updated to ${status}`,
+      });
+    } catch (error) {
+      console.error("❌ Error updating request status:", error);
+      return res.status(500).json({
+        error: "Failed to update request status",
+        details: error.message,
+      });
+    }
+  }
+);
 
 // ============================================
 // NOTIFICATION ENDPOINTS
 // ============================================
 
 // Get notifications for current user
-app.get('/api/notifications', requireAuth, async (req, res) => {
+app.get("/api/notifications", requireAuth, async (req, res) => {
   try {
     const userId = req.auth.userId;
     const role = req.auth.role;
     const limit = parseInt(req.query.limit) || 20;
-    const unreadOnly = req.query.unread === 'true';
+    const unreadOnly = req.query.unread === "true";
 
-    console.log('📬 Fetching notifications for:', userId, role);
+    console.log("📬 Fetching notifications for:", userId, role);
 
     let query = supabase
-      .from('notifications')
-      .select('*')
-      .eq('recipient_id', userId)
-      .eq('recipient_type', role)
-      .order('created_at', { ascending: false })
+      .from("notifications")
+      .select("*")
+      .eq("recipient_id", userId)
+      .eq("recipient_type", role)
+      .order("created_at", { ascending: false })
       .limit(limit);
 
     if (unreadOnly) {
-      query = query.eq('read', false);
+      query = query.eq("read", false);
     }
 
     const { data: notifications, error } = await query;
 
     if (error) {
-      console.error('Error fetching notifications:', error);
+      console.error("Error fetching notifications:", error);
       throw error;
     }
 
-    console.log('✅ Found', notifications?.length || 0, 'notifications');
+    console.log("✅ Found", notifications?.length || 0, "notifications");
 
     return res.json({
       notifications: notifications || [],
       total: notifications?.length || 0,
-      unreadCount: notifications?.filter(n => !n.read).length || 0
+      unreadCount: notifications?.filter((n) => !n.read).length || 0,
     });
   } catch (error) {
-    console.error('❌ Error fetching notifications:', error);
-    return res.status(500).json({ 
-      error: 'Failed to fetch notifications',
-      details: error.message 
+    console.error("❌ Error fetching notifications:", error);
+    return res.status(500).json({
+      error: "Failed to fetch notifications",
+      details: error.message,
     });
   }
 });
@@ -1552,94 +1788,103 @@ app.get('/api/notifications', requireAuth, async (req, res) => {
 // ============================================
 // GET AMBASSADOR PORTFOLIO/PROFILE
 // ============================================
-app.get('/api/ambassadors/:id/portfolio', requireAuth, async (req, res) => {
+app.get("/api/ambassadors/:id/portfolio", requireAuth, async (req, res) => {
   try {
     const ambassadorId = req.params.id;
-    
-    console.log('📖 Fetching ambassador portfolio:', ambassadorId);
+
+    console.log("📖 Fetching ambassador portfolio:", ambassadorId);
 
     // Get ambassador basic info
     const { data: ambassador, error: ambError } = await supabase
-      .from('ambassadors')
-      .select('first_name, last_name, email, bio, profile_picture, linkedin_url, portfolio_url, cv_filename')
-      .eq('ambassador_id', ambassadorId)
+      .from("ambassadors")
+      .select(
+        "first_name, last_name, email, bio, profile_picture, linkedin_url, portfolio_url, cv_filename"
+      )
+      .eq("ambassador_id", ambassadorId)
       .single();
 
     if (ambError || !ambassador) {
-      console.log('❌ Ambassador not found:', ambassadorId);
-      return res.status(404).json({ error: 'Ambassador not found' });
+      console.log("❌ Ambassador not found:", ambassadorId);
+      return res.status(404).json({ error: "Ambassador not found" });
     }
 
     // Get ambassador's articles (as portfolio items)
     const { data: articles, error: artError } = await supabase
-      .from('articles')
-      .select('article_id, title, excerpt, content, status, created_at, likes, views')
-      .eq('ambassador_id', ambassadorId)
-      .eq('status', 'published')
-      .order('created_at', { ascending: false })
+      .from("articles")
+      .select(
+        "article_id, title, excerpt, content, status, created_at, likes, views"
+      )
+      .eq("ambassador_id", ambassadorId)
+      .eq("status", "published")
+      .order("created_at", { ascending: false })
       .limit(5);
 
     if (artError) {
-      console.error('Error fetching articles:', artError);
+      console.error("Error fetching articles:", artError);
     }
 
     // Get ambassador's journey progress
     const { data: journeyProgress } = await supabase
-      .from('journey_progress')
-      .select('current_month, completed_tasks')
-      .eq('ambassador_id', ambassadorId)
+      .from("journey_progress")
+      .select("current_month, completed_tasks")
+      .eq("ambassador_id", ambassadorId)
       .single();
 
     // Calculate skills based on completed tasks
     let skills = [];
     if (journeyProgress && journeyProgress.completed_tasks) {
       const completedTasks = journeyProgress.completed_tasks;
-      if (completedTasks['1-linkedin_course']) skills.push('LinkedIn Strategy');
-      if (completedTasks['2-implement_audit']) skills.push('Content Audit');
-      if (completedTasks['2-submit_article_1']) skills.push('Article Writing');
-      if (completedTasks['3-first_event']) skills.push('Event Management');
+      if (completedTasks["1-linkedin_course"]) skills.push("LinkedIn Strategy");
+      if (completedTasks["2-implement_audit"]) skills.push("Content Audit");
+      if (completedTasks["2-submit_article_1"]) skills.push("Article Writing");
+      if (completedTasks["3-first_event"]) skills.push("Event Management");
     }
 
     return res.json({
       success: true,
       ambassador: {
         id: ambassadorId,
-        name: `${ambassador.first_name || ''} ${ambassador.last_name || ''}`.trim(),
+        name: `${ambassador.first_name || ""} ${
+          ambassador.last_name || ""
+        }`.trim(),
         email: ambassador.email,
-        bio: ambassador.bio || 'No bio provided',
+        bio: ambassador.bio || "No bio provided",
         profilePicture: ambassador.profile_picture,
         linkedinUrl: ambassador.linkedin_url,
         portfolioUrl: ambassador.portfolio_url,
         cvFilename: ambassador.cv_filename,
-        skills: skills.length > 0 ? skills : ['Content Creation', 'Community Engagement']
+        skills:
+          skills.length > 0
+            ? skills
+            : ["Content Creation", "Community Engagement"],
       },
       portfolio: {
         articles: articles || [],
         totalArticles: articles?.length || 0,
         // Add other portfolio items here if needed
       },
-      journey: journeyProgress || null
+      journey: journeyProgress || null,
     });
   } catch (error) {
-    console.error('❌ Error fetching ambassador portfolio:', error);
-    return res.status(500).json({ 
-      error: 'Failed to fetch ambassador portfolio',
-      details: error.message 
+    console.error("❌ Error fetching ambassador portfolio:", error);
+    return res.status(500).json({
+      error: "Failed to fetch ambassador portfolio",
+      details: error.message,
     });
   }
 });
 
 // Mark notification as read
-app.patch('/api/notifications/:id/read', requireAuth, async (req, res) => {
+app.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
   try {
     const notificationId = req.params.id;
     const userId = req.auth.userId;
 
     const { data, error } = await supabase
-      .from('notifications')
+      .from("notifications")
       .update({ read: true })
-      .eq('notification_id', notificationId)
-      .eq('recipient_id', userId)
+      .eq("notification_id", notificationId)
+      .eq("recipient_id", userId)
       .select()
       .single();
 
@@ -1647,72 +1892,78 @@ app.patch('/api/notifications/:id/read', requireAuth, async (req, res) => {
 
     return res.json({ success: true, notification: data });
   } catch (error) {
-    console.error('Error marking notification as read:', error);
-    return res.status(500).json({ error: 'Failed to update notification' });
+    console.error("Error marking notification as read:", error);
+    return res.status(500).json({ error: "Failed to update notification" });
   }
 });
 
 // Mark all notifications as read
-app.post('/api/notifications/mark-all-read', requireAuth, async (req, res) => {
+app.post("/api/notifications/mark-all-read", requireAuth, async (req, res) => {
   try {
     const userId = req.auth.userId;
 
     const { error } = await supabase
-      .from('notifications')
+      .from("notifications")
       .update({ read: true })
-      .eq('recipient_id', userId)
-      .eq('read', false);
+      .eq("recipient_id", userId)
+      .eq("read", false);
 
     if (error) throw error;
 
-    return res.json({ success: true, message: 'All notifications marked as read' });
+    return res.json({
+      success: true,
+      message: "All notifications marked as read",
+    });
   } catch (error) {
-    console.error('Error marking all as read:', error);
-    return res.status(500).json({ error: 'Failed to update notifications' });
+    console.error("Error marking all as read:", error);
+    return res.status(500).json({ error: "Failed to update notifications" });
   }
 });
-
 
 // ============================================
 // AMBASSADOR: Get own applications with status - FIXED
 // ============================================
 app.get(
-  '/api/ambassador/applications',
+  "/api/ambassador/applications",
   requireAuth,
-  requireRole('ambassador'),
+  requireRole("ambassador"),
   async (req, res) => {
     try {
-      const userId = req.auth.userId;  // This is user_id
+      const userId = req.auth.userId; // This is user_id
       const limit = parseInt(req.query.limit) || 20;
       const offset = parseInt(req.query.offset) || 0;
 
-      console.log('📋 Fetching applications for user_id:', userId);
+      console.log("📋 Fetching applications for user_id:", userId);
 
       // ✅ FIX: First get the ambassador_id from the ambassadors table
-      const ambassador = await getUserById(userId, 'ambassador');
+      const ambassador = await getUserById(userId, "ambassador");
       if (!ambassador) {
         console.error("❌ Ambassador not found for user_id:", userId);
         return res.json({
           items: [],
           total: 0,
           limit,
-          offset
+          offset,
         });
       }
 
       const ambassadorId = ambassador.ambassador_id || ambassador.id;
-      console.log('✅ Found ambassador_id:', ambassadorId);
+      console.log("✅ Found ambassador_id:", ambassadorId);
 
       // ✅ Now query applications using the correct ambassador_id
-      const { data: applications, error, count } = await supabase
-        .from('applications')
-        .select('*', { count: 'exact' })
-        .eq('ambassador_id', ambassadorId)  // ✅ Use ambassador_id!
-        .order('applied_at', { ascending: false })
+      const {
+        data: applications,
+        error,
+        count,
+      } = await supabase
+        .from("applications")
+        .select("*", { count: "exact" })
+        .eq("ambassador_id", ambassadorId) // ✅ Use ambassador_id!
+        .order("applied_at", { ascending: false })
         .range(offset, offset + limit - 1);
 
       if (error) {
-        console.error('Error fetching applications:', error);
+        console.error("Error fetching applications:", error);
         throw error;
       }
 
@@ -1720,118 +1971,124 @@ app.get(
       const detailedApplications = await Promise.all(
         (applications || []).map(async (app) => {
           const { data: post } = await supabase
-            .from('posts')
-            .select('title, content, category')
-            .eq('post_id', app.post_id)
+            .from("posts")
+            .select("title, content, category")
+            .eq("post_id", app.post_id)
             .single();
 
           return {
             id: app.application_id,
             postId: app.post_id,
-            postTitle: post?.title || 'Opportunity',
-            postContent: post?.content || '',
-            postCategory: post?.category || 'general',
-            status: app.status,  // ✅ Return actual status
+            postTitle: post?.title || "Opportunity",
+            postContent: post?.content || "",
+            postCategory: post?.category || "general",
+            status: app.status, // ✅ Return actual status
             appliedAt: app.applied_at,
             cvFilename: app.cv_filename,
             subscribeToNewsletter: app.subscribe_to_newsletter,
-            termsAccepted: app.terms_accepted
+            termsAccepted: app.terms_accepted,
           };
         })
       );
 
-      console.log('✅ Found', detailedApplications.length, 'applications');
+      console.log("✅ Found", detailedApplications.length, "applications");
 
       return res.json({
         items: detailedApplications,
         total: count || 0,
         limit,
-        offset
+        offset,
       });
     } catch (error) {
-      console.error('❌ Error fetching ambassador applications:', error);
-      return res.status(500).json({ 
-        error: 'Failed to fetch applications',
-        details: error.message 
+      console.error("❌ Error fetching ambassador applications:", error);
+      return res.status(500).json({
+        error: "Failed to fetch applications",
+        details: error.message,
       });
     }
   }
 );
 
-
 // ============================================
 // PARTNER: Get single application by ID - FIXED
 // ============================================
 app.get(
-  '/api/partner/applications/:id',
+  "/api/partner/applications/:id",
   requireAuth,
-  requireRole('partner'),
+  requireRole("partner"),
   async (req, res) => {
     try {
-      const userId = req.auth.userId;  // ✅ This is user_id from session
+      const userId = req.auth.userId; // ✅ This is user_id from session
       const applicationId = req.params.id;
 
-      console.log('📖 Fetching application:', applicationId, 'for user_id:', userId);
+      console.log(
+        "📖 Fetching application:",
+        applicationId,
+        "for user_id:",
+        userId
+      );
 
       // ✅ FIX: First get the partner_id from the partners table
       const { data: partner, error: partnerError } = await supabase
-        .from('partners')
-        .select('partner_id')
-        .eq('user_id', userId)  // ✅ Lookup by user_id
+        .from("partners")
+        .select("partner_id")
+        .eq("user_id", userId) // ✅ Lookup by user_id
         .single();
 
       if (partnerError || !partner) {
         console.error("❌ Partner not found for user_id:", userId);
-        return res.status(404).json({ error: 'Partner not found' });
+        return res.status(404).json({ error: "Partner not found" });
       }
 
-      console.log('✅ Found partner_id:', partner.partner_id);
+      console.log("✅ Found partner_id:", partner.partner_id);
 
       // ✅ Get application and verify it belongs to this partner using partner_id
       const { data: application, error } = await supabase
-        .from('applications')
-        .select('*')
-        .eq('application_id', applicationId)
-        .eq('partner_id', partner.partner_id)  // ✅ Use partner_id from lookup!
+        .from("applications")
+        .select("*")
+        .eq("application_id", applicationId)
+        .eq("partner_id", partner.partner_id) // ✅ Use partner_id from lookup!
         .single();
 
       if (error || !application) {
-        console.log('❌ Application not found or unauthorized');
-        return res.status(404).json({ error: 'Application not found' });
+        console.log("❌ Application not found or unauthorized");
+        return res.status(404).json({ error: "Application not found" });
       }
 
-      console.log('✅ Application found:', application.application_id);
+      console.log("✅ Application found:", application.application_id);
 
       // Get ambassador details
-      let ambassadorName = 'Unknown';
+      let ambassadorName = "Unknown";
       let ambassadorProfile = null;
-      
+
       if (application.ambassador_id) {
         const { data: ambassador } = await supabase
-          .from('ambassadors')
-          .select('first_name, last_name, email, cv_filename')
-          .eq('ambassador_id', application.ambassador_id)
+          .from("ambassadors")
+          .select("first_name, last_name, email, cv_filename")
+          .eq("ambassador_id", application.ambassador_id)
           .single();
-        
+
         if (ambassador) {
-          ambassadorName = `${ambassador.first_name || ''} ${ambassador.last_name || ''}`.trim();
+          ambassadorName = `${ambassador.first_name || ""} ${
+            ambassador.last_name || ""
+          }`.trim();
           ambassadorProfile = {
             name: ambassadorName,
             email: ambassador.email,
-            cvFilename: ambassador.cv_filename
+            cvFilename: ambassador.cv_filename,
           };
         }
       }
 
       // Get post title
-      let postTitle = 'Opportunity';
+      let postTitle = "Opportunity";
       if (application.post_id) {
         const { data: post } = await supabase
-          .from('posts')
-          .select('title')
-          .eq('post_id', application.post_id)
+          .from("posts")
+          .select("title")
+          .eq("post_id", application.post_id)
           .single();
-        
+
         if (post) {
           postTitle = post.title;
         }
@@ -1849,39 +2106,39 @@ app.get(
         appliedAt: application.applied_at,
         cvFilename: application.cv_filename,
         subscribeToNewsletter: application.subscribe_to_newsletter,
-        termsAccepted: application.terms_accepted
+        termsAccepted: application.terms_accepted,
       };
 
-      console.log('✅ Formatted application sent to frontend');
+      console.log("✅ Formatted application sent to frontend");
 
       return res.json({
-        application: formattedApplication
+        application: formattedApplication,
       });
     } catch (error) {
-      console.error('❌ Error fetching application:', error);
-      return res.status(500).json({ 
-        error: 'Failed to fetch application',
-        details: error.message 
+      console.error("❌ Error fetching application:", error);
+      return res.status(500).json({
+        error: "Failed to fetch application",
+        details: error.message,
       });
     }
   }
 );
 
 // Serve uploaded CV files
-app.get('/uploads/cvs/:filename', (req, res) => {
-  const filePath = path.join(__dirname, 'uploads', 'cvs', req.params.filename);
-  
+app.get("/uploads/cvs/:filename", (req, res) => {
+  const filePath = path.join(__dirname, "uploads", "cvs", req.params.filename);
+
   if (fs.existsSync(filePath)) {
     res.sendFile(filePath);
   } else {
-    res.status(404).json({ error: 'File not found' });
+    res.status(404).json({ error: "File not found" });
   }
 });
 
 // ============================================
 // 1. GET ALL SERVICES (For Everyone)
 // ============================================
-app.get('/api/services', requireAuth, async (req, res) => {
+app.get("/api/services", requireAuth, async (req, res) => {
   try {
     const userId = req.auth.userId;
     const userRole = req.auth.role;
@@ -1890,16 +2147,16 @@ app.get('/api/services', requireAuth, async (req, res) => {
     const type = req.query.type;
     const search = req.query.search;
 
-    console.log('📋 Fetching services for:', { userId, userRole });
+    console.log("📋 Fetching services for:", { userId, userRole });
 
-    let filters = { 
-      limit, 
+    let filters = {
+      limit,
       offset,
-      status: 'active'
+      status: "active",
     };
-    
-    if (type && type !== 'all') filters.type = type;
-    if (search && search.trim() !== '') filters.search = search.trim();
+
+    if (type && type !== "all") filters.type = type;
+    if (search && search.trim() !== "") filters.search = search.trim();
 
     const { services, total } = await getServices(filters);
 
@@ -1907,54 +2164,58 @@ app.get('/api/services', requireAuth, async (req, res) => {
     let userPartner = null;
     let userAmbassador = null;
     let userPartnerAsAmbassador = null;
-    
-    if (userRole === 'partner') {
-      userPartner = await getUserById(userId, 'partner');
-      
+
+    if (userRole === "partner") {
+      userPartner = await getUserById(userId, "partner");
+
       // Check if partner also has ambassador profile
       const { data: partnerAmbassador } = await supabase
-        .from('ambassadors')
-        .select('ambassador_id')
-        .eq('user_id', userId)
+        .from("ambassadors")
+        .select("ambassador_id")
+        .eq("user_id", userId)
         .single();
-      
+
       userPartnerAsAmbassador = partnerAmbassador;
-    } else if (userRole === 'ambassador') {
-      userAmbassador = await getUserById(userId, 'ambassador');
+    } else if (userRole === "ambassador") {
+      userAmbassador = await getUserById(userId, "ambassador");
     }
 
     // ✅ OPTIMIZATION: Get all request statuses in one query
     let requestedServiceIds = new Set();
-    if (userRole === 'ambassador' && userAmbassador) {
+    if (userRole === "ambassador" && userAmbassador) {
       const ambassadorId = userAmbassador.ambassador_id || userAmbassador.id;
       const { data: existingRequests } = await supabase
-        .from('service_requests')
-        .select('service_id, status')
-        .eq('ambassador_id', ambassadorId);
-      
-      existingRequests?.forEach(req => requestedServiceIds.add(req.service_id));
-    } else if (userRole === 'partner' && userPartnerAsAmbassador) {
+        .from("service_requests")
+        .select("service_id, status")
+        .eq("ambassador_id", ambassadorId);
+
+      existingRequests?.forEach((req) =>
+        requestedServiceIds.add(req.service_id)
+      );
+    } else if (userRole === "partner" && userPartnerAsAmbassador) {
       // Partner requesting as ambassador
       const { data: existingRequests } = await supabase
-        .from('service_requests')
-        .select('service_id, status')
-        .eq('ambassador_id', userPartnerAsAmbassador.ambassador_id);
-      
-      existingRequests?.forEach(req => requestedServiceIds.add(req.service_id));
+        .from("service_requests")
+        .select("service_id, status")
+        .eq("ambassador_id", userPartnerAsAmbassador.ambassador_id);
+
+      existingRequests?.forEach((req) =>
+        requestedServiceIds.add(req.service_id)
+      );
     }
 
     // Process services
-    const processedServices = services.map(service => {
+    const processedServices = services.map((service) => {
       const processed = { ...service };
-      
+
       // Check ownership
       if (userPartner) {
-        processed.isOwner = (service.partner_id === userPartner.partner_id);
+        processed.isOwner = service.partner_id === userPartner.partner_id;
       }
-      
+
       // Check if requested
       processed.hasRequested = requestedServiceIds.has(service.service_id);
-      
+
       return processed;
     });
 
@@ -1964,13 +2225,13 @@ app.get('/api/services', requireAuth, async (req, res) => {
       services: processedServices,
       total,
       limit,
-      offset
+      offset,
     });
   } catch (error) {
-    console.error('❌ Error fetching services:', error);
-    return res.status(500).json({ 
-      error: 'Failed to fetch services',
-      details: error.message 
+    console.error("❌ Error fetching services:", error);
+    return res.status(500).json({
+      error: "Failed to fetch services",
+      details: error.message,
     });
   }
 });
@@ -1978,153 +2239,179 @@ app.get('/api/services', requireAuth, async (req, res) => {
 // ============================================
 // 8. GET SERVICE REQUESTS (Service Owner Only)
 // ============================================
-app.get('/api/services/:id/requests', requireAuth, requireRole('partner'), async (req, res) => {
-  try {
-    const serviceId = req.params.id;
-    const userId = req.auth.userId;
+app.get(
+  "/api/services/:id/requests",
+  requireAuth,
+  requireRole("partner"),
+  async (req, res) => {
+    try {
+      const serviceId = req.params.id;
+      const userId = req.auth.userId;
 
-    console.log('📋 Fetching requests for service:', { serviceId, userId });
+      console.log("📋 Fetching requests for service:", { serviceId, userId });
 
-    // Verify service exists and belongs to this partner
-    const service = await getServiceById(serviceId);
-    if (!service) {
-      return res.status(404).json({ error: 'Service not found' });
+      // Verify service exists and belongs to this partner
+      const service = await getServiceById(serviceId);
+      if (!service) {
+        return res.status(404).json({ error: "Service not found" });
+      }
+
+      const partner = await getUserById(userId, "partner");
+      if (
+        !partner ||
+        (partner.partner_id !== service.partner_id &&
+          partner.id !== service.partner_id)
+      ) {
+        return res
+          .status(403)
+          .json({ error: "Not authorized to view these requests" });
+      }
+
+      const requests = await getServiceRequests(serviceId);
+
+      // Get ambassador info for each request
+      const requestsWithDetails = await Promise.all(
+        requests.map(async (request) => {
+          const { data: ambassador } = await supabase
+            .from("ambassadors")
+            .select("first_name, last_name, email")
+            .eq("ambassador_id", request.ambassador_id)
+            .single();
+
+          return {
+            ...request,
+            ambassador: ambassador
+              ? {
+                  name: `${ambassador.first_name || ""} ${
+                    ambassador.last_name || ""
+                  }`.trim(),
+                  email: ambassador.email,
+                }
+              : null,
+          };
+        })
+      );
+
+      console.log(`✅ Found ${requestsWithDetails.length} requests`);
+
+      return res.json({
+        service: {
+          id: service.service_id,
+          title: service.title,
+        },
+        requests: requestsWithDetails,
+        total: requestsWithDetails.length,
+      });
+    } catch (error) {
+      console.error("❌ Error fetching service requests:", error);
+      return res.status(500).json({
+        error: "Failed to fetch service requests",
+        details: error.message,
+      });
     }
-
-    const partner = await getUserById(userId, 'partner');
-    if (!partner || (partner.partner_id !== service.partner_id && partner.id !== service.partner_id)) {
-      return res.status(403).json({ error: 'Not authorized to view these requests' });
-    }
-
-    const requests = await getServiceRequests(serviceId);
-
-    // Get ambassador info for each request
-    const requestsWithDetails = await Promise.all(
-      requests.map(async (request) => {
-        const { data: ambassador } = await supabase
-          .from('ambassadors')
-          .select('first_name, last_name, email')
-          .eq('ambassador_id', request.ambassador_id)
-          .single();
-
-        return {
-          ...request,
-          ambassador: ambassador ? {
-            name: `${ambassador.first_name || ''} ${ambassador.last_name || ''}`.trim(),
-            email: ambassador.email
-          } : null
-        };
-      })
-    );
-
-    console.log(`✅ Found ${requestsWithDetails.length} requests`);
-
-    return res.json({
-      service: {
-        id: service.service_id,
-        title: service.title
-      },
-      requests: requestsWithDetails,
-      total: requestsWithDetails.length
-    });
-  } catch (error) {
-    console.error('❌ Error fetching service requests:', error);
-    return res.status(500).json({ 
-      error: 'Failed to fetch service requests',
-      details: error.message 
-    });
   }
-});
+);
 
 // ============================================
 // 6. GET MY SERVICES (T4L Partners Only)
 // ============================================
-app.get('/api/partner/services', requireAuth, requireRole('partner'), async (req, res) => {
-  try {
-    const userId = req.auth.userId;
-    const limit = parseInt(req.query.limit) || 20;
-    const offset = parseInt(req.query.offset) || 0;
-    const status = req.query.status;
+app.get(
+  "/api/partner/services",
+  requireAuth,
+  requireRole("partner"),
+  async (req, res) => {
+    try {
+      const userId = req.auth.userId;
+      const limit = parseInt(req.query.limit) || 20;
+      const offset = parseInt(req.query.offset) || 0;
+      const status = req.query.status;
 
-    console.log('📋 Fetching partner services for:', userId);
+      console.log("📋 Fetching partner services for:", userId);
 
-    const partner = await getUserById(userId, 'partner');
-    if (!partner) {
-      return res.status(404).json({ error: 'Partner not found' });
+      const partner = await getUserById(userId, "partner");
+      if (!partner) {
+        return res.status(404).json({ error: "Partner not found" });
+      }
+
+      const partnerId = partner.partner_id || partner.id;
+
+      let filters = {
+        partnerId,
+        limit,
+        offset,
+      };
+
+      if (status && status !== "all") {
+        filters.status = status;
+      }
+
+      const { services, total } = await getServices(filters);
+
+      // Get request counts for each service
+      const servicesWithRequests = await Promise.all(
+        services.map(async (service) => {
+          const { count: requestCount } = await supabase
+            .from("service_requests")
+            .select("*", { count: "exact", head: true })
+            .eq("service_id", service.service_id);
+
+          return {
+            ...service,
+            requestCount: requestCount || 0,
+          };
+        })
+      );
+
+      console.log(
+        `✅ Found ${servicesWithRequests.length} services for partner`
+      );
+
+      return res.json({
+        services: servicesWithRequests,
+        total,
+        limit,
+        offset,
+      });
+    } catch (error) {
+      console.error("❌ Error fetching partner services:", error);
+      return res.status(500).json({
+        error: "Failed to fetch your services",
+        details: error.message,
+      });
     }
-
-    const partnerId = partner.partner_id || partner.id;
-
-    let filters = { 
-      partnerId,
-      limit, 
-      offset 
-    };
-    
-    if (status && status !== 'all') {
-      filters.status = status;
-    }
-
-    const { services, total } = await getServices(filters);
-
-    // Get request counts for each service
-    const servicesWithRequests = await Promise.all(
-      services.map(async (service) => {
-        const { count: requestCount } = await supabase
-          .from('service_requests')
-          .select('*', { count: 'exact', head: true })
-          .eq('service_id', service.service_id);
-        
-        return {
-          ...service,
-          requestCount: requestCount || 0
-        };
-      })
-    );
-
-    console.log(`✅ Found ${servicesWithRequests.length} services for partner`);
-
-    return res.json({
-      services: servicesWithRequests,
-      total,
-      limit,
-      offset
-    });
-  } catch (error) {
-    console.error('❌ Error fetching partner services:', error);
-    return res.status(500).json({ 
-      error: 'Failed to fetch your services',
-      details: error.message 
-    });
   }
-});
+);
 
-app.get('/api/services/:id', requireAuth, async (req, res) => {
+app.get("/api/services/:id", requireAuth, async (req, res) => {
   try {
     const serviceId = req.params.id;
     const userId = req.auth.userId;
     const userRole = req.auth.role;
 
-    console.log('🔍 Fetching service details:', { serviceId, userId, userRole });
+    console.log("🔍 Fetching service details:", {
+      serviceId,
+      userId,
+      userRole,
+    });
 
     const service = await getServiceById(serviceId);
     if (!service) {
-      return res.status(404).json({ error: 'Service not found' });
+      return res.status(404).json({ error: "Service not found" });
     }
 
     // Get creator info
     let creatorInfo = {};
     if (service.partner_id) {
       const { data: partner } = await supabase
-        .from('partners')
-        .select('organization_name, contact_person')
-        .eq('partner_id', service.partner_id)
+        .from("partners")
+        .select("organization_name, contact_person")
+        .eq("partner_id", service.partner_id)
         .single();
-      
+
       if (partner) {
         creatorInfo = {
           name: partner.contact_person || partner.organization_name,
-          organization: partner.organization_name
+          organization: partner.organization_name,
         };
       }
     }
@@ -2132,18 +2419,18 @@ app.get('/api/services/:id', requireAuth, async (req, res) => {
     // For ambassadors, check if they've requested this service
     let requestStatus = null;
     let hasRequested = false;
-    
-    if (userRole === 'ambassador') {
-      const ambassador = await getUserById(userId, 'ambassador');
+
+    if (userRole === "ambassador") {
+      const ambassador = await getUserById(userId, "ambassador");
       if (ambassador) {
         const ambassadorId = ambassador.ambassador_id || ambassador.id;
         const { data: existingRequest } = await supabase
-          .from('service_requests')
-          .select('status')
-          .eq('service_id', serviceId)
-          .eq('ambassador_id', ambassadorId)
+          .from("service_requests")
+          .select("status")
+          .eq("service_id", serviceId)
+          .eq("ambassador_id", ambassadorId)
           .single();
-        
+
         hasRequested = !!existingRequest;
         requestStatus = existingRequest?.status || null;
       }
@@ -2151,17 +2438,21 @@ app.get('/api/services/:id', requireAuth, async (req, res) => {
 
     // For partners, check if this is their service
     let isOwner = false;
-    if (userRole === 'partner' && service.partner_id) {
-      const partner = await getUserById(userId, 'partner');
-      if (partner && (partner.partner_id === service.partner_id || partner.id === service.partner_id)) {
+    if (userRole === "partner" && service.partner_id) {
+      const partner = await getUserById(userId, "partner");
+      if (
+        partner &&
+        (partner.partner_id === service.partner_id ||
+          partner.id === service.partner_id)
+      ) {
         isOwner = true;
-        
+
         // Get request count for owner
         const { count: requestCount } = await supabase
-          .from('service_requests')
-          .select('*', { count: 'exact', head: true })
-          .eq('service_id', serviceId);
-        
+          .from("service_requests")
+          .select("*", { count: "exact", head: true })
+          .eq("service_id", serviceId);
+
         service.requestCount = requestCount || 0;
       }
     }
@@ -2171,169 +2462,188 @@ app.get('/api/services/:id', requireAuth, async (req, res) => {
       creatorInfo,
       hasRequested,
       requestStatus,
-      isOwner
+      isOwner,
     };
 
     return res.json(response);
   } catch (error) {
-    console.error('❌ Error fetching service details:', error);
-    return res.status(500).json({ 
-      error: 'Failed to fetch service details',
-      details: error.message 
+    console.error("❌ Error fetching service details:", error);
+    return res.status(500).json({
+      error: "Failed to fetch service details",
+      details: error.message,
     });
   }
 });
 
 // 10. GET MY SERVICE REQUESTS (Ambassadors Only)
 // ============================================
-app.get('/api/ambassador/service-requests', requireAuth, requireRole('ambassador'), async (req, res) => {
-  try {
-    const userId = req.auth.userId;
-    const limit = parseInt(req.query.limit) || 20;
-    const offset = parseInt(req.query.offset) || 0;
+app.get(
+  "/api/ambassador/service-requests",
+  requireAuth,
+  requireRole("ambassador"),
+  async (req, res) => {
+    try {
+      const userId = req.auth.userId;
+      const limit = parseInt(req.query.limit) || 20;
+      const offset = parseInt(req.query.offset) || 0;
 
-    console.log('📋 Fetching ambassador service requests for:', userId);
+      console.log("📋 Fetching ambassador service requests for:", userId);
 
-    const ambassador = await getUserById(userId, 'ambassador');
-    if (!ambassador) {
-      return res.status(404).json({ error: 'Ambassador not found' });
+      const ambassador = await getUserById(userId, "ambassador");
+      if (!ambassador) {
+        return res.status(404).json({ error: "Ambassador not found" });
+      }
+
+      const ambassadorId = ambassador.ambassador_id || ambassador.id;
+
+      // Get all service requests for this ambassador
+      const {
+        data: requests,
+        error,
+        count,
+      } = await supabase
+        .from("service_requests")
+        .select("*", { count: "exact" })
+        .eq("ambassador_id", ambassadorId)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) {
+        throw error;
+      }
+
+      // Get service details for each request
+      const requestsWithDetails = await Promise.all(
+        (requests || []).map(async (request) => {
+          const { data: service } = await supabase
+            .from("services")
+            .select("title, type, description, status as service_status")
+            .eq("service_id", request.service_id)
+            .single();
+
+          const { data: partner } = await supabase
+            .from("partners")
+            .select("organization_name, contact_person")
+            .eq("partner_id", request.partner_id)
+            .single();
+
+          return {
+            ...request,
+            service: service || { title: "Unknown Service" },
+            partner: partner || { organization_name: "Unknown Partner" },
+          };
+        })
+      );
+
+      console.log(`✅ Found ${requestsWithDetails.length} service requests`);
+
+      return res.json({
+        requests: requestsWithDetails,
+        total: count || 0,
+        limit,
+        offset,
+      });
+    } catch (error) {
+      console.error("❌ Error fetching ambassador service requests:", error);
+      return res.status(500).json({
+        error: "Failed to fetch your service requests",
+        details: error.message,
+      });
     }
-
-    const ambassadorId = ambassador.ambassador_id || ambassador.id;
-
-    // Get all service requests for this ambassador
-    const { data: requests, error, count } = await supabase
-      .from('service_requests')
-      .select('*', { count: 'exact' })
-      .eq('ambassador_id', ambassadorId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (error) {
-      throw error;
-    }
-
-    // Get service details for each request
-    const requestsWithDetails = await Promise.all(
-      (requests || []).map(async (request) => {
-        const { data: service } = await supabase
-          .from('services')
-          .select('title, type, description, status as service_status')
-          .eq('service_id', request.service_id)
-          .single();
-
-        const { data: partner } = await supabase
-          .from('partners')
-          .select('organization_name, contact_person')
-          .eq('partner_id', request.partner_id)
-          .single();
-
-        return {
-          ...request,
-          service: service || { title: 'Unknown Service' },
-          partner: partner || { organization_name: 'Unknown Partner' }
-        };
-      })
-    );
-
-    console.log(`✅ Found ${requestsWithDetails.length} service requests`);
-
-    return res.json({
-      requests: requestsWithDetails,
-      total: count || 0,
-      limit,
-      offset
-    });
-  } catch (error) {
-    console.error('❌ Error fetching ambassador service requests:', error);
-    return res.status(500).json({ 
-      error: 'Failed to fetch your service requests',
-      details: error.message 
-    });
   }
-});
+);
 
 // ============================================
 // SERVICES HTML PAGE ROUTES
 // ============================================
 
 // Services page (for everyone)
-app.get('/services.html', requireAuth, async (req, res) => {
+app.get("/services.html", requireAuth, async (req, res) => {
   try {
     const user = await getUserById(req.auth.userId, req.auth.role);
     if (!user) {
-      return res.redirect('/signin');
+      return res.redirect("/signin");
     }
-    console.log('✅ Serving services.html to:', user.email);
-    res.sendFile(path.join(__dirname, 'public', 'services.html'));
+    console.log("✅ Serving services.html to:", user.email);
+    res.sendFile(path.join(__dirname, "public", "services.html"));
   } catch (error) {
-    console.error('Error serving services page:', error);
-    return res.redirect('/signin');
+    console.error("Error serving services page:", error);
+    return res.redirect("/signin");
   }
 });
 
 // Create service page (for T4L partners only)
-app.get('/create-service.html', requireAuth, requireRole('partner'), async (req, res) => {
-  try {
-    const user = await getUserById(req.auth.userId, 'partner');
-    if (!user) {
-      return res.redirect('/partner-signin');
+app.get(
+  "/create-service.html",
+  requireAuth,
+  requireRole("partner"),
+  async (req, res) => {
+    try {
+      const user = await getUserById(req.auth.userId, "partner");
+      if (!user) {
+        return res.redirect("/partner-signin");
+      }
+      console.log("✅ Serving create-service.html to partner:", user.email);
+      res.sendFile(path.join(__dirname, "public", "create-service.html"));
+    } catch (error) {
+      console.error("Error serving create service page:", error);
+      return res.redirect("/partner-signin");
     }
-    console.log('✅ Serving create-service.html to partner:', user.email);
-    res.sendFile(path.join(__dirname, 'public', 'create-service.html'));
-  } catch (error) {
-    console.error('Error serving create service page:', error);
-    return res.redirect('/partner-signin');
   }
-});
+);
 
 // My services page (for T4L partners only)
-app.get('/my-services.html', requireAuth, requireRole('partner'), async (req, res) => {
-  try {
-    const user = await getUserById(req.auth.userId, 'partner');
-    if (!user) {
-      return res.redirect('/partner-signin');
+app.get(
+  "/my-services.html",
+  requireAuth,
+  requireRole("partner"),
+  async (req, res) => {
+    try {
+      const user = await getUserById(req.auth.userId, "partner");
+      if (!user) {
+        return res.redirect("/partner-signin");
+      }
+      console.log("✅ Serving my-services.html to partner:", user.email);
+      res.sendFile(path.join(__dirname, "public", "my-services.html"));
+    } catch (error) {
+      console.error("Error serving my services page:", error);
+      return res.redirect("/partner-signin");
     }
-    console.log('✅ Serving my-services.html to partner:', user.email);
-    res.sendFile(path.join(__dirname, 'public', 'my-services.html'));
-  } catch (error) {
-    console.error('Error serving my services page:', error);
-    return res.redirect('/partner-signin');
   }
-});
+);
 // Add this TEMPORARY debug endpoint
-app.get('/api/debug/session', requireAuth, async (req, res) => {
+app.get("/api/debug/session", requireAuth, async (req, res) => {
   try {
     const userId = req.auth.userId;
     const role = req.auth.role;
-    
-    console.log('🔍 SESSION DEBUG:');
-    console.log('   user_id from session:', userId);
-    console.log('   role from session:', role);
-    
+
+    console.log("🔍 SESSION DEBUG:");
+    console.log("   user_id from session:", userId);
+    console.log("   role from session:", role);
+
     // Check if user exists
     const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('user_id, email, user_type')
-      .eq('user_id', userId)
+      .from("users")
+      .select("user_id, email, user_type")
+      .eq("user_id", userId)
       .single();
-    
-    console.log('   User in users table:', user);
-    
+
+    console.log("   User in users table:", user);
+
     // Check if ambassador exists
     const { data: ambassador, error: ambError } = await supabase
-      .from('ambassadors')
-      .select('ambassador_id, user_id, email, first_name, last_name')
-      .eq('user_id', userId)
+      .from("ambassadors")
+      .select("ambassador_id, user_id, email, first_name, last_name")
+      .eq("user_id", userId)
       .single();
-    
-    console.log('   Ambassador found:', ambassador);
-    
+
+    console.log("   Ambassador found:", ambassador);
+
     return res.json({
       session: { userId, role },
       user: user,
       ambassador: ambassador,
-      errors: { userError, ambError }
+      errors: { userError, ambError },
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -2623,7 +2933,6 @@ app.get("/partner-signin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "partner-signin.html"));
 });
 
-
 app.get("/signup", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "signup.html"));
 });
@@ -2690,7 +2999,7 @@ app.post("/register/ambassador", async (req, res) => {
     return res.json({
       success: true,
       message: "Registration successful",
-      redirect: "/signin?registered=true"
+      redirect: "/signin?registered=true",
     });
   } catch (error) {
     console.error("Registration error:", error);
@@ -2707,7 +3016,7 @@ app.post("/register/partner", async (req, res) => {
   try {
     console.log("📝 Partner registration request received");
     console.log("Request body:", req.body);
-    
+
     // Extract fields
     const email = req.body.email;
     const access_code = req.body.access_code;
@@ -2719,7 +3028,13 @@ app.post("/register/partner", async (req, res) => {
     const partnerType = req.body.partnerType;
 
     // Validation
-    if (!email || !access_code || !password || !organizationName || !contactName) {
+    if (
+      !email ||
+      !access_code ||
+      !password ||
+      !organizationName ||
+      !contactName
+    ) {
       console.log("❌ Missing required fields!");
       return res.status(400).json({ error: "All fields required" });
     }
@@ -2732,9 +3047,9 @@ app.post("/register/partner", async (req, res) => {
     // ✅ FIX: Check for orphaned user records
     // First, check if email exists in users table AT ALL
     const { data: existingUserCheck, error: userCheckError } = await supabase
-      .from('users')
-      .select('user_id, user_type')
-      .eq('email', emailLower);
+      .from("users")
+      .select("user_id, user_type")
+      .eq("email", emailLower);
 
     if (userCheckError) {
       console.error("❌ Error checking existing users:", userCheckError);
@@ -2743,21 +3058,23 @@ app.post("/register/partner", async (req, res) => {
 
     if (existingUserCheck && existingUserCheck.length > 0) {
       const existingUser = existingUserCheck[0];
-      
+
       console.log("⚠️ Found existing user:", existingUser);
 
       // Check if this is an orphaned partner user (in users table but not in partners table)
-      if (existingUser.user_type === 'partner') {
+      if (existingUser.user_type === "partner") {
         const { data: partnerProfile, error: partnerError } = await supabase
-          .from('partners')
-          .select('partner_id')
-          .eq('user_id', existingUser.user_id)
+          .from("partners")
+          .select("partner_id")
+          .eq("user_id", existingUser.user_id)
           .single();
 
-        if (partnerError && partnerError.code === 'PGRST116') {
+        if (partnerError && partnerError.code === "PGRST116") {
           // This is an orphaned user - has user record but no partner profile
-          console.log("🔧 Found orphaned user record - attempting to create partner profile");
-          
+          console.log(
+            "🔧 Found orphaned user record - attempting to create partner profile"
+          );
+
           // Try to create the missing partner profile
           const partnerData = {
             user_id: existingUser.user_id,
@@ -2769,25 +3086,30 @@ app.post("/register/partner", async (req, res) => {
           };
 
           const { data: newPartner, error: createPartnerError } = await supabase
-            .from('partners')
+            .from("partners")
             .insert([partnerData])
             .select()
             .single();
 
           if (createPartnerError) {
-            console.error("❌ Failed to create partner profile:", createPartnerError);
-            return res.status(500).json({ 
+            console.error(
+              "❌ Failed to create partner profile:",
+              createPartnerError
+            );
+            return res.status(500).json({
               error: "Failed to complete registration",
-              details: "Please contact support to fix your account"
+              details: "Please contact support to fix your account",
             });
           }
 
-          console.log("✅ Successfully created partner profile for orphaned user");
-          
+          console.log(
+            "✅ Successfully created partner profile for orphaned user"
+          );
+
           return res.json({
             success: true,
             message: "Registration completed successfully",
-            redirect: "/partner-signin?registered=true"
+            redirect: "/partner-signin?registered=true",
           });
         } else if (!partnerError) {
           // Partner already exists completely
@@ -2797,8 +3119,8 @@ app.post("/register/partner", async (req, res) => {
       } else {
         // Email exists but for a different user type
         console.log("❌ Email already registered as", existingUser.user_type);
-        return res.status(409).json({ 
-          error: `This email is already registered as a ${existingUser.user_type}` 
+        return res.status(409).json({
+          error: `This email is already registered as a ${existingUser.user_type}`,
         });
       }
     }
@@ -2824,33 +3146,33 @@ app.post("/register/partner", async (req, res) => {
     };
 
     console.log("💾 Creating partner in database...");
-    
+
     // Create user in database
     const newUser = await createUser(userData, "partner");
 
     console.log("✅ Partner created successfully:", {
       partner_id: newUser.partner_id,
-      email: newUser.email
+      email: newUser.email,
     });
 
     return res.json({
       success: true,
-      message: "Registration successful", 
-      redirect: "/partner-signin?registered=true"
+      message: "Registration successful",
+      redirect: "/partner-signin?registered=true",
     });
-
   } catch (error) {
     console.error("❌ Partner registration error:", error);
     console.error("Error stack:", error.stack);
-    
+
     // Better error message for duplicate key
-    if (error.code === '23505') {
+    if (error.code === "23505") {
       return res.status(409).json({
         error: "Email already registered",
-        details: "This email is already in use. Please sign in or use a different email."
+        details:
+          "This email is already in use. Please sign in or use a different email.",
       });
     }
-    
+
     return res.status(500).json({
       error: "Registration failed",
       details: error.message,
@@ -2858,103 +3180,111 @@ app.post("/register/partner", async (req, res) => {
   }
 });
 
-app.post("/api/admin/cleanup-orphans", requireAuth, requireRole("admin"), async (req, res) => {
-  try {
-    console.log("🧹 Starting orphan cleanup...");
+app.post(
+  "/api/admin/cleanup-orphans",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      console.log("🧹 Starting orphan cleanup...");
 
-    // Find all users in users table
-    const { data: allUsers, error: usersError } = await supabase
-      .from('users')
-      .select('user_id, email, user_type');
+      // Find all users in users table
+      const { data: allUsers, error: usersError } = await supabase
+        .from("users")
+        .select("user_id, email, user_type");
 
-    if (usersError) {
-      throw usersError;
-    }
-
-    const orphans = [];
-
-    // Check each user
-    for (const user of allUsers) {
-      let roleTable, roleIdField;
-      
-      if (user.user_type === 'ambassador') {
-        roleTable = 'ambassadors';
-        roleIdField = 'user_id';
-      } else if (user.user_type === 'partner') {
-        roleTable = 'partners';
-        roleIdField = 'user_id';
-      } else if (user.user_type === 'admin') {
-        roleTable = 'admins';
-        roleIdField = 'user_id';
-      } else {
-        continue;
+      if (usersError) {
+        throw usersError;
       }
 
-      // Check if role record exists
-      const { data: roleRecord, error: roleError } = await supabase
-        .from(roleTable)
-        .select('*')
-        .eq(roleIdField, user.user_id)
-        .single();
+      const orphans = [];
 
-      // If no role record found, this is an orphan
-      if (roleError && roleError.code === 'PGRST116') {
-        orphans.push({
-          user_id: user.user_id,
-          email: user.email,
-          user_type: user.user_type
+      // Check each user
+      for (const user of allUsers) {
+        let roleTable, roleIdField;
+
+        if (user.user_type === "ambassador") {
+          roleTable = "ambassadors";
+          roleIdField = "user_id";
+        } else if (user.user_type === "partner") {
+          roleTable = "partners";
+          roleIdField = "user_id";
+        } else if (user.user_type === "admin") {
+          roleTable = "admins";
+          roleIdField = "user_id";
+        } else {
+          continue;
+        }
+
+        // Check if role record exists
+        const { data: roleRecord, error: roleError } = await supabase
+          .from(roleTable)
+          .select("*")
+          .eq(roleIdField, user.user_id)
+          .single();
+
+        // If no role record found, this is an orphan
+        if (roleError && roleError.code === "PGRST116") {
+          orphans.push({
+            user_id: user.user_id,
+            email: user.email,
+            user_type: user.user_type,
+          });
+        }
+      }
+
+      if (orphans.length === 0) {
+        return res.json({
+          message: "No orphaned records found",
+          orphans: [],
         });
       }
-    }
 
-    if (orphans.length === 0) {
-      return res.json({ 
-        message: "No orphaned records found",
-        orphans: []
+      console.log(`⚠️ Found ${orphans.length} orphaned user records`);
+
+      return res.json({
+        message: `Found ${orphans.length} orphaned records`,
+        orphans: orphans,
+        suggestion: "You can delete these records or complete their profiles",
       });
+    } catch (error) {
+      console.error("❌ Cleanup error:", error);
+      return res.status(500).json({ error: error.message });
     }
-
-    console.log(`⚠️ Found ${orphans.length} orphaned user records`);
-
-    return res.json({
-      message: `Found ${orphans.length} orphaned records`,
-      orphans: orphans,
-      suggestion: "You can delete these records or complete their profiles"
-    });
-
-  } catch (error) {
-    console.error("❌ Cleanup error:", error);
-    return res.status(500).json({ error: error.message });
   }
-});
-app.delete("/api/admin/cleanup-orphan/:user_id", requireAuth, requireRole("admin"), async (req, res) => {
-  try {
-    const userId = req.params.user_id;
+);
+app.delete(
+  "/api/admin/cleanup-orphan/:user_id",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const userId = req.params.user_id;
 
-    console.log("🗑️ Deleting orphaned user:", userId);
+      console.log("🗑️ Deleting orphaned user:", userId);
 
-    // Delete from users table (this will cascade if there are any related records)
-    const { error } = await supabase
-      .from('users')
-      .delete()
-      .eq('user_id', userId);
+      // Delete from users table (this will cascade if there are any related records)
+      const { error } = await supabase
+        .from("users")
+        .delete()
+        .eq("user_id", userId);
 
-    if (error) {
-      throw error;
+      if (error) {
+        throw error;
+      }
+
+      console.log("✅ Orphaned user deleted:", userId);
+
+      return res.json({
+        success: true,
+        message: "Orphaned user deleted successfully",
+      });
+    } catch (error) {
+      console.error("❌ Delete error:", error);
+      return res.status(500).json({ error: error.message });
     }
-
-    console.log("✅ Orphaned user deleted:", userId);
-
-    return res.json({ 
-      success: true,
-      message: "Orphaned user deleted successfully"
-    });
-
-  } catch (error) {
-    console.error("❌ Delete error:", error);
-    return res.status(500).json({ error: error.message });
   }
-});
+);
 
 // ------------------------
 // Admin Registration Endpoint
@@ -2999,7 +3329,7 @@ app.post("/register/admin", async (req, res) => {
     return res.json({
       success: true,
       message: "Admin registration successful",
-      redirect: "/admin-signin.html?registered=true"
+      redirect: "/admin-signin.html?registered=true",
     });
   } catch (error) {
     console.error("Admin registration error:", error);
@@ -3058,13 +3388,13 @@ app.post("/signin", async (req, res) => {
         .json({ error: "Your account is not active. Please contact support." });
     }
 
-// Create session using user_id from normalized data
-const sessionId = await createSessionEnhanced(
-  res,
-  user.user_id,  // ✅ MUST USE user_id, NOT ambassador_id
-  "ambassador",
-  Boolean(rememberMe)
-);
+    // Create session using user_id from normalized data
+    const sessionId = await createSessionEnhanced(
+      res,
+      user.user_id, // ✅ MUST USE user_id, NOT ambassador_id
+      "ambassador",
+      Boolean(rememberMe)
+    );
 
     console.log(`Ambassador signed in: ${emailLower}, Session: ${sessionId}`);
 
@@ -3085,13 +3415,12 @@ const sessionId = await createSessionEnhanced(
   }
 });
 
-
 app.post("/partner-signin", async (req, res) => {
   console.log("=== PARTNER SIGNIN REQUEST ===");
   console.log("Headers:", req.headers);
   console.log("Body:", req.body);
   console.log("=== END REQUEST ===");
-  
+
   try {
     const { email, access_code, password, rememberMe } = req.body || {};
 
@@ -3105,10 +3434,10 @@ app.post("/partner-signin", async (req, res) => {
     const access_codeUpper = access_code.toUpperCase().trim();
 
     console.log("🔍 Looking for partner:", emailLower);
-    
+
     // ✅ FIXED: Use getUserByEmail which handles the two-table lookup
     const user = await getUserByEmail(emailLower, "partner");
-    
+
     if (!user) {
       console.log("❌ No partner found with email:", emailLower);
       return res.status(401).json({ error: "Invalid credentials" });
@@ -3118,14 +3447,14 @@ app.post("/partner-signin", async (req, res) => {
       email: user.email,
       access_code: user.access_code,
       status: user.status,
-      partner_id: user.partner_id
+      partner_id: user.partner_id,
     });
 
     // Check access code
     if (user.access_code !== access_codeUpper) {
       console.log("❌ Access code mismatch:", {
         stored: user.access_code,
-        provided: access_codeUpper
+        provided: access_codeUpper,
       });
       return res.status(401).json({ error: "Invalid credentials" });
     }
@@ -3136,7 +3465,7 @@ app.post("/partner-signin", async (req, res) => {
       salt_length: user.salt.length,
       stored_hash: user.password_hash.substring(0, 20) + "...",
       computed_hash: computedHash.substring(0, 20) + "...",
-      match: computedHash === user.password_hash
+      match: computedHash === user.password_hash,
     });
 
     if (computedHash !== user.password_hash) {
@@ -3151,28 +3480,27 @@ app.post("/partner-signin", async (req, res) => {
     }
 
     console.log("✅ All checks passed - creating session");
-    
+
     // ✅ CORRECT - using user_id
     const sessionId = await createSessionEnhanced(
       res,
-      user.user_id,  // Use the user_id from the users table!
+      user.user_id, // Use the user_id from the users table!
       "partner",
       Boolean(rememberMe)
     );
 
     console.log("✅ Session created:", sessionId);
-    
-    return res.json({ 
-      success: true, 
-      redirect: "/partner-dashboard.html" 
-    });
 
+    return res.json({
+      success: true,
+      redirect: "/partner-dashboard.html",
+    });
   } catch (error) {
     console.error("❌ SIGNIN ERROR:", error);
     console.error("Stack:", error.stack);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: "Sign in failed",
-      details: error.message 
+      details: error.message,
     });
   }
 });
@@ -3182,24 +3510,26 @@ app.post("/admin-signin", async (req, res) => {
   console.log("Body:", req.body);
   console.log("Cookies:", req.headers.cookie);
   console.log("=== END ===");
-  
+
   try {
     const { email, accessCode, password, rememberMe } = req.body || {};
-    
+
     console.log("📝 Step 1: Validation");
     if (!email || !accessCode || !password) {
       console.log("❌ Validation failed");
-      return res.status(400).json({ error: "Email, access code, and password are required" });
+      return res
+        .status(400)
+        .json({ error: "Email, access code, and password are required" });
     }
 
     const emailLower = String(email).toLowerCase().trim();
     const accessCodeUpper = String(accessCode).toUpperCase().trim();
-    
+
     console.log("📝 Step 2: Looking up admin:", emailLower);
 
     // ✅ FIXED: Use getUserByEmail which handles the two-table lookup
     const user = await getUserByEmail(emailLower, "admin");
-    
+
     console.log("📝 Step 3: User lookup result:", user ? "FOUND" : "NOT FOUND");
 
     if (!user) {
@@ -3210,10 +3540,12 @@ app.post("/admin-signin", async (req, res) => {
     console.log("📝 Step 4: Checking access code");
     console.log("  Stored:", user.access_code);
     console.log("  Provided:", accessCodeUpper);
-    
+
     // Verify access code
     if (user.access_code !== accessCodeUpper) {
-      console.log(`❌ Admin sign-in failed: Invalid access code - ${emailLower}`);
+      console.log(
+        `❌ Admin sign-in failed: Invalid access code - ${emailLower}`
+      );
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
@@ -3221,7 +3553,7 @@ app.post("/admin-signin", async (req, res) => {
     // Verify password
     const computedHash = hashPassword(password, user.salt);
     console.log("  Hash match:", computedHash === user.password_hash);
-    
+
     if (computedHash !== user.password_hash) {
       console.log(`❌ Admin sign-in failed: Invalid password - ${emailLower}`);
       return res.status(401).json({ error: "Invalid credentials" });
@@ -3229,7 +3561,7 @@ app.post("/admin-signin", async (req, res) => {
 
     console.log("📝 Step 6: Checking status");
     console.log("  Status:", user.status);
-    
+
     // ✅ Check status (normalized data already has status from users table)
     if (user.status !== "active") {
       console.log(`❌ Admin sign-in failed: Account inactive - ${emailLower}`);
@@ -3239,11 +3571,11 @@ app.post("/admin-signin", async (req, res) => {
     console.log("📝 Step 7: Creating session");
     console.log("  user_id:", user.user_id);
     console.log("  role: admin");
-    
+
     // Create session using user_id from normalized data
     const sessionId = await createSessionEnhanced(
       res,
-      user.user_id,  // ✅ Use user_id, not admin_id
+      user.user_id, // ✅ Use user_id, not admin_id
       "admin",
       Boolean(rememberMe)
     );
@@ -3258,7 +3590,6 @@ app.post("/admin-signin", async (req, res) => {
     return res.status(500).json({ error: "Sign in failed. Please try again." });
   }
 });
-
 
 // ------------------------
 // Protected Pages
@@ -3438,7 +3769,8 @@ app.get("/api/me", requireAuth, async (req, res) => {
       response.name = user.first_name || user.name || "Ambassador";
     } else if (role === "partner") {
       // IMPORTANT: Map contact_person to contactName for frontend
-      response.name = user.contact_person || user.organization_name || "Partner";
+      response.name =
+        user.contact_person || user.organization_name || "Partner";
     } else if (role === "admin") {
       response.name = user.first_name || user.name || "Admin";
     } else {
@@ -4159,20 +4491,42 @@ app.get(
   requireRole("admin"),
   async (req, res) => {
     try {
-      const ambassador = await getUserById(req.params.id, "ambassador");
-      
-      if (!ambassador) {
+      const ambassadorId = req.params.id;
+
+      console.log("🔍 Admin fetching ambassador:", ambassadorId);
+
+      // Instead of just getUserById, you need:
+      const { data: ambassador, error } = await supabase
+        .from("ambassadors")
+        .select(
+          `
+          *,
+          users!inner (
+            access_code,
+            email,
+            status
+          )
+        `
+        )
+        .eq("ambassador_id", ambassadorId)
+        .single();
+
+      if (error || !ambassador) {
+        console.error("Error fetching ambassador:", error);
         return res.status(404).json({ error: "Ambassador not found" });
       }
 
-      console.log('📤 Sending ambassador data with access_code:', ambassador.access_code);
+      console.log(
+        "📤 Sending ambassador data with access_code:",
+        ambassador.users?.access_code
+      );
 
       return res.json({
-        id: ambassador.id,
-        name: ambassador.first_name || ambassador.name || 'Ambassador',
-        email: ambassador.email,
-        access_code: ambassador.access_code,  // ✅ THIS SHOULD NOW WORK!
-        status: ambassador.status,
+        id: ambassador.ambassador_id,
+        name: ambassador.first_name || "Ambassador",
+        email: ambassador.users?.email || ambassador.email,
+        access_code: ambassador.users?.access_code, // ✅ NOW IT WILL WORK!
+        status: ambassador.users?.status || ambassador.status,
         joinDate: ambassador.created_at,
         lastLogin: ambassador.last_login,
         profile: {
@@ -4187,38 +4541,43 @@ app.get(
   }
 );
 
-app.get('/admin/api/articles/:id/notifications', requireAuth, requireRole('admin'), async (req, res) => {
-  try {
-    const articleId = req.params.id;
-    
-    console.log('📬 Fetching notifications for article:', articleId);
+app.get(
+  "/admin/api/articles/:id/notifications",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const articleId = req.params.id;
 
-    // Get all notifications related to this article
-    const { data: notifications, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('article_id', articleId)
-      .order('created_at', { ascending: false });
+      console.log("📬 Fetching notifications for article:", articleId);
 
-    if (error) {
-      console.error('Error fetching article notifications:', error);
-      throw error;
+      // Get all notifications related to this article
+      const { data: notifications, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("article_id", articleId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching article notifications:", error);
+        throw error;
+      }
+
+      console.log("✅ Found", notifications?.length || 0, "notifications");
+
+      return res.json({
+        items: notifications || [],
+        total: notifications?.length || 0,
+      });
+    } catch (error) {
+      console.error("❌ Error fetching article notifications:", error);
+      return res.status(500).json({
+        error: "Failed to fetch notifications",
+        details: error.message,
+      });
     }
-
-    console.log('✅ Found', notifications?.length || 0, 'notifications');
-
-    return res.json({
-      items: notifications || [],
-      total: notifications?.length || 0
-    });
-  } catch (error) {
-    console.error('❌ Error fetching article notifications:', error);
-    return res.status(500).json({ 
-      error: 'Failed to fetch notifications',
-      details: error.message 
-    });
   }
-});
+);
 
 app.post(
   "/admin/api/ambassadors",
@@ -4227,11 +4586,14 @@ app.post(
   async (req, res) => {
     try {
       console.log("📝 Creating ambassador:", req.body);
-      
-      const { first_name, email, access_code } = req.body;  // CHANGED: name → first_name
 
-      if (!first_name || !email || !access_code) {  // CHANGED: name → first_name
-        return res.status(400).json({ error: "Name, email, and access code are required" });
+      const { first_name, email, access_code, password } = req.body; // CHANGED: name → first_name
+
+      if (!first_name || !email || !access_code || !password) {
+        // CHANGED: name → first_name
+        return res.status(400).json({
+          error: "Name, email, access code, and password are required",
+        });
       }
 
       const emailLower = email.toLowerCase().trim();
@@ -4244,28 +4606,32 @@ app.post(
       }
 
       const salt = crypto.randomBytes(8).toString("hex");
-      const hashedPassword = hashPassword("welcome123", salt);
+      const hashedPassword = hashPassword(password, salt);
 
       const userData = {
-        first_name: first_name,  // CHANGED: name → first_name
+        first_name: first_name, // CHANGED: name → first_name
         email: emailLower,
         access_code: accessCodeUpper,
         password_hash: hashedPassword,
         salt: salt,
+        generated_password: password, // Store the plain text password for admin reference
         status: "active",
       };
 
       console.log("💾 Saving ambassador to database:", userData);
-      
+
       const newAmbassador = await createUser(userData, "ambassador");
 
       // Initialize journey progress
-      await upsertJourneyProgress(newAmbassador.ambassador_id || newAmbassador.id, {
-        current_month: 1,
-        completed_tasks: {},
-        start_date: new Date().toISOString(),
-        month_start_dates: { 1: new Date().toISOString() },
-      });
+      await upsertJourneyProgress(
+        newAmbassador.ambassador_id || newAmbassador.id,
+        {
+          current_month: 1,
+          completed_tasks: {},
+          start_date: new Date().toISOString(),
+          month_start_dates: { 1: new Date().toISOString() },
+        }
+      );
 
       console.log("✅ Ambassador created in database:", newAmbassador);
 
@@ -4274,11 +4640,15 @@ app.post(
       const emailResult = await emailService.sendAmbassadorWelcome({
         name: newAmbassador.first_name || first_name,
         email: newAmbassador.email,
-        access_code: newAmbassador.access_code
+        access_code: newAmbassador.access_code,
+        password: password, // Include the generated password in the email
       });
 
       if (!emailResult.success) {
-        console.warn('⚠️  Ambassador created but email failed:', emailResult.error);
+        console.warn(
+          "⚠️  Ambassador created but email failed:",
+          emailResult.error
+        );
         return res.json({
           success: true,
           ambassador: {
@@ -4289,7 +4659,7 @@ app.post(
             status: newAmbassador.status,
           },
           emailSent: false,
-          message: "✅ Ambassador added! (Email failed to send)"
+          message: "✅ Ambassador added! (Email failed to send)",
         });
       }
 
@@ -4305,13 +4675,13 @@ app.post(
           status: newAmbassador.status,
         },
         emailSent: true,
-        message: "✅ Ambassador added! Welcome email sent with access code."
+        message: "✅ Ambassador added! Welcome email sent with access code.",
       });
     } catch (error) {
       console.error("❌ Error creating ambassador:", error);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: "Failed to create ambassador",
-        details: error.message 
+        details: error.message,
       });
     }
   }
@@ -4426,11 +4796,21 @@ app.post(
   async (req, res) => {
     try {
       console.log("📝 Creating partner:", req.body);
-      
-      const { contact_person, organization_name, email, access_code } = req.body;  // CHANGED
 
-      if (!contact_person || !email || !access_code) {  // CHANGED: name → contact_person
-        return res.status(400).json({ error: "Contact person, email, and access code are required" });
+      const {
+        contact_person,
+        organization_name,
+        email,
+        access_code,
+        password,
+      } = req.body; // CHANGED
+
+      if (!contact_person || !email || !access_code || !password) {
+        // CHANGED: name → contact_person
+        return res.status(400).json({
+          error:
+            "Contact person, email, access code, and password are required",
+        });
       }
 
       const emailLower = email.toLowerCase().trim();
@@ -4443,20 +4823,21 @@ app.post(
       }
 
       const salt = crypto.randomBytes(8).toString("hex");
-      const hashedPassword = hashPassword("welcome123", salt);
+      const hashedPassword = hashPassword(password, salt);
 
       const userData = {
-        contact_person: contact_person,          // CHANGED: contact_name → contact_person
-        organization_name: organization_name || "",  // CHANGED: company → organization_name
+        contact_person: contact_person, // CHANGED: contact_name → contact_person
+        organization_name: organization_name || "", // CHANGED: company → organization_name
         email: emailLower,
         access_code: accessCodeUpper,
         password_hash: hashedPassword,
         salt: salt,
+        generated_password: password, // Store the plain text password for admin reference
         status: "approved",
       };
 
       console.log("💾 Saving partner to database:", userData);
-      
+
       const newPartner = await createUser(userData, "partner");
 
       console.log("✅ Partner created in database:", newPartner);
@@ -4467,11 +4848,15 @@ app.post(
         name: newPartner.contact_person || contact_person,
         email: newPartner.email,
         company: newPartner.organization_name || organization_name,
-        access_code: newPartner.access_code
+        access_code: newPartner.access_code,
+        password: password, // Include the generated password in the email
       });
 
       if (!emailResult.success) {
-        console.warn('⚠️  Partner created but email failed:', emailResult.error);
+        console.warn(
+          "⚠️  Partner created but email failed:",
+          emailResult.error
+        );
         return res.json({
           success: true,
           partner: {
@@ -4483,7 +4868,7 @@ app.post(
             status: newPartner.status,
           },
           emailSent: false,
-          message: "✅ Partner added! (Email failed to send)"
+          message: "✅ Partner added! (Email failed to send)",
         });
       }
 
@@ -4500,18 +4885,17 @@ app.post(
           status: newPartner.status,
         },
         emailSent: true,
-        message: "✅ Partner added! Welcome email sent with access code."
+        message: "✅ Partner added! Welcome email sent with access code.",
       });
     } catch (error) {
       console.error("❌ Error creating partner:", error);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: "Failed to create partner",
-        details: error.message 
+        details: error.message,
       });
     }
   }
 );
-
 
 // ============================================
 // ADMIN: Generate Unique Access Codes
@@ -4523,53 +4907,53 @@ async function generateUniqueCode(prefix, maxAttempts = 10) {
     // Generate random 4-digit code
     const randomNum = Math.floor(1000 + Math.random() * 9000);
     const code = `${prefix}-${randomNum}`;
-    
+
     // Check if code exists in database
     const { data: existingUsers, error } = await supabase
-      .from('users')
-      .select('user_id')
-      .eq('access_code', code)
+      .from("users")
+      .select("user_id")
+      .eq("access_code", code)
       .limit(1);
-    
+
     if (error) {
-      console.error('Error checking code uniqueness:', error);
+      console.error("Error checking code uniqueness:", error);
       throw error;
     }
-    
+
     // If no existing user found, code is unique
     if (!existingUsers || existingUsers.length === 0) {
       console.log(`✅ Generated unique code: ${code} (attempt ${attempt + 1})`);
       return code;
     }
-    
+
     console.log(`⚠️ Code ${code} already exists, trying again...`);
   }
-  
+
   // If we couldn't generate a unique code after max attempts
-  throw new Error('Failed to generate unique code after multiple attempts');
+  throw new Error("Failed to generate unique code after multiple attempts");
 }
 
 // Generate unique ambassador code
 app.post(
-  '/api/admin/generate-code/ambassador',
+  "/api/admin/generate-code/ambassador",
   requireAuth,
-  requireRole('admin'),
+  requireRole("admin"),
   async (req, res) => {
     try {
-      console.log('🔑 Generating unique ambassador code...');
-      
-      const code = await generateUniqueCode('T4LA');
-      
+      console.log("🔑 Generating unique ambassador code...");
+
+      const code = await generateUniqueCode("T4LA");
+
       return res.json({
         success: true,
         code: code,
-        message: 'Unique code generated successfully'
+        message: "Unique code generated successfully",
       });
     } catch (error) {
-      console.error('❌ Error generating ambassador code:', error);
+      console.error("❌ Error generating ambassador code:", error);
       return res.status(500).json({
-        error: 'Failed to generate code',
-        details: error.message
+        error: "Failed to generate code",
+        details: error.message,
       });
     }
   }
@@ -4577,25 +4961,75 @@ app.post(
 
 // Generate unique partner code
 app.post(
-  '/api/admin/generate-code/partner',
+  "/api/admin/generate-code/partner",
   requireAuth,
-  requireRole('admin'),
+  requireRole("admin"),
   async (req, res) => {
     try {
-      console.log('🔑 Generating unique partner code...');
-      
-      const code = await generateUniqueCode('T4LP');
-      
+      console.log("🔑 Generating unique partner code...");
+
+      const code = await generateUniqueCode("T4LP");
+
       return res.json({
         success: true,
         code: code,
-        message: 'Unique code generated successfully'
+        message: "Unique code generated successfully",
       });
     } catch (error) {
-      console.error('❌ Error generating partner code:', error);
+      console.error("❌ Error generating partner code:", error);
       return res.status(500).json({
-        error: 'Failed to generate code',
-        details: error.message
+        error: "Failed to generate code",
+        details: error.message,
+      });
+    }
+  }
+);
+
+// Generate secure password
+app.post(
+  "/api/admin/generate-password",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      console.log("🔑 Generating secure password...");
+
+      // Generate a secure random password
+      // 12 characters: mix of uppercase, lowercase, numbers, and special characters
+      const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const lowercase = "abcdefghijklmnopqrstuvwxyz";
+      const numbers = "0123456789";
+      const special = "!@#$%^&*";
+      const allChars = uppercase + lowercase + numbers + special;
+
+      let password = "";
+      // Ensure at least one of each type
+      password += uppercase[Math.floor(Math.random() * uppercase.length)];
+      password += lowercase[Math.floor(Math.random() * lowercase.length)];
+      password += numbers[Math.floor(Math.random() * numbers.length)];
+      password += special[Math.floor(Math.random() * special.length)];
+
+      // Fill the rest randomly
+      for (let i = password.length; i < 12; i++) {
+        password += allChars[Math.floor(Math.random() * allChars.length)];
+      }
+
+      // Shuffle the password
+      password = password
+        .split("")
+        .sort(() => Math.random() - 0.5)
+        .join("");
+
+      return res.json({
+        success: true,
+        password: password,
+        message: "Secure password generated successfully",
+      });
+    } catch (error) {
+      console.error("❌ Error generating password:", error);
+      return res.status(500).json({
+        error: "Failed to generate password",
+        details: error.message,
       });
     }
   }
@@ -4605,60 +5039,134 @@ app.post(
 // ADMIN: Verify code uniqueness (optional check)
 // ============================================
 app.post(
-  '/api/admin/verify-code',
+  "/api/admin/verify-code",
   requireAuth,
-  requireRole('admin'),
+  requireRole("admin"),
   async (req, res) => {
     try {
       const { code } = req.body;
-      
+
       if (!code) {
-        return res.status(400).json({ error: 'Code is required' });
+        return res.status(400).json({ error: "Code is required" });
       }
-      
+
       const { data: existingUsers, error } = await supabase
-        .from('users')
-        .select('user_id, email, user_type')
-        .eq('access_code', code.toUpperCase())
+        .from("users")
+        .select("user_id, email, user_type")
+        .eq("access_code", code.toUpperCase())
         .limit(1);
-      
+
       if (error) throw error;
-      
+
       const isUnique = !existingUsers || existingUsers.length === 0;
-      
+
       return res.json({
         unique: isUnique,
         code: code.toUpperCase(),
-        existingUser: isUnique ? null : {
-          type: existingUsers[0].user_type,
-          email: existingUsers[0].email
-        }
+        existingUser: isUnique
+          ? null
+          : {
+              type: existingUsers[0].user_type,
+              email: existingUsers[0].email,
+            },
       });
     } catch (error) {
-      console.error('Error verifying code:', error);
-      return res.status(500).json({ error: 'Failed to verify code' });
+      console.error("Error verifying code:", error);
+      return res.status(500).json({ error: "Failed to verify code" });
     }
   }
 );
-
 
 // ------------------------
 // Articles APIs
 // ------------------------
 app.get(
-  '/admin/api/articles',
+  "/admin/api/articles",
   requireAuth,
-  requireRole('admin'),
+  requireRole("admin"),
   async (req, res) => {
     try {
       const statusFilter = req.query.status;
-      const articles = await getArticles(
-        statusFilter && statusFilter !== 'all' ? { status: statusFilter } : {}
+      const search = req.query.q;
+
+      // Always join with ambassadors table
+      let query = supabase.from("articles").select(
+        `
+        *,
+        ambassadors!inner (
+          first_name,
+          last_name
+        )
+      `,
+        { count: "exact" }
       );
-      return res.json({ articles });
+
+      // Apply filters
+      if (statusFilter && statusFilter !== "all") {
+        query = query.eq("status", statusFilter);
+      }
+
+      if (search) {
+        query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%`);
+      }
+
+      query = query.order("created_at", { ascending: false });
+
+      const { data: articles, error, count } = await query;
+
+      if (error) throw error;
+
+      // Format for table
+      const formattedArticles = (articles || []).map((article) => {
+        const ambassador = article.ambassadors;
+        const authorName = ambassador
+          ? `${ambassador.first_name || ""} ${
+              ambassador.last_name || ""
+            }`.trim()
+          : "Unknown Author";
+
+        return {
+          id: article.article_id,
+          article_id: article.article_id,
+          title: article.title || "Untitled",
+          authorNameRole: authorName, // ✅ From ambassadors table
+          companyDescription: article.category || "General", // ✅ From article category
+          status: article.status || "pending",
+          createdAt: article.created_at,
+          date: article.created_at
+            ? new Date(article.created_at).toLocaleDateString()
+            : "-",
+          ambassadorName: authorName,
+        };
+      });
+
+      return res.json({
+        items: formattedArticles,
+        total: count || 0,
+      });
     } catch (error) {
-      console.error('Error fetching articles:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      console.error("Error fetching articles:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+// Add to server.js after other admin routes
+app.get(
+  "/admin-journey-tracker.html",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const user = await getUserById(req.auth.userId, "admin");
+      if (!user) {
+        return res.redirect("/admin-signin.html");
+      }
+      res.sendFile(
+        path.join(__dirname, "public", "admin-journey-tracker.html")
+      );
+    } catch (error) {
+      console.error("Admin journey tracker auth error:", error);
+      return res.redirect("/admin-signin.html");
     }
   }
 );
@@ -4666,78 +5174,90 @@ app.get(
 // ============================================
 // ADMIN: GET SINGLE ARTICLE (REPLACE EXISTING)
 // ============================================
-app.get('/admin/api/articles/:id', requireAuth, requireRole('admin'), async (req, res) => {
-  try {
-    const articleId = req.params.id;
 
-    console.log('📖 Admin fetching article:', articleId);
+app.get(
+  "/admin/api/articles/:id",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const articleId = req.params.id;
 
-    // Get article
-    const { data: articles, error } = await supabase
-      .from('articles')
-      .select('*')
-      .eq('article_id', articleId);
+      console.log("📖 Fetching article with ambassador info:", articleId);
 
-    if (error) {
-      console.error('Error fetching article:', error);
-      throw error;
-    }
-
-    if (!articles || articles.length === 0) {
-      return res.status(404).json({ error: 'Article not found' });
-    }
-
-    const article = articles[0];
-
-    // Get ambassador info
-    let ambassadorName = 'Unknown';
-    let ambassadorEmail = '-';
-    
-    if (article.ambassador_id) {
-      const { data: ambassador } = await supabase
-        .from('ambassadors')
-        .select('first_name, last_name, email')
-        .eq('ambassador_id', article.ambassador_id)
+      // Get article WITH ambassador join
+      const { data: article, error } = await supabase
+        .from("articles")
+        .select(
+          `
+        *,
+        ambassadors!inner (
+          first_name,
+          last_name,
+          email,
+          user_id,
+          ambassador_id
+        )
+      `
+        )
+        .eq("article_id", articleId)
         .single();
-      
-      if (ambassador) {
-        ambassadorName = `${ambassador.first_name || ''} ${ambassador.last_name || ''}`.trim();
-        ambassadorEmail = ambassador.email;
+
+      if (error) {
+        console.error("❌ Database error:", error);
+        return res.status(500).json({
+          error: "Database error",
+          details: error.message,
+        });
       }
+
+      if (!article) {
+        console.log("❌ Article not found:", articleId);
+        return res.status(404).json({ error: "Article not found" });
+      }
+
+      // Extract ambassador info
+      const ambassador = article.ambassadors;
+      const ambassadorName = ambassador
+        ? `${ambassador.first_name || ""} ${ambassador.last_name || ""}`.trim()
+        : "Unknown Ambassador";
+
+      const ambassadorEmail = ambassador?.email || "unknown@example.com";
+      const ambassadorId = ambassador?.ambassador_id;
+
+      // Build response
+      const response = {
+        id: article.article_id,
+        article_id: article.article_id,
+        ambassador_id: ambassadorId,
+        title: article.title || "Untitled",
+        content: article.content || "",
+        contentHtml: article.content || "<p>No content</p>",
+        excerpt: article.excerpt || "",
+        authorNameRole: ambassadorName,
+        author_name: ambassadorName,
+        authorEmail: ambassadorEmail,
+        status: article.status || "pending",
+        publication_link: article.publication_link || null,
+        category: article.category || "general",
+        createdAt: article.created_at,
+        updatedAt: article.updated_at,
+        views: article.views || 0,
+        likes: article.likes || 0,
+      };
+
+      console.log("✅ Article sent with ambassador_id:", ambassadorId);
+
+      return res.json(response);
+    } catch (error) {
+      console.error("❌ Unexpected error:", error);
+      return res.status(500).json({
+        error: "Failed to fetch article",
+        details: error.message,
+      });
     }
-
-    // Return FULL content for admin
-    const responseArticle = {
-      id: article.article_id,
-      article_id: article.article_id,
-      title: article.title,
-      content: article.content,
-      contentHtml: article.content,
-      excerpt: article.excerpt,
-      byline: article.author_name || article.author_role || ambassadorName,
-      authorNameRole: article.author_name || article.author_role || ambassadorName,
-      companyDescription: article.category || '-',
-      status: article.status,
-      createdAt: article.created_at,
-      updatedAt: article.updated_at,
-      views: article.views || 0,
-      likes: article.likes || 0,
-      ambassadorName: ambassadorName,
-      ambassadorEmail: ambassadorEmail
-    };
-
-    console.log('✅ Article sent to admin with full content');
-
-    res.json(responseArticle);
-
-  } catch (error) {
-    console.error('❌ Error fetching article:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch article',
-      details: error.message 
-    });
   }
-});
+);
 
 app.post(
   "/admin/api/articles",
@@ -4805,6 +5325,73 @@ app.put(
     }
   }
 );
+app.patch(
+  "/admin/api/articles/:id",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const articleId = req.params.id;
+      const { status, publication_link } = req.body;
+
+      console.log("📝 Updating article status:", {
+        articleId,
+        status,
+        publication_link,
+      });
+
+      // Check if article exists
+      const { data: existingArticle, error: fetchError } = await supabase
+        .from("articles")
+        .select("*")
+        .eq("article_id", articleId)
+        .single();
+
+      if (fetchError || !existingArticle) {
+        return res.status(404).json({ error: "Article not found" });
+      }
+
+      const updates = {};
+      if (status) updates.status = status;
+      if (publication_link) updates.publication_link = publication_link;
+      updates.updated_at = new Date().toISOString();
+
+      const { data: updatedArticle, error: updateError } = await supabase
+        .from("articles")
+        .update(updates)
+        .eq("article_id", articleId)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error("Error updating article:", updateError);
+        throw updateError;
+      }
+
+      console.log("✅ Article updated successfully:", {
+        article_id: updatedArticle.article_id,
+        old_status: existingArticle.status,
+        new_status: updatedArticle.status,
+        status_match:
+          existingArticle.status === updatedArticle.status
+            ? "⚠️ SAME"
+            : "✅ CHANGED",
+      });
+
+      return res.json({
+        success: true,
+        article: updatedArticle,
+        message: `Article status updated to ${status}`,
+      });
+    } catch (error) {
+      console.error("❌ Error updating article:", error);
+      return res.status(500).json({
+        error: "Failed to update article status",
+        details: error.message,
+      });
+    }
+  }
+);
 
 app.delete(
   "/admin/api/articles/:id",
@@ -4836,52 +5423,52 @@ app.delete(
 
 // 1. ✅ LATEST ROUTE - MUST COME FIRST (SPECIFIC)
 app.get(
-  '/api/ambassador/articles/latest',
+  "/api/ambassador/articles/latest",
   requireAuth,
-  requireRole('ambassador'),
+  requireRole("ambassador"),
   async (req, res) => {
     try {
       const userId = req.auth.userId;
 
-      console.log('📖 Fetching latest article for user_id:', userId);
+      console.log("📖 Fetching latest article for user_id:", userId);
 
       // ✅ Get ambassador using getUserById
-      const ambassador = await getUserById(userId, 'ambassador');
+      const ambassador = await getUserById(userId, "ambassador");
       if (!ambassador) {
         console.error("❌ Ambassador not found for user_id:", userId);
-        return res.status(404).json({ error: 'Ambassador not found' });
+        return res.status(404).json({ error: "Ambassador not found" });
       }
 
       const ambassadorId = ambassador.ambassador_id || ambassador.id;
-      console.log('✅ Found ambassador_id:', ambassadorId);
+      console.log("✅ Found ambassador_id:", ambassadorId);
 
       // Get most recent article for this ambassador
       const { data: articles, error } = await supabase
-        .from('articles')
-        .select('*')
-        .eq('ambassador_id', ambassadorId)
-        .order('created_at', { ascending: false })
+        .from("articles")
+        .select("*")
+        .eq("ambassador_id", ambassadorId)
+        .order("created_at", { ascending: false })
         .limit(1);
 
       if (error) {
-        console.error('Error fetching latest article:', error);
+        console.error("Error fetching latest article:", error);
         throw error;
       }
 
       if (!articles || articles.length === 0) {
-        console.log('📭 No articles found for ambassador:', ambassadorId);
-        return res.status(404).json({ error: 'No articles found' });
+        console.log("📭 No articles found for ambassador:", ambassadorId);
+        return res.status(404).json({ error: "No articles found" });
       }
 
       const article = articles[0];
 
       // Get notifications for this article
       const { data: notifications } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('article_id', article.article_id)
-        .eq('recipient_id', userId)
-        .order('created_at', { ascending: false });
+        .from("notifications")
+        .select("*")
+        .eq("article_id", article.article_id)
+        .eq("recipient_id", userId)
+        .order("created_at", { ascending: false });
 
       // Format response
       const formattedArticle = {
@@ -4891,31 +5478,32 @@ app.get(
         contentHtml: article.content,
         byline: article.excerpt,
         status: article.status,
+        publication_link: article.publication_link, // ← ADD HERE
         createdAt: article.created_at,
         updatedAt: article.updated_at,
         views: article.views || 0,
-        likes: article.likes || 0
+        likes: article.likes || 0,
       };
 
-      const formattedNotifications = (notifications || []).map(notif => ({
+      const formattedNotifications = (notifications || []).map((notif) => ({
         id: notif.notification_id,
         type: notif.type,
         message: notif.message,
         createdAt: notif.created_at,
-        read: notif.read
+        read: notif.read,
       }));
 
-      console.log('✅ Latest article sent:', formattedArticle.title);
+      console.log("✅ Latest article sent:", formattedArticle.title);
 
       return res.json({
         article: formattedArticle,
-        notifications: formattedNotifications
+        notifications: formattedNotifications,
       });
     } catch (error) {
-      console.error('❌ Error in /api/ambassador/articles/latest:', error);
-      return res.status(500).json({ 
-        error: 'Failed to fetch latest article',
-        details: error.message 
+      console.error("❌ Error in /api/ambassador/articles/latest:", error);
+      return res.status(500).json({
+        error: "Failed to fetch latest article",
+        details: error.message,
       });
     }
   }
@@ -4923,159 +5511,349 @@ app.get(
 
 // 2. ✅ LIST ARTICLES ROUTE (NO PARAMS)
 app.get(
-  '/api/ambassador/articles',
+  "/api/ambassador/articles",
   requireAuth,
-  requireRole('ambassador'),
+  requireRole("ambassador"),
   async (req, res) => {
     try {
       const userId = req.auth.userId;
       const limit = parseInt(req.query.limit) || 20;
       const offset = parseInt(req.query.offset) || 0;
 
-      console.log('📖 Fetching articles for user_id:', userId);
+      console.log("📖 Fetching articles for user_id:", userId);
 
       // ✅ FIX: First get the ambassador_id from the ambassadors table
-      const ambassador = await getUserById(userId, 'ambassador');
+      const ambassador = await getUserById(userId, "ambassador");
       if (!ambassador) {
         console.error("❌ Ambassador not found for user_id:", userId);
         return res.json({
           items: [],
           total: 0,
           limit,
-          offset
+          offset,
         });
       }
 
       const ambassadorId = ambassador.ambassador_id || ambassador.id;
-      console.log('✅ Found ambassador_id:', ambassadorId);
+      console.log("✅ Found ambassador_id:", ambassadorId);
 
       // ✅ Query articles using the correct ambassador_id
-      const { data: articles, error, count } = await supabase
-        .from('articles')
-        .select('*', { count: 'exact' })
-        .eq('ambassador_id', ambassadorId)  // ✅ Use ambassador_id!
-        .order('created_at', { ascending: false })
+      const {
+        data: articles,
+        error,
+        count,
+      } = await supabase
+        .from("articles")
+        .select("*", { count: "exact" })
+        .eq("ambassador_id", ambassadorId) // ✅ Use ambassador_id!
+        .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
 
       if (error) {
-        console.error('Error fetching ambassador articles:', error);
+        console.error("Error fetching ambassador articles:", error);
         throw error;
       }
-
       // Format articles for frontend
-      const formattedArticles = (articles || []).map(article => ({
+      const formattedArticles = (articles || []).map((article) => ({
         id: article.article_id,
         article_id: article.article_id,
         title: article.title,
         contentHtml: article.content,
         byline: article.excerpt,
         status: article.status,
+        publication_link: article.publication_link, // ← ADD HERE
         createdAt: article.created_at,
         updatedAt: article.updated_at,
         views: article.views || 0,
-        likes: article.likes || 0
+        likes: article.likes || 0,
       }));
 
-      console.log('✅ Found', formattedArticles.length, 'articles');
+      console.log("✅ Found", formattedArticles.length, "articles");
 
       return res.json({
         items: formattedArticles,
         total: count || 0,
         limit,
-        offset
+        offset,
       });
     } catch (error) {
-      console.error('Error in /api/ambassador/articles:', error);
-      return res.status(500).json({ 
-        error: 'Failed to fetch articles',
-        details: error.message 
+      console.error("Error in /api/ambassador/articles:", error);
+      return res.status(500).json({
+        error: "Failed to fetch articles",
+        details: error.message,
       });
     }
   }
 );
 
-// 3. ✅ SINGLE ARTICLE BY ID ROUTE - MUST COME LAST (PARAMETERIZED)
+// ============================================
+// AMBASSADOR: Get single article by ID
+// ============================================
 app.get(
-  '/api/ambassador/articles/:id',
+  "/api/ambassador/articles/:id",
   requireAuth,
-  requireRole('ambassador'),
+  requireRole("ambassador"),
   async (req, res) => {
     try {
       const articleId = req.params.id;
       const userId = req.auth.userId;
 
-      console.log('📖 Ambassador fetching article:', articleId, 'User:', userId);
+      console.log(
+        "📖 Ambassador fetching article:",
+        articleId,
+        "User:",
+        userId
+      );
 
       // ✅ FIX: First get the ambassador_id from the ambassadors table
-      const ambassador = await getUserById(userId, 'ambassador');
+      const ambassador = await getUserById(userId, "ambassador");
       if (!ambassador) {
         console.error("❌ Ambassador not found for user_id:", userId);
-        return res.status(404).json({ error: 'Ambassador not found' });
+        return res.status(404).json({ error: "Ambassador not found" });
       }
 
       const ambassadorId = ambassador.ambassador_id || ambassador.id;
-      console.log('✅ Found ambassador_id:', ambassadorId);
+      console.log("✅ Found ambassador_id:", ambassadorId);
 
       // ✅ Get article and verify ownership using ambassador_id
       const { data: articles, error } = await supabase
-        .from('articles')
-        .select('*')
-        .eq('article_id', articleId)
-        .eq('ambassador_id', ambassadorId);  // ✅ Use ambassador_id!
+        .from("articles")
+        .select("*")
+        .eq("article_id", articleId)
+        .eq("ambassador_id", ambassadorId);
 
       if (error) {
-        console.error('Error fetching article:', error);
+        console.error("Error fetching article:", error);
         throw error;
       }
 
       if (!articles || articles.length === 0) {
-        return res.status(404).json({ error: 'Article not found' });
+        return res.status(404).json({ error: "Article not found" });
       }
 
       const article = articles[0];
 
-      // Get any admin notifications/feedback for this article
-      const { data: notifications } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('article_id', articleId)
-        .eq('recipient_id', userId)
-        .order('created_at', { ascending: false });
+      // ✅ CRITICAL FIX: Query notifications for THIS SPECIFIC ARTICLE and THIS USER
+      console.log(
+        "📬 Fetching notifications for article:",
+        articleId,
+        "user:",
+        userId
+      );
+
+      const { data: notifications, error: notifError } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("article_id", articleId) // Filter by article_id
+        .eq("recipient_id", userId) // Filter by user_id (recipient)
+        .order("created_at", { ascending: false });
+
+      if (notifError) {
+        console.error("⚠️ Error fetching notifications:", notifError);
+        // Don't fail the whole request
+      }
+
+      console.log(
+        "✅ Found",
+        notifications?.length || 0,
+        "notifications for this article and user"
+      );
+
+      // ✅ DEBUG LOG: Show notification details
+      if (notifications && notifications.length > 0) {
+        notifications.forEach((notif) => {
+          console.log("  📧 Notification:", {
+            id: notif.notification_id,
+            type: notif.type,
+            message: notif.message?.substring(0, 50) + "...",
+            recipient_id: notif.recipient_id,
+            article_id: notif.article_id,
+          });
+        });
+      } else {
+        console.log("  ⚠️ No notifications found");
+
+        // Debug query to see ALL notifications for this article
+        const { data: allArticleNotifs } = await supabase
+          .from("notifications")
+          .select("*")
+          .eq("article_id", articleId);
+
+        console.log(
+          `  🔍 Total notifications for article ${articleId}:`,
+          allArticleNotifs?.length || 0
+        );
+
+        if (allArticleNotifs && allArticleNotifs.length > 0) {
+          console.log("  🔍 Notifications found but not for current user:");
+          allArticleNotifs.forEach((notif) => {
+            console.log(
+              "    - recipient_id:",
+              notif.recipient_id,
+              "user_id:",
+              userId,
+              "match:",
+              notif.recipient_id === userId
+            );
+          });
+        }
+      }
 
       // Format response
       const formattedArticle = {
         id: article.article_id,
         article_id: article.article_id,
+        ambassador_id: article.ambassador_id,
         title: article.title,
         contentHtml: article.content,
         byline: article.excerpt,
         status: article.status,
+        publication_link: article.publication_link,
         createdAt: article.created_at,
         updatedAt: article.updated_at,
         views: article.views || 0,
-        likes: article.likes || 0
+        likes: article.likes || 0,
       };
 
-      const formattedNotifications = (notifications || []).map(notif => ({
+      // ✅ DEBUG: Log the status being returned
+      console.log("📊 Returning article status to ambassador:", {
+        article_id: article.article_id,
+        status_from_db: article.status,
+        status_type: typeof article.status,
+        formatted_status: formattedArticle.status,
+      });
+
+      const formattedNotifications = (notifications || []).map((notif) => ({
         id: notif.notification_id,
         type: notif.type,
         message: notif.message,
         createdAt: notif.created_at,
-        read: notif.read
+        read: notif.read,
       }));
-
-      console.log('✅ Article sent to ambassador:', formattedArticle.title);
 
       return res.json({
         article: formattedArticle,
-        notifications: formattedNotifications
+        notifications: formattedNotifications,
       });
     } catch (error) {
-      console.error('Error in /api/ambassador/articles/:id:', error);
-      return res.status(500).json({ 
-        error: 'Failed to fetch article',
-        details: error.message 
+      console.error("Error in /api/ambassador/articles/:id:", error);
+      return res.status(500).json({
+        error: "Failed to fetch article",
+        details: error.message,
       });
+    }
+  }
+);
+app.get("/api/debug/notifications-check", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const articleId = req.query.articleId;
+
+    console.log("🔍 DEBUG NOTIFICATIONS CHECK:");
+    console.log("  User ID:", userId);
+    console.log("  Article ID:", articleId);
+
+    // Get user's role
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("user_type")
+      .eq("user_id", userId)
+      .single();
+
+    console.log("  User type:", user?.user_type);
+
+    // Check all notifications for this article
+    const { data: allNotifications } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("article_id", articleId);
+
+    console.log(
+      "  Total notifications for article:",
+      allNotifications?.length || 0
+    );
+
+    if (allNotifications && allNotifications.length > 0) {
+      console.log("  All notifications:");
+      allNotifications.forEach((notif) => {
+        console.log(`    - ID: ${notif.notification_id}`);
+        console.log(`      Type: ${notif.type}`);
+        console.log(
+          `      Recipient ID: ${notif.recipient_id} (matches user: ${
+            notif.recipient_id === userId
+          })`
+        );
+        console.log(
+          `      Recipient Type: ${notif.recipient_type} (matches user type: ${
+            notif.recipient_type === user?.user_type
+          })`
+        );
+        console.log(`      Message: ${notif.message?.substring(0, 50)}...`);
+        console.log(`      Created: ${notif.created_at}`);
+      });
+    }
+
+    // Check notifications for this specific user
+    const { data: userNotifications } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("article_id", articleId)
+      .eq("recipient_id", userId);
+
+    console.log(
+      "  User-specific notifications:",
+      userNotifications?.length || 0
+    );
+
+    return res.json({
+      userId,
+      articleId,
+      userType: user?.user_type,
+      allNotifications: allNotifications || [],
+      userNotifications: userNotifications || [],
+      totalAll: allNotifications?.length || 0,
+      totalUser: userNotifications?.length || 0,
+    });
+  } catch (error) {
+    console.error("Debug error:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// ✅ ALSO ADD: Debug endpoint to check notifications
+// ============================================
+app.get(
+  "/api/debug/article-notifications/:articleId",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const articleId = req.params.articleId;
+      const userId = req.auth.userId;
+
+      // Get all notifications for this article
+      const { data: allNotifications } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("article_id", articleId);
+
+      // Get notifications for current user
+      const { data: userNotifications } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("article_id", articleId)
+        .eq("recipient_id", userId);
+
+      return res.json({
+        articleId,
+        currentUserId: userId,
+        totalNotifications: allNotifications?.length || 0,
+        userNotifications: userNotifications?.length || 0,
+        allNotifications: allNotifications || [],
+        userNotificationsData: userNotifications || [],
+      });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
     }
   }
 );
@@ -5157,7 +5935,7 @@ app.post(
       console.log("User verified:", {
         user_id: req.auth.userId,
         ambassador_id: user.ambassador_id || user.id,
-        email: user.email
+        email: user.email,
       });
 
       const articleData = {
@@ -5179,7 +5957,10 @@ app.post(
         return res.status(400).json({ error: "Content cannot be empty" });
       }
 
-      console.log("Creating article with ambassador_id:", articleData.ambassador_id);
+      console.log(
+        "Creating article with ambassador_id:",
+        articleData.ambassador_id
+      );
 
       const newArticle = await createArticle(articleData);
 
@@ -5206,87 +5987,147 @@ app.post(
     }
   }
 );
-app.post('/admin/api/notifications', requireAuth, requireRole('admin'), async (req, res) => {
-  try {
-    const { articleId, type, message } = req.body;
-    const adminUserId = req.auth.userId;
+app.post(
+  "/admin/api/notifications",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const { articleId, type, message, ambassadorId } = req.body;
+      const adminUserId = req.auth.userId;
 
-    console.log('📤 Creating notification:', { articleId, type });
+      console.log("📤 Creating admin notification:", {
+        articleId,
+        type,
+        hasAmbassadorId: !!ambassadorId,
+        adminUserId,
+      });
 
-    // Get article to find the ambassador
-    const { data: article, error: articleError } = await supabase
-      .from('articles')
-      .select('ambassador_id')
-      .eq('article_id', articleId)
-      .single();
+      // Get article details if not provided
+      let targetArticleId = articleId;
+      let targetAmbassadorId = ambassadorId;
 
-    if (articleError || !article) {
-      return res.status(404).json({ error: 'Article not found' });
+      if (articleId && !ambassadorId) {
+        // Fetch article to get ambassador ID
+        const { data: article, error: articleError } = await supabase
+          .from("articles")
+          .select("ambassador_id")
+          .eq("article_id", articleId)
+          .single();
+
+        if (articleError || !article) {
+          return res.status(404).json({ error: "Article not found" });
+        }
+        targetAmbassadorId = article.ambassador_id;
+      }
+
+      if (!targetAmbassadorId) {
+        return res.status(400).json({ error: "Ambassador ID is required" });
+      }
+
+      console.log("🔍 Getting ambassador user_id for:", targetAmbassadorId);
+
+      // Get ambassador's user_id
+      const { data: ambassador, error: ambassadorError } = await supabase
+        .from("ambassadors")
+        .select("user_id, first_name, last_name, email")
+        .eq("ambassador_id", targetAmbassadorId)
+        .single();
+
+      if (ambassadorError || !ambassador) {
+        console.error("❌ Ambassador not found:", targetAmbassadorId);
+        return res.status(404).json({ error: "Ambassador not found" });
+      }
+
+      console.log("✅ Found ambassador:", {
+        user_id: ambassador.user_id,
+        name: `${ambassador.first_name} ${ambassador.last_name}`,
+        email: ambassador.email,
+      });
+
+      // Get admin info
+      const admin = await getUserById(adminUserId, "admin");
+      const adminName = admin
+        ? admin.first_name || admin.name || "Admin"
+        : "Admin";
+
+      // Determine notification content based on type
+      let notificationTitle, notificationLink;
+      const notificationType = type || "needs_update";
+
+      if (
+        notificationType === "article_published" ||
+        notificationType === "ready_to_publish"
+      ) {
+        notificationTitle = "🎉 Your Article Has Been Published!";
+        notificationLink = `/article-progress.html?articleId=${
+          targetArticleId || ""
+        }`;
+      } else if (notificationType === "needs_update") {
+        notificationTitle = "📝 Article Feedback";
+        notificationLink = `/ambassador-review.html?articleId=${
+          targetArticleId || ""
+        }`;
+      } else {
+        notificationTitle = "📝 Article Update";
+        notificationLink = `/article-progress.html?articleId=${
+          targetArticleId || ""
+        }`;
+      }
+
+      // Create notification
+      const notificationData = {
+        notification_id: uuidv4(),
+        recipient_id: ambassador.user_id, // ✅ CRITICAL: Use ambassador's user_id
+        recipient_type: "ambassador",
+        type: notificationType,
+        title: notificationTitle,
+        message: message || "Your article needs some updates.",
+        link: notificationLink,
+        article_id: targetArticleId,
+        read: false,
+        created_at: new Date().toISOString(),
+      };
+
+      console.log("📝 Creating notification with data:", notificationData);
+
+      const { data: notification, error: notificationError } = await supabase
+        .from("notifications")
+        .insert([notificationData])
+        .select()
+        .single();
+
+      if (notificationError) {
+        console.error("❌ Error creating notification:", notificationError);
+        throw notificationError;
+      }
+
+      console.log(
+        "✅ Notification created successfully:",
+        notification.notification_id
+      );
+
+      return res.json({
+        success: true,
+        notification,
+        message: "Notification sent successfully",
+      });
+    } catch (error) {
+      console.error("❌ Error creating notification:", error);
+      return res.status(500).json({
+        error: "Failed to send notification",
+        details: error.message,
+      });
     }
-
-    // Get ambassador's user_id
-    const { data: ambassador } = await supabase
-      .from('ambassadors')
-      .select('user_id, first_name, last_name, email')
-      .eq('ambassador_id', article.ambassador_id)
-      .single();
-
-    if (!ambassador) {
-      return res.status(404).json({ error: 'Ambassador not found' });
-    }
-
-    // Get admin info
-    const admin = await getUserById(adminUserId, 'admin');
-    const adminName = admin ? (admin.first_name || admin.name || 'Admin') : 'Admin';
-
-    // Create notification
-    const notificationData = {
-      notification_id: uuidv4(),
-      recipient_id: ambassador.user_id,  // ✅ Use ambassador's user_id
-      recipient_type: 'ambassador',
-      type: type || 'article_feedback',
-      title: type === 'needs_update' ? '📝 Article Update Requested' : '💬 Article Feedback',
-      message: message,
-      link: `/article-progress.html`,
-      article_id: articleId,
-      read: false,
-      created_at: new Date().toISOString()
-    };
-
-    const { data: notification, error } = await supabase
-      .from('notifications')
-      .insert([notificationData])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating notification:', error);
-      throw error;
-    }
-
-    // Update article status if needed
-    if (type === 'needs_update') {
-      await supabase
-        .from('articles')
-        .update({ status: 'needs_update' })
-        .eq('article_id', articleId);
-    }
-
-    console.log('✅ Notification created successfully');
-
-    return res.json({
-      success: true,
-      notification,
-      message: 'Notification sent successfully'
-    });
-  } catch (error) {
-    console.error('❌ Error creating notification:', error);
-    return res.status(500).json({ 
-      error: 'Failed to send notification',
-      details: error.message 
-    });
   }
-});
+);
+
+// Helper function to extract URL from message
+function extractPublicationLink(message) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const matches = message.match(urlRegex);
+  return matches ? matches[0] : null;
+}
 
 app.patch(
   "/api/ambassador/articles/:id",
@@ -5297,14 +6138,33 @@ app.patch(
       const articleId = req.params.id;
       const { title, contentHtml, byline, status } = req.body;
 
+      // ✅ CRITICAL: Get ambassador_id from the user
+      const ambassador = await getUserById(req.auth.userId, "ambassador");
+      if (!ambassador) {
+        console.error("❌ Ambassador not found for user_id:", req.auth.userId);
+        return res.status(404).json({ error: "Ambassador not found" });
+      }
+
+      const ambassadorId = ambassador.ambassador_id || ambassador.id;
+      console.log(
+        "✅ Found ambassador_id:",
+        ambassadorId,
+        "for user_id:",
+        req.auth.userId
+      );
+
       // Check if article exists and belongs to the user
       const existingArticle = await getArticleById(articleId);
       if (!existingArticle) {
         return res.status(404).json({ error: "Article not found" });
       }
 
-      // Verify the article belongs to the current user
-      if (existingArticle.ambassador_id !== req.auth.userId) {
+      // ✅ FIX: Verify the article belongs to the current user using ambassador_id
+      if (existingArticle.ambassador_id !== ambassadorId) {
+        console.error("❌ Article ownership mismatch:", {
+          article_ambassador_id: existingArticle.ambassador_id,
+          user_ambassador_id: ambassadorId,
+        });
         return res
           .status(403)
           .json({ error: "You can only edit your own articles" });
@@ -5332,7 +6192,6 @@ app.patch(
   }
 );
 
-
 // Get ALL posts with application status for current user
 // ============================================
 app.get("/api/posts", requireAuth, async (req, res) => {
@@ -5340,41 +6199,45 @@ app.get("/api/posts", requireAuth, async (req, res) => {
     const userId = req.auth.userId;
     const userRole = req.auth.role;
 
-    console.log('📖 Fetching posts for user:', userId, 'role:', userRole);
+    console.log("📖 Fetching posts for user:", userId, "role:", userRole);
 
     // Get all posts
     const posts = await getPosts();
 
     // If user is an ambassador, check which posts they've applied to
-    if (userRole === 'ambassador') {
-      const ambassador = await getUserById(userId, 'ambassador');
-      
+    if (userRole === "ambassador") {
+      const ambassador = await getUserById(userId, "ambassador");
+
       if (ambassador) {
         const ambassadorId = ambassador.ambassador_id || ambassador.id;
-        console.log('✅ Ambassador ID:', ambassadorId);
+        console.log("✅ Ambassador ID:", ambassadorId);
 
         // ✅ Get all applications for this ambassador WITH STATUS
         const { data: applications, error } = await supabase
-          .from('applications')
-          .select('post_id, status')  // ✅ Include status!
-          .eq('ambassador_id', ambassadorId);
+          .from("applications")
+          .select("post_id, status") // ✅ Include status!
+          .eq("ambassador_id", ambassadorId);
 
         if (error) {
-          console.error('Error fetching applications:', error);
+          console.error("Error fetching applications:", error);
         }
 
         // ✅ Create a Map of post IDs to application status
         const applicationStatusMap = new Map(
-          (applications || []).map(app => [app.post_id, app.status])
+          (applications || []).map((app) => [app.post_id, app.status])
         );
 
-        console.log('✅ User has applied to', applicationStatusMap.size, 'posts');
+        console.log(
+          "✅ User has applied to",
+          applicationStatusMap.size,
+          "posts"
+        );
 
         // ✅ Add hasApplied AND applicationStatus to each post
-        const postsWithStatus = posts.map(post => ({
+        const postsWithStatus = posts.map((post) => ({
           ...post,
           hasApplied: applicationStatusMap.has(post.post_id),
-          applicationStatus: applicationStatusMap.get(post.post_id) || null
+          applicationStatus: applicationStatusMap.get(post.post_id) || null,
         }));
 
         return res.json({ posts: postsWithStatus });
@@ -5389,7 +6252,6 @@ app.get("/api/posts", requireAuth, async (req, res) => {
   }
 });
 
-
 // ✅ FIXED: Get posts for the logged-in partner
 app.get(
   "/api/partner/posts",
@@ -5397,15 +6259,15 @@ app.get(
   requireRole("partner"),
   async (req, res) => {
     try {
-      const userId = req.auth.userId;  // This is the user_id from session
+      const userId = req.auth.userId; // This is the user_id from session
 
       console.log("📖 Fetching posts for user_id:", userId);
 
       // ✅ FIX: First get the partner_id from the partners table
       const { data: partner, error: partnerError } = await supabase
-        .from('partners')
-        .select('partner_id')
-        .eq('user_id', userId)  // Lookup by user_id
+        .from("partners")
+        .select("partner_id")
+        .eq("user_id", userId) // Lookup by user_id
         .single();
 
       if (partnerError || !partner) {
@@ -5417,10 +6279,10 @@ app.get(
 
       // ✅ Now fetch posts using the correct partner_id
       const { data: posts, error } = await supabase
-        .from('posts')
-        .select('*')
-        .eq('partner_id', partner.partner_id)  // Use partner_id from lookup
-        .order('created_at', { ascending: false });
+        .from("posts")
+        .select("*")
+        .eq("partner_id", partner.partner_id) // Use partner_id from lookup
+        .order("created_at", { ascending: false });
 
       if (error) {
         console.error("❌ Error fetching posts:", error);
@@ -5429,15 +6291,15 @@ app.get(
 
       console.log("✅ Found", posts?.length || 0, "posts");
 
-      return res.json({ 
+      return res.json({
         posts: posts || [],
-        total: posts?.length || 0
+        total: posts?.length || 0,
       });
     } catch (error) {
       console.error("❌ Error fetching partner posts:", error);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: "Failed to fetch posts",
-        details: error.message 
+        details: error.message,
       });
     }
   }
@@ -5450,25 +6312,35 @@ app.post(
   requireRole("partner"),
   async (req, res) => {
     try {
-      const { title, content, category, format, location, deadline, liftPillars } = req.body;
+      const {
+        title,
+        content,
+        category,
+        format,
+        location,
+        deadline,
+        liftPillars,
+      } = req.body;
 
       console.log("📝 Creating post:", {
         title: title?.substring(0, 50),
         content: content?.substring(0, 50),
         category,
-        user_id: req.auth.userId  // ✅ This is the user_id
+        user_id: req.auth.userId, // ✅ This is the user_id
       });
 
       // Validation
       if (!title || !content) {
-        return res.status(400).json({ error: "Title and content are required" });
+        return res
+          .status(400)
+          .json({ error: "Title and content are required" });
       }
 
       // ✅ FIX: Get the partner_id from the partners table using user_id
       const { data: partner, error: partnerError } = await supabase
-        .from('partners')
-        .select('partner_id')
-        .eq('user_id', req.auth.userId)  // ✅ Look up by user_id
+        .from("partners")
+        .select("partner_id")
+        .eq("user_id", req.auth.userId) // ✅ Look up by user_id
         .single();
 
       if (partnerError || !partner) {
@@ -5486,13 +6358,16 @@ app.post(
         title: title,
         content: content,
         category: category || "general",
-        partner_id: partner.partner_id,  // ✅ Use the correct partner_id
+        partner_id: partner.partner_id, // ✅ Use the correct partner_id
       };
 
-      console.log("💾 Inserting post into database with partner_id:", partner.partner_id);
+      console.log(
+        "💾 Inserting post into database with partner_id:",
+        partner.partner_id
+      );
 
       const { data: newPost, error } = await supabase
-        .from('posts')
+        .from("posts")
         .insert([postData])
         .select()
         .single();
@@ -5504,16 +6379,16 @@ app.post(
 
       console.log("✅ Post created successfully:", newPost.post_id);
 
-      return res.json({ 
-        success: true, 
+      return res.json({
+        success: true,
         post: newPost,
-        message: "Post created successfully"
+        message: "Post created successfully",
       });
     } catch (error) {
       console.error("❌ Error creating post:", error);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: "Failed to create post",
-        details: error.message 
+        details: error.message,
       });
     }
   }
@@ -5523,51 +6398,53 @@ app.post(
 // PARTNER: Delete a post
 // ============================================
 app.delete(
-  '/api/posts/:id',
+  "/api/posts/:id",
   requireAuth,
-  requireRole('partner'),
+  requireRole("partner"),
   async (req, res) => {
     try {
       const partnerId = req.auth.userId;
       const postId = req.params.id;
 
-      console.log('🗑️ Deleting post:', postId, 'for partner:', partnerId);
+      console.log("🗑️ Deleting post:", postId, "for partner:", partnerId);
 
       // Verify the post belongs to this partner
       const { data: post, error: fetchError } = await supabase
-        .from('posts')
-        .select('*')
-        .eq('post_id', postId)
-        .eq('partner_id', partnerId)
+        .from("posts")
+        .select("*")
+        .eq("post_id", postId)
+        .eq("partner_id", partnerId)
         .single();
 
       if (fetchError || !post) {
-        return res.status(404).json({ error: 'Post not found or you do not have permission to delete it' });
+        return res.status(404).json({
+          error: "Post not found or you do not have permission to delete it",
+        });
       }
 
       // Delete the post
       const { error: deleteError } = await supabase
-        .from('posts')
+        .from("posts")
         .delete()
-        .eq('post_id', postId)
-        .eq('partner_id', partnerId);
+        .eq("post_id", postId)
+        .eq("partner_id", partnerId);
 
       if (deleteError) {
-        console.error('Error deleting post:', deleteError);
+        console.error("Error deleting post:", deleteError);
         throw deleteError;
       }
 
-      console.log('✅ Post deleted successfully:', postId);
+      console.log("✅ Post deleted successfully:", postId);
 
       return res.json({
         success: true,
-        message: 'Post deleted successfully'
+        message: "Post deleted successfully",
       });
     } catch (error) {
-      console.error('❌ Error deleting post:', error);
-      return res.status(500).json({ 
-        error: 'Failed to delete post',
-        details: error.message 
+      console.error("❌ Error deleting post:", error);
+      return res.status(500).json({
+        error: "Failed to delete post",
+        details: error.message,
       });
     }
   }
@@ -5575,38 +6452,49 @@ app.delete(
 // ============================================
 // 5. DELETE SERVICE (Owner Only)
 // ============================================
-app.delete('/api/services/:id', requireAuth, requireRole('partner'), async (req, res) => {
-  try {
-    const serviceId = req.params.id;
-    const userId = req.auth.userId;
+app.delete(
+  "/api/services/:id",
+  requireAuth,
+  requireRole("partner"),
+  async (req, res) => {
+    try {
+      const serviceId = req.params.id;
+      const userId = req.auth.userId;
 
-    console.log('🗑️ Deleting service:', { serviceId, userId });
+      console.log("🗑️ Deleting service:", { serviceId, userId });
 
-    // Verify service exists and belongs to this partner
-    const service = await getServiceById(serviceId);
-    if (!service) {
-      return res.status(404).json({ error: 'Service not found' });
+      // Verify service exists and belongs to this partner
+      const service = await getServiceById(serviceId);
+      if (!service) {
+        return res.status(404).json({ error: "Service not found" });
+      }
+
+      const partner = await getUserById(userId, "partner");
+      if (
+        !partner ||
+        (partner.partner_id !== service.partner_id &&
+          partner.id !== service.partner_id)
+      ) {
+        return res
+          .status(403)
+          .json({ error: "Not authorized to delete this service" });
+      }
+
+      await deleteService(serviceId);
+
+      return res.json({
+        success: true,
+        message: "Service deleted successfully",
+      });
+    } catch (error) {
+      console.error("❌ Error deleting service:", error);
+      return res.status(500).json({
+        error: "Failed to delete service",
+        details: error.message,
+      });
     }
-
-    const partner = await getUserById(userId, 'partner');
-    if (!partner || (partner.partner_id !== service.partner_id && partner.id !== service.partner_id)) {
-      return res.status(403).json({ error: 'Not authorized to delete this service' });
-    }
-
-    await deleteService(serviceId);
-
-    return res.json({
-      success: true,
-      message: 'Service deleted successfully'
-    });
-  } catch (error) {
-    console.error('❌ Error deleting service:', error);
-    return res.status(500).json({ 
-      error: 'Failed to delete service',
-      details: error.message 
-    });
   }
-});
+);
 
 // ------------------------
 // CV Upload
@@ -5712,6 +6600,8 @@ app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
       const user = await getUserById(userId, "ambassador");
       if (!user) return res.status(404).json({ error: "User not found" });
 
+      const ambassadorId = user.ambassador_id || user.id;
+
       const progress = (await getJourneyProgress(userId)) || {
         current_month: 1,
         completed_tasks: {},
@@ -5737,9 +6627,54 @@ app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
         (today - joinDate) / (1000 * 60 * 60 * 24)
       );
 
-      // Get recent published articles
-      const articles = await getArticles({ status: "published" });
-      const recentArticles = articles.slice(0, 3).map((article) => ({
+      // Get ambassador's articles stats
+      const { data: ambassadorArticles } = await supabase
+        .from("articles")
+        .select("*")
+        .eq("ambassador_id", ambassadorId);
+
+      const myArticles = ambassadorArticles || [];
+      const pendingArticles = myArticles.filter(
+        (a) => a.status === "pending" || a.status === "needs_update"
+      );
+      const publishedArticles = myArticles.filter(
+        (a) => a.status === "published"
+      );
+
+      // Calculate next article due date (monthly article requirement)
+      const currentMonth = progress.current_month || 1;
+      const startDate = new Date(user.created_at || Date.now());
+      const nextArticleDue = new Date(startDate);
+      nextArticleDue.setMonth(nextArticleDue.getMonth() + currentMonth);
+
+      // Get ambassador's partner applications
+      const { data: applications } = await supabase
+        .from("applications")
+        .select("*, posts(title)")
+        .eq("ambassador_id", ambassadorId);
+
+      const myApplications = applications || [];
+      const pendingApps = myApplications.filter((a) => a.status === "pending");
+      const acceptedApps = myApplications.filter(
+        (a) => a.status === "accepted"
+      );
+      const rejectedApps = myApplications.filter(
+        (a) => a.status === "rejected"
+      );
+
+      // Get service requests
+      const { data: serviceRequests } = await supabase
+        .from("service_requests")
+        .select("*")
+        .eq("ambassador_id", ambassadorId);
+
+      const myServiceRequests = serviceRequests || [];
+      const pendingServiceReqs = myServiceRequests.filter(
+        (r) => r.status === "pending"
+      );
+
+      // Get recent published articles for display
+      const recentArticles = publishedArticles.slice(0, 3).map((article) => ({
         id: article.article_id,
         title: article.title,
         excerpt: article.excerpt,
@@ -5747,14 +6682,41 @@ app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
         category: article.category,
       }));
 
+      // Calculate upcoming tasks count
+      const currentMonthData = JOURNEY_MONTHS.find(
+        (m) => m.month === currentMonth
+      );
+      const upcomingTasks = currentMonthData
+        ? currentMonthData.tasks.filter(
+            (t) => !completedTasks[`month${currentMonth}_${t.id}`]
+          ).length
+        : 0;
+
       return res.json({
         stats: {
           overallProgress,
           completedTasks: completedCount,
           totalTasks,
+          upcomingTasks,
           currentMonth: progress.current_month,
           daysInProgram: Math.max(0, daysInProgram),
           daysRemaining: Math.max(0, 365 - daysInProgram),
+        },
+        articles: {
+          total: myArticles.length,
+          pending: pendingArticles.length,
+          published: publishedArticles.length,
+          nextDueDate: nextArticleDue.toISOString().split("T")[0],
+        },
+        applications: {
+          total: myApplications.length,
+          pending: pendingApps.length,
+          accepted: acceptedApps.length,
+          rejected: rejectedApps.length,
+        },
+        serviceRequests: {
+          total: myServiceRequests.length,
+          pending: pendingServiceReqs.length,
         },
         user: {
           name: user.first_name || "Ambassador",
@@ -5778,8 +6740,8 @@ app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
           partnerSince: user.created_at || new Date().toISOString(),
         },
         user: {
-          organizationName: user.organization_name || '',
-          contactName: user.contact_person || '',
+          organizationName: user.organization_name || "",
+          contactName: user.contact_person || "",
           email: user.email,
         },
       });
@@ -5827,7 +6789,7 @@ app.post("/api/logout", async (req, res) => {
 // ------------------------
 app.get("/test-db", async (req, res) => {
   try {
-    const { data, error } = await supabase.from('partners').select('count');
+    const { data, error } = await supabase.from("partners").select("count");
     if (error) throw error;
     res.json({ success: true, message: "Database connected", data });
   } catch (error) {
@@ -5839,7 +6801,7 @@ app.get("/test-db", async (req, res) => {
 // Initialize data
 // ------------------------
 ensureDataDir();
-ensureUploadsDir();  // NEW LINE: Ensure uploads directory exists
+ensureUploadsDir(); // NEW LINE: Ensure uploads directory exists
 loadArticlesFromDisk();
 loadPostsFromDisk();
 loadJourneyFromDisk();
@@ -5865,7 +6827,7 @@ app.listen(PORT, () => {
   );
   console.log(`[data] Data directory: ${DATA_DIR}`);
   console.log(`[uploads] Uploads directory ready for CVs`);
-  console.log(`[notifications] Notification system ENABLED with helper functions`);
+  console.log(
+    `[notifications] Notification system ENABLED with helper functions`
+  );
 });
-
-
