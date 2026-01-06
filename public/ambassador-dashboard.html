@@ -131,7 +131,11 @@
             <i class="bx bx-edit-alt text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Publishing</span>
           </a>
-          <a href="/journey.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <a href="/media-library.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-image text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Media Kit</span>
+          </a>
+          <a href="/Impactlog.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
             <i class="bx bx-line-chart text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Impact Log</span>
           </a>
@@ -563,6 +567,24 @@
       // ============================================
       // LOAD CURRENT MONTH'S VIDEO - FIXED
       // ============================================
+      // ============================================
+      // MONTH TITLES AND MILESTONES (from journey-db.js)
+      // ============================================
+      const MONTH_DATA = [
+        { month: 1, title: "FOUNDATION", milestone: "Foundation Set: Onboarding complete, first course done, profile submitted, connections made" },
+        { month: 2, title: "OPTIMIZE", milestone: "Optimized Presence: Profile updated, first article submitted, active in community" },
+        { month: 3, title: "ENGAGE", milestone: "Engaged Member: Attended event, building relationships, consistent content, impact tracked" },
+        { month: 4, title: "LEAD", milestone: "Leadership Activated: Volunteered for opportunity, all courses complete, growing visibility" },
+        { month: 5, title: "AMPLIFY", milestone: "Amplified Impact: Led something, article progress, consistent support" },
+        { month: 6, title: "MIDPOINT", milestone: "Halfway Strong: Story shared, podcast scheduled, 50+ people impacted, momentum building" },
+        { month: 7, title: "VISIBILITY", milestone: "Visible Leader: Podcast prep underway, leading regularly, strong content cadence" },
+        { month: 8, title: "EXPAND", milestone: "Expanded Reach: Podcast recorded/scheduled, applied for external opportunities, portfolio growing" },
+        { month: 9, title: "CONNECT", milestone: "Connected Leader: Deep relationships built, podcast live, third leadership opportunity completed" },
+        { month: 10, title: "ACCELERATE", milestone: "Accelerating: Final articles submitted, 85+ impacted, speaking opportunities in pipeline" },
+        { month: 11, title: "CELEBRATE", milestone: "Celebrating: Year documented, story shared, impact quantified" },
+        { month: 12, title: "RENEW", milestone: "Transformation Complete: Full year tracked, portfolio built, thought leadership established, decision made" }
+      ];
+
       async function loadCurrentMonthVideo() {
         try {
           console.log('🎥 Loading video for current month...');
@@ -593,38 +615,51 @@
           // Store current video globally
           window.currentVideo = currentVideo;
           
-          // ============================================
-          // UPDATE STATS SECTION - SAME CALCULATION AS JOURNEY PAGE
-          // ============================================
-          const completedTasks = journeyData.completedTasks || {};
-          const months = journeyData.months || [];
+          // Get current and next month data
+          const currentMonthInfo = MONTH_DATA.find(m => m.month === currentMonth);
+          const nextMonthInfo = MONTH_DATA.find(m => m.month === currentMonth + 1);
           
-          // Calculate overall progress EXACTLY like journey page (lines 3032-3035)
-          const overallProgress = months.length > 0 ? months.reduce((acc, m) => {
-            const completed = m.tasks.filter(task => completedTasks[`${m.month}-${task.id}`]).length;
-            return acc + (completed / m.tasks.length);
-          }, 0) / months.length * 100 : 0;
-          
-          const journeyProgress = document.getElementById('journeyProgress');
-          if (journeyProgress) {
-            journeyProgress.textContent = `${Math.round(overallProgress)}%`;
-          }
-
-          const journeyMonth = document.getElementById('journeyMonth');
-          if (journeyMonth) {
-            journeyMonth.textContent = `Month ${currentMonth} of 12`;
-          }
-
           // ============================================
-          // UPDATE HERO DESCRIPTION
+          // UPDATE HERO DESCRIPTION WITH CURRENT MONTH
           // ============================================
           const heroDescription = document.getElementById('heroDescription');
-          if (heroDescription) {
-            const milestone = journeyData.currentMonthMilestone || currentVideo.description;
+          if (heroDescription && currentMonthInfo) {
             heroDescription.innerHTML = `
-              You're in Month ${currentMonth} <span class="font-semibold">${journeyData.currentMonthTitle || currentVideo.title} Stage</span><br />
-              ${milestone}
+              You're in Month ${currentMonth} <span class="font-semibold">${currentMonthInfo.title} Stage</span><br />
+              ${currentMonthInfo.milestone}
             `;
+          }
+          
+          // ============================================
+          // UPDATE NEXT MILESTONE CARD
+          // ============================================
+          const nextMilestoneText = document.getElementById('nextMilestoneText');
+          if (nextMilestoneText && nextMonthInfo) {
+            nextMilestoneText.textContent = `Month ${nextMonthInfo.month}: ${nextMonthInfo.title}`;
+          } else if (nextMilestoneText && currentMonth === 12) {
+            nextMilestoneText.textContent = "🎉 Journey Complete! Time to Renew";
+          }
+          
+          // ============================================
+          // UPDATE DAYS IN PROGRAM / JOURNEY PROGRESS
+          // ============================================
+          const daysInProgramText = document.getElementById('daysInProgramText');
+          if (daysInProgramText) {
+            const tasksForMonth = journeyData.tasks || [];
+            const tasksInCurrentMonth = Object.keys(tasksForMonth).filter(key => {
+              const [monthNum] = key.split('-');
+              return parseInt(monthNum) === currentMonth;
+            }).length;
+            
+            // Calculate progress percentage for current month
+            const currentMonthTotalTasks = journeyData.monthTasks && journeyData.monthTasks[currentMonth] 
+              ? journeyData.monthTasks[currentMonth] 
+              : 5; // default
+            const currentMonthProgress = currentMonthTotalTasks > 0 
+              ? Math.round((tasksInCurrentMonth / currentMonthTotalTasks) * 100) 
+              : 0;
+            
+            daysInProgramText.textContent = `${currentMonthProgress}% of month tasks completed`;
           }
           
           // ============================================
@@ -794,172 +829,208 @@
       }
 
       // ============================================
-      // LOAD DASHBOARD STATS - Uses same APIs as respective pages
+      // MONTH DATA WITH MILESTONES (from journey-db.js)
       // ============================================
-      async function loadDashboardStats() {
+      const MONTH_DATA_WITH_MILESTONES = [
+        { month: 1, title: "FOUNDATION", milestone: "Foundation Set: Onboarding complete, first course done, profile submitted, connections made", tasks: ['linkedin_course', 'submit_profile', 'second_course', 'connect_10', 'post_3x'] },
+        { month: 2, title: "OPTIMIZE", milestone: "Optimized Presence: Profile updated, first article submitted, active in community", tasks: ['implement_audit', 'third_course', 'submit_article_1', 'engage_15'] },
+        { month: 3, title: "ENGAGE", milestone: "Engaged Member: Attended event, building relationships, consistent content, impact tracked", tasks: ['first_event', 'transformation_post', 'submit_article_2', 'update_impact_log'] },
+        { month: 4, title: "LEAD", milestone: "Leadership Activated: Volunteered for opportunity, all courses complete, growing visibility", tasks: ['volunteer', 'complete_courses', 'request_recommendation', 'post_4x'] },
+        { month: 5, title: "AMPLIFY", milestone: "Amplified Impact: Led something, article progress, consistent support", tasks: ['lead_something', 'check_article', 'daily_engage', 'update_impact_5'] },
+        { month: 6, title: "MIDPOINT", milestone: "Halfway Strong: Story shared, podcast scheduled, 50+ people impacted, momentum building", tasks: ['quarterly_event_2', 'schedule_podcast', 'halfway_story'] },
+        { month: 7, title: "VISIBILITY", milestone: "Visible Leader: Podcast prep underway, leading regularly, strong content cadence", tasks: ['submit_article_next', 'lead_second', 'post_4x_m7'] },
+        { month: 8, title: "EXPAND", milestone: "Expanded Reach: Podcast recorded/scheduled, applied for external opportunities, portfolio growing", tasks: ['check_partners', 'update_speaker', 'speaking_pitch', 'update_impact_8'] },
+        { month: 9, title: "CONNECT", milestone: "Connected Leader: Deep relationships built, podcast live, third leadership opportunity completed", tasks: ['quarterly_event_3', 'follow_up_5'] },
+        { month: 10, title: "ACCELERATE", milestone: "Accelerating: Final articles submitted, 85+ impacted, speaking opportunities in pipeline", tasks: ['submit_final', 'update_impact_10', 'apply_speaking'] },
+        { month: 11, title: "CELEBRATE", milestone: "Celebrating: Year documented, story shared, impact quantified", tasks: ['quarterly_event_4', 'final_impact', 'transformation_story'] },
+        { month: 12, title: "RENEW", milestone: "Transformation Complete: Full year tracked, portfolio built, thought leadership established, decision made", tasks: ['decide_renewal', 'schedule_call'] }
+      ];
+
+      // ============================================
+      // LOAD DASHBOARD STATS - Consistent with Journey Page
+      // ============================================
+      function loadDashboardStats() {
         try {
-          console.log('📊 Loading dashboard stats from source APIs...');
+          console.log('📊 Loading dashboard stats with journey-consistent calculation...');
           
-          // 1. Load journey data (same as journey page) for completed tasks
-          const journeyResponse = await fetch('/api/journey', { credentials: 'include' });
-          console.log('Journey API response status:', journeyResponse.status);
+          // MONTH DEFINITIONS (MUST MATCH JOURNEY PAGE EXACTLY)
+          const months = MONTH_DATA_WITH_MILESTONES;
           
-          if (journeyResponse.ok) {
-            const journeyData = await journeyResponse.json();
-            console.log('✅ Journey data loaded:', journeyData);
-            
-            // EXACT SAME CALCULATION AS JOURNEY PAGE
-            const currentMonth = journeyData.currentMonth || 1;
-            const completedTasks = journeyData.completedTasks || {};
-            const months = journeyData.months || [];
-            
-            // Find current month data from months array (SAME AS JOURNEY PAGE)
-            const currentMonthData = months.find(m => m.month === currentMonth);
-            
-            // Calculate overall progress (SAME AS JOURNEY PAGE LINE 3032-3035)
-            const overallProgress = months.reduce((acc, m) => {
-              const completed = m.tasks.filter(task => completedTasks[`${m.month}-${task.id}`]).length;
-              return acc + (completed / m.tasks.length);
-            }, 0) / months.length * 100;
-            
-            // Calculate current month stats (SAME AS JOURNEY PAGE LINE 2540-2542)
-            let currentMonthCompleted = 0;
-            let currentMonthTotal = 0;
-            if (currentMonthData && currentMonthData.tasks) {
-              currentMonthCompleted = currentMonthData.tasks.filter(task => 
-                completedTasks[`${currentMonth}-${task.id}`]
-              ).length;
-              currentMonthTotal = currentMonthData.tasks.length;
-            }
-            const currentMonthRemaining = currentMonthTotal - currentMonthCompleted;
-            
-            console.log(`📊 Overall Progress: ${Math.round(overallProgress)}%`);
-            console.log(`📊 Month ${currentMonth}: ${currentMonthCompleted}/${currentMonthTotal} tasks (${Math.round((currentMonthCompleted/currentMonthTotal)*100)}%)`);
-            
-            // Update Journey Progress card
-            const journeyProgress = document.getElementById('journeyProgress');
-            const journeyMonth = document.getElementById('journeyMonth');
-            if (journeyProgress) {
-              journeyProgress.textContent = `${Math.round(overallProgress)}%`;
-            }
-            if (journeyMonth) {
-              journeyMonth.textContent = `Month ${currentMonth} of 12`;
-            }
-            
-            // Update Completed Tasks card (shows CURRENT MONTH's progress like journey page)
-            const completedTasksCount = document.getElementById('completedTasksCount');
-            const upcomingTasksCount = document.getElementById('upcomingTasksCount');
-            if (completedTasksCount) {
-              completedTasksCount.textContent = currentMonthCompleted;
-            }
-            if (upcomingTasksCount) {
-              upcomingTasksCount.textContent = `${currentMonthRemaining} remaining`;
-            }
-            
-            // Update Hero Milestone Cards
-            const nextMilestoneText = document.getElementById('nextMilestoneText');
-            const daysInProgramLabel = document.getElementById('daysInProgramLabel');
-            const daysInProgramText = document.getElementById('daysInProgramText');
-            
-            if (nextMilestoneText && currentMonthData) {
-              nextMilestoneText.textContent = currentMonthData.milestone || journeyData.currentMonthMilestone || 'Continue your journey';
-            }
-            
-            if (daysInProgramLabel && daysInProgramText) {
-              const daysIn = journeyData.statistics?.daysInProgram || 0;
-              const daysRemaining = Math.max(0, 365 - daysIn);
-              daysInProgramLabel.textContent = `Day ${daysIn} of 365`;
-              daysInProgramText.textContent = `${daysRemaining} days remaining`;
-            }
-          } else {
-            console.error('❌ Journey API failed:', journeyResponse.status, await journeyResponse.text());
-          }
+          // Load journey data from localStorage (SAME AS journey.html)
+          const journeyStorageKey = 'journey_tasks_default';
+          const savedTasks = localStorage.getItem(journeyStorageKey);
+          const completedTasks = savedTasks ? JSON.parse(savedTasks) : {};
           
-          // 2. Load articles data (same as article-amb page)
-          const articlesResponse = await fetch('/api/ambassador/articles?limit=100', { credentials: 'include' });
-          console.log('Articles API response status:', articlesResponse.status);
+          console.log('✅ Loaded tasks from localStorage:', completedTasks);
           
-          if (articlesResponse.ok) {
-            const articlesData = await articlesResponse.json();
-            console.log('✅ Articles loaded:', articlesData);
-            
-            const articles = articlesData.items || [];
-            const pendingArticles = articles.filter(a => 
-              a.status === 'pending' || a.status === 'needs_update' || a.status === 'draft'
-            );
-            const publishedArticles = articles.filter(a => a.status === 'published');
-            
-            // Update Articles card
-            const articlesPendingCount = document.getElementById('articlesPendingCount');
-            const nextArticleDue = document.getElementById('nextArticleDue');
-            
-            if (articlesPendingCount) {
-              articlesPendingCount.textContent = pendingArticles.length;
+          // ============================================
+          // CRITICAL FIX: Calculate overall progress EXACTLY like journey page
+          // This matches the exact calculation in journey.html
+          // ============================================
+          const overallProgress = months.length > 0 ? months.reduce((acc, m) => {
+            const monthCompleted = Object.keys(completedTasks).filter(key => {
+              const [monthNum] = key.split('-');
+              return parseInt(monthNum) === m.month && completedTasks[key];
+            }).length;
+            return acc + (monthCompleted / m.tasks.length);
+          }, 0) / months.length * 100 : 0;
+          
+          // Round to nearest integer for display
+          const roundedProgress = Math.round(overallProgress);
+          
+          console.log(`📊 Overall Progress: ${roundedProgress}% (calculated from ${months.length} months)`);
+          
+          // ============================================
+          // Calculate Current Month (Same logic as journey page)
+          // ============================================
+          // Find the highest month that has completed tasks
+          let currentMonth = 1;
+          Object.keys(completedTasks).forEach(key => {
+            const [monthNum] = key.split('-');
+            const month = parseInt(monthNum);
+            if (!isNaN(month) && month > currentMonth) {
+              currentMonth = month;
             }
-            if (nextArticleDue) {
-              if (publishedArticles.length > 0) {
-                nextArticleDue.textContent = `${publishedArticles.length} published`;
-              } else if (articles.length > 0) {
-                nextArticleDue.textContent = `${articles.length} total`;
-              } else {
-                nextArticleDue.textContent = 'Write your first!';
-              }
-            }
-          } else {
-            console.error('❌ Articles API failed:', articlesResponse.status);
-          }
-          
-          // 3. Load applications data (same as applications page)
-          const appsResponse = await fetch('/api/ambassador/applications', { credentials: 'include' });
-          console.log('Applications API response status:', appsResponse.status);
-          
-          if (appsResponse.ok) {
-            const appsData = await appsResponse.json();
-            console.log('✅ Applications loaded:', appsData);
-            
-            const applications = appsData.items || [];
-            const pendingApps = applications.filter(a => a.status === 'pending');
-            const acceptedApps = applications.filter(a => a.status === 'accepted' || a.status === 'approved');
-            
-            // Update Applications card
-            const applicationsCount = document.getElementById('applicationsCount');
-            const applicationsStatus = document.getElementById('applicationsStatus');
-            
-            if (applicationsCount) {
-              applicationsCount.textContent = applications.length;
-            }
-            if (applicationsStatus) {
-              if (pendingApps.length > 0) {
-                applicationsStatus.textContent = `${pendingApps.length} pending review`;
-              } else if (acceptedApps.length > 0) {
-                applicationsStatus.textContent = `${acceptedApps.length} accepted`;
-              } else if (applications.length > 0) {
-                applicationsStatus.textContent = `${applications.length} submitted`;
-              } else {
-                applicationsStatus.textContent = 'Apply to opportunities';
-              }
-            }
-          } else {
-            console.error('❌ Applications API failed:', appsResponse.status);
-          }
-          
-          console.log('✅ Dashboard stats loaded successfully');
-          
-        } catch (error) {
-          console.error('❌ Error loading dashboard stats:', error);
-          // Set fallback values
-          const fallbacks = {
-            'completedTasksCount': '0',
-            'upcomingTasksCount': '-- remaining',
-            'articlesPendingCount': '0',
-            'nextArticleDue': '--',
-            'applicationsCount': '0',
-            'applicationsStatus': '--'
-          };
-          Object.keys(fallbacks).forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.textContent = fallbacks[id];
           });
+          
+          // ============================================
+          // Calculate Current Month Stats
+          // ============================================
+          const currentMonthData = months.find(m => m.month === currentMonth);
+          let currentMonthCompleted = 0;
+          if (currentMonthData) {
+            currentMonthCompleted = Object.keys(completedTasks).filter(key => {
+              const [monthNum] = key.split('-');
+              return parseInt(monthNum) === currentMonth && completedTasks[key];
+            }).length;
+          }
+          const currentMonthTotal = currentMonthData ? currentMonthData.tasks.length : 0;
+          const upcomingTasks = currentMonthTotal - currentMonthCompleted;
+          
+          console.log(`📊 Current Month: ${currentMonth}`);
+          console.log(`📊 Month ${currentMonth}: ${currentMonthCompleted}/${currentMonthTotal} tasks`);
+          
+          // ============================================
+          // Update Dashboard UI
+          // ============================================
+          // Journey Progress card
+          const journeyProgress = document.getElementById('journeyProgress');
+          const journeyMonth = document.getElementById('journeyMonth');
+          if (journeyProgress) {
+            journeyProgress.textContent = `${roundedProgress}%`;
+          }
+          if (journeyMonth) {
+            journeyMonth.textContent = `Month ${currentMonth} of 12`;
+          }
+          
+          // Completed Tasks card
+          const completedTasksCount = document.getElementById('completedTasksCount');
+          const upcomingTasksCount = document.getElementById('upcomingTasksCount');
+          if (completedTasksCount) {
+            completedTasksCount.textContent = currentMonthCompleted;
+          }
+          if (upcomingTasksCount) {
+            upcomingTasksCount.textContent = `${upcomingTasks} remaining`;
+          }
+          
+          // Update Hero Section
+          const heroDescription = document.getElementById('heroDescription');
+          if (heroDescription) {
+            const currentMonthFullData = MONTH_DATA_WITH_MILESTONES.find(m => m.month === currentMonth);
+            if (currentMonthFullData) {
+              heroDescription.innerHTML = `
+                You're in Month ${currentMonth} <span class="font-semibold">${currentMonthFullData.title} Stage</span><br />
+                ${currentMonthFullData.milestone}
+              `;
+              console.log(`✅ Hero updated: Month ${currentMonth} ${currentMonthFullData.title}`);
+            }
+          }
+          
+          // ============================================
+          // Update Next Milestone Card
+          // ============================================
+          const nextMilestoneText = document.getElementById('nextMilestoneText');
+          if (nextMilestoneText) {
+            if (currentMonth < 12) {
+              const nextMonthData = MONTH_DATA_WITH_MILESTONES.find(m => m.month === currentMonth + 1);
+              if (nextMonthData) {
+                nextMilestoneText.textContent = `Month ${nextMonthData.month}: ${nextMonthData.title}`;
+              }
+            } else {
+              nextMilestoneText.textContent = "🎉 Journey Complete! Time to Renew";
+            }
+          }
+          
+          // ============================================
+          // Update Journey Progress Text (Days in Program)
+          // ============================================
+          const daysInProgramText = document.getElementById('daysInProgramText');
+          if (daysInProgramText) {
+            daysInProgramText.textContent = `Month ${currentMonth} of 12`;
+          }
+          
+          // ============================================
+          // Load Articles Data
+          // ============================================
+          fetch('/api/ambassador/articles?limit=100', { credentials: 'include' })
+            .then(res => res.json())
+            .then(data => {
+              const articles = data.items || [];
+              const pendingArticles = articles.filter(a => 
+                a.status === 'pending' || a.status === 'needs_update' || a.status === 'draft'
+              );
+              const publishedArticles = articles.filter(a => a.status === 'published');
+              
+              const articlesPendingCount = document.getElementById('articlesPendingCount');
+              const nextArticleDue = document.getElementById('nextArticleDue');
+              
+              if (articlesPendingCount) {
+                articlesPendingCount.textContent = pendingArticles.length;
+              }
+              if (nextArticleDue) {
+                if (publishedArticles.length > 0) {
+                  nextArticleDue.textContent = `${publishedArticles.length} published`;
+                } else if (articles.length > 0) {
+                  nextArticleDue.textContent = `${articles.length} total`;
+                } else {
+                  nextArticleDue.textContent = 'Write your first!';
+                }
+              }
+            })
+            .catch(err => console.error('Error loading articles:', err));
+          
+          // ============================================
+          // Load Applications Data
+          // ============================================
+          fetch('/api/ambassador/applications', { credentials: 'include' })
+            .then(res => res.json())
+            .then(data => {
+              const applications = data.items || [];
+              const pendingApps = applications.filter(a => a.status === 'pending');
+              const acceptedApps = applications.filter(a => a.status === 'accepted' || a.status === 'approved');
+              
+              const applicationsCount = document.getElementById('applicationsCount');
+              const applicationsStatus = document.getElementById('applicationsStatus');
+              
+              if (applicationsCount) {
+                applicationsCount.textContent = applications.length;
+              }
+              if (applicationsStatus) {
+                if (pendingApps.length > 0) {
+                  applicationsStatus.textContent = `${pendingApps.length} pending review`;
+                } else if (acceptedApps.length > 0) {
+                  applicationsStatus.textContent = `${acceptedApps.length} accepted`;
+                } else if (applications.length > 0) {
+                  applicationsStatus.textContent = `${applications.length} submitted`;
+                } else {
+                  applicationsStatus.textContent = 'Apply to opportunities';
+                }
+              }
+            })
+            .catch(err => console.error('Error loading applications:', err));
+          
+        } catch (err) {
+          console.error('Error loading dashboard stats:', err);
         }
       }
 
@@ -1042,6 +1113,21 @@
         
         // Load dashboard stats (dynamic data)
         loadDashboardStats();
+        
+        // ============================================
+        // Setup real-time update polling (separate from loadDashboardStats)
+        // ============================================
+        let lastKnownTasks = localStorage.getItem('journey_tasks_default');
+        setInterval(() => {
+          const currentTasks = localStorage.getItem('journey_tasks_default');
+          
+          // Only reload if tasks have actually changed
+          if (currentTasks !== lastKnownTasks) {
+            console.log('🔄 Real-time update detected, refreshing stats...');
+            lastKnownTasks = currentTasks;
+            loadDashboardStats();
+          }
+        }, 2000);
         
         console.log('✅ Dashboard initialized');
       });

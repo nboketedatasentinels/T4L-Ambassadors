@@ -42,9 +42,11 @@
   const NAV_ITEMS = [
     { href: '/ambassador-dashboard.html', icon: 'bxs-home', label: 'Home', id: 'home' },
     { href: '/article-amb.html', icon: 'bx-edit-alt', label: 'Publishing', id: 'publishing' },
-    { href: '/journey.html', icon: 'bx-line-chart', label: 'Impact Log', id: 'journey' },
+    { href: '/journey.html', icon: 'bx-check-square', label: 'Task', id: 'task' },
+    { href: '/Impactlog.html', icon: 'bx-line-chart', label: 'Impact Log', id: 'journey' },
     { href: '/Partner-Calls.html', icon: 'bx-briefcase', label: 'Partners', id: 'partners' },
     { href: '/services.html', icon: 'bx-briefcase-alt-2', label: 'Services', id: 'services' },
+    { href: '/media-library.html', icon: 'bx-image', label: 'Media Kit', id: 'media' },
     { href: 'https://www.t4leader.com/event', icon: 'bx-calendar-event', label: 'Events', id: 'events', external: true },
     { href: '/profile.html', icon: 'bx-user', label: 'Profile', id: 'profile' },
     { href: '/profile.html', icon: 'bx-cog', label: 'Settings', id: 'settings' }
@@ -62,6 +64,7 @@
     'services.html': 'services',
     'my-services.html': 'services',
     'create-service.html': 'services',
+    'media-library.html': 'media',
     'profile.html': 'profile',
     'chat-pillar.html': 'partners',
     'chat-region.html': 'partners'

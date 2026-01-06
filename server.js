@@ -528,6 +528,7 @@ const notificationsByUserId = new Map();
 const sessions = new Map();
 const postsById = new Map();
 const journeyProgressByAmbassador = new Map();
+const mediaLibrary = []; // User media library storage
 
 // ------------------------
 // File-based persistence
@@ -6782,6 +6783,141 @@ app.post("/api/logout", async (req, res) => {
   }
   clearSessionCookie(res);
   return res.redirect("/signin");
+});
+
+// ============================================
+// MEDIA LIBRARY API ENDPOINTS
+// ============================================
+
+// Get all media for current user
+app.get("/api/media", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    console.log(`📦 Fetching media for user: ${userId}`);
+    
+    // Get media from database (stored in memory for now)
+    const userMedia = mediaLibrary.filter(m => m.user_id === userId);
+    
+    // Sort by created_at descending
+    userMedia.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    
+    return res.json({ 
+      success: true,
+      media: userMedia 
+    });
+  } catch (error) {
+    console.error("❌ Error fetching media:", error);
+    return res.status(500).json({ error: "Failed to fetch media" });
+  }
+});
+
+// Add new media
+app.post("/api/media", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { title, type, url, description } = req.body;
+    
+    // Validate required fields
+    if (!title || !type || !url) {
+      return res.status(400).json({ error: "Missing required fields: title, type, url" });
+    }
+    
+    // Validate URL format
+    try {
+      new URL(url);
+    } catch (e) {
+      return res.status(400).json({ error: "Invalid URL format" });
+    }
+    
+    // Validate type
+    const validTypes = ['canva', 'image', 'video', 'document', 'other'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ error: `Invalid media type. Must be one of: ${validTypes.join(', ')}` });
+    }
+    
+    const mediaItem = {
+      id: uuidv4(),
+      user_id: userId,
+      title: title.trim(),
+      type: type.toLowerCase(),
+      url: url.trim(),
+      description: description ? description.trim() : '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    // Store in memory (in production, save to database)
+    mediaLibrary.push(mediaItem);
+    
+    console.log(`✅ Media added: ${mediaItem.id}`);
+    
+    return res.json({
+      success: true,
+      media: mediaItem
+    });
+  } catch (error) {
+    console.error("❌ Error adding media:", error);
+    return res.status(500).json({ error: "Failed to add media" });
+  }
+});
+
+// Delete media
+app.delete("/api/media/:id", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const mediaId = req.params.id;
+    
+    // Find and remove media
+    const mediaIndex = mediaLibrary.findIndex(m => m.id === mediaId && m.user_id === userId);
+    
+    if (mediaIndex === -1) {
+      return res.status(404).json({ error: "Media not found" });
+    }
+    
+    const deletedMedia = mediaLibrary.splice(mediaIndex, 1)[0];
+    
+    console.log(`✅ Media deleted: ${mediaId}`);
+    
+    return res.json({
+      success: true,
+      message: "Media deleted successfully",
+      media: deletedMedia
+    });
+  } catch (error) {
+    console.error("❌ Error deleting media:", error);
+    return res.status(500).json({ error: "Failed to delete media" });
+  }
+});
+
+// Update media
+app.put("/api/media/:id", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const mediaId = req.params.id;
+    const { title, description } = req.body;
+    
+    // Find media
+    const media = mediaLibrary.find(m => m.id === mediaId && m.user_id === userId);
+    
+    if (!media) {
+      return res.status(404).json({ error: "Media not found" });
+    }
+    
+    // Update fields if provided
+    if (title) media.title = title.trim();
+    if (description !== undefined) media.description = description ? description.trim() : '';
+    media.updated_at = new Date().toISOString();
+    
+    console.log(`✅ Media updated: ${mediaId}`);
+    
+    return res.json({
+      success: true,
+      media: media
+    });
+  } catch (error) {
+    console.error("❌ Error updating media:", error);
+    return res.status(500).json({ error: "Failed to update media" });
+  }
 });
 
 // ------------------------
