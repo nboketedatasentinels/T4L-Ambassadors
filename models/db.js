@@ -84,6 +84,54 @@ function normalizeAdminData(userData, adminData) {
   };
 }
 
+
+async function createNotification(
+  recipientId,
+  recipientType,
+  notificationType,
+  title,
+  message,
+  link = null,
+  applicationId = null,
+  requestId = null,
+  articleId = null
+) {
+  try {
+    const notificationData = {
+      notification_id: uuidv4(),
+      recipient_id: recipientId,
+      recipient_type: recipientType,
+      type: notificationType,
+      title: title,
+      message: message,
+      link: link,
+      read: false, // ✅ ENSURE THIS IS FALSE
+      created_at: new Date().toISOString(),
+      application_id: applicationId || null,
+      request_id: requestId || null,
+      article_id: articleId || null,
+    };
+
+    console.log("📝 Creating notification:", notificationData);
+
+    const { data, error } = await supabase
+      .from("notifications")
+      .insert([notificationData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error("❌ Notification creation failed:", error);
+      return null;
+    }
+
+    console.log("✅ Notification created:", data);
+    return data;
+  } catch (error) {
+    console.error("⚠️ Notification error:", error.message);
+    return null;
+  }
+}
 // ============================================
 // GET USER BY EMAIL - FIXED
 // ============================================
@@ -1017,6 +1065,161 @@ async function deleteSession(sessionId) {
   }
 }
 
+// ============================================
+// LINKEDIN AUDIT FUNCTIONS
+// ============================================
+
+async function createLinkedInAudit(auditData) {
+  try {
+    console.log('📝 Creating LinkedIn audit for ambassador:', auditData.ambassador_id);
+    
+    const { data, error } = await supabase
+      .from('linkedin_audits')
+      .insert([auditData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error creating LinkedIn audit:', error);
+      throw error;
+    }
+
+    console.log('✅ LinkedIn audit created:', data.audit_id);
+    return data;
+  } catch (error) {
+    console.error('❌ createLinkedInAudit error:', error);
+    throw error;
+  }
+}
+
+async function getLinkedInAuditByAmbassador(ambassadorId) {
+  try {
+    console.log('🔍 Fetching LinkedIn audit for ambassador:', ambassadorId);
+    
+    const { data, error } = await supabase
+      .from('linkedin_audits')
+      .select(`
+        *,
+        admins:admin_id (first_name)
+      `)
+      .eq('ambassador_id', ambassadorId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('❌ Error fetching LinkedIn audit:', error);
+      throw error;
+    }
+
+    if (!data) {
+      console.log('⚠️ No LinkedIn audit found for ambassador:', ambassadorId);
+      return null;
+    }
+
+    console.log('✅ Found LinkedIn audit:', data.audit_id);
+    return data;
+  } catch (error) {
+    console.error('❌ getLinkedInAuditByAmbassador error:', error);
+    return null;
+  }
+}
+
+async function updateLinkedInAudit(auditId, updates) {
+  try {
+    console.log('📝 Updating LinkedIn audit:', auditId);
+    
+    updates.updated_at = new Date().toISOString();
+    
+    const { data, error } = await supabase
+      .from('linkedin_audits')
+      .update(updates)
+      .eq('audit_id', auditId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error updating LinkedIn audit:', error);
+      throw error;
+    }
+
+    console.log('✅ LinkedIn audit updated:', data.audit_id);
+    return data;
+  } catch (error) {
+    console.error('❌ updateLinkedInAudit error:', error);
+    throw error;
+  }
+}
+
+async function deleteLinkedInAudit(auditId) {
+  try {
+    console.log('🗑️ Deleting LinkedIn audit:', auditId);
+    
+    const { error } = await supabase
+      .from('linkedin_audits')
+      .delete()
+      .eq('audit_id', auditId);
+
+    if (error) {
+      console.error('❌ Error deleting LinkedIn audit:', error);
+      throw error;
+    }
+
+    console.log('✅ LinkedIn audit deleted');
+    return true;
+  } catch (error) {
+    console.error('❌ deleteLinkedInAudit error:', error);
+    throw error;
+  }
+}
+
+async function getLinkedInAudits(filters = {}) {
+  try {
+    console.log('🔍 Fetching LinkedIn audits with filters:', filters);
+    
+    let query = supabase
+      .from('linkedin_audits')
+      .select(`
+        *,
+        ambassadors:ambassador_id (first_name, last_name, email),
+        admins:admin_id (first_name)
+      `, { count: 'exact' });
+
+    // Apply filters
+    if (filters.ambassadorId) {
+      query = query.eq('ambassador_id', filters.ambassadorId);
+    }
+    if (filters.adminId) {
+      query = query.eq('admin_id', filters.adminId);
+    }
+    if (filters.status) {
+      query = query.eq('status', filters.status);
+    }
+    if (filters.search) {
+      query = query.or(`notes.ilike.%${filters.search}%`);
+    }
+
+    const limit = filters.limit || 20;
+    const offset = filters.offset || 0;
+
+    query = query.order('created_at', { ascending: false })
+                .range(offset, offset + limit - 1);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error('❌ Error fetching LinkedIn audits:', error);
+      return { audits: [], total: 0 };
+    }
+
+    console.log(`✅ Found ${data?.length || 0} LinkedIn audits`);
+    return { audits: data || [], total: count || 0 };
+  } catch (error) {
+    console.error('❌ getLinkedInAudits error:', error);
+    return { audits: [], total: 0 };
+  }
+}
+
 module.exports = {
   supabase,
   getUserByEmail,
@@ -1050,4 +1253,10 @@ module.exports = {
   updateServiceRequestStatus,
   getPartnerUserIdFromPartnerId,
   getAmbassadorUserIdFromAmbassadorId,
+  // LinkedIn Audit functions
+  createLinkedInAudit,
+  getLinkedInAuditByAmbassador,
+  updateLinkedInAudit,
+  deleteLinkedInAudit,
+  getLinkedInAudits,
 };

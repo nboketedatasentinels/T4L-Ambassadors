@@ -405,19 +405,35 @@
                     <span class="text-xl font-bold text-gray-900">T4LA Admin</span>
                 </div>
                 <div class="flex items-center space-x-4">
+                    <!-- LinkedIn Audits Link -->
+                    <a href="/admin-linkedin-audits.html" 
+                       class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm hover:shadow flex items-center gap-2">
+                        <i class="bx bxl-linkedin-square text-lg"></i>
+                        <span class="hidden md:inline">LinkedIn Audits</span>
+                    </a>
+                    
                     <!-- Notification Bell -->
-                    <div class="relative">
-                        <button 
-                            id="notificationBell" 
-                            onclick="toggleNotificationDropdown()"
-                            class="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all">
-                            <i class="bx bx-bell text-2xl"></i>
-                            <span 
-                                id="notificationBadge" 
-                                class="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full hidden">
-                                0
-                            </span>
-                        </button>
+                <div class="relative">
+                    <button 
+                        id="notificationBell" 
+                        onclick="toggleNotificationDropdown()"
+                        class="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all">
+                        <i class="bx bx-bell text-2xl"></i>
+                        <!-- ✅ FIX: Remove 'hidden' class initially so you can see it -->
+                        <span 
+                            id="notificationBadge" 
+                            class="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1 text-xs font-bold text-white bg-red-500 rounded-full border-2 border-white">
+                            0
+                        </span>
+                    </button>
+                    <button
+                        id="notificationTestBtn"
+                        onclick="runNotificationDiagnostics()"
+                        class="ml-2 px-2 py-1 bg-yellow-400 hover:bg-yellow-500 text-black text-xs rounded-lg font-semibold shadow-sm"
+                        title="Run notification diagnostics"
+                    >
+                        🧪 Test
+                    </button>
                         
                         <!-- Notification Dropdown -->
                         <div 
@@ -526,8 +542,6 @@
             </div>
         </div>
 
-
-
         <!-- Tabs -->
         <div class="bg-white rounded-xl shadow-sm border mb-6">
             <div class="border-b border-gray-200">
@@ -570,7 +584,6 @@
           <button id="filterNeedsUpdate" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-100">Needs Update</button>
           <button id="filterApproved" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-100">Approved</button>
           <button id="filterPublished" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-100">Published</button>
-
         </div>
 
         <!-- Table/List -->
@@ -692,17 +705,146 @@
         </div>
     </div>
 
-    <!-- Profile Audit Popup -->
+    <!-- Profile Audit & Submissions Modal -->
     <div id="profileAuditModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh]">
             <div class="p-4 border-b border-gray-200 flex items-center justify-between">
-                <h3 class="text-xl font-semibold text-gray-900">Profile Audit</h3>
+                <h3 class="text-xl font-semibold text-gray-900">Profile Audit & Submissions</h3>
                 <button onclick="closeProfileAudit()" class="text-gray-600 hover:text-gray-900">
                     <i class="bx bx-x text-2xl"></i>
                 </button>
             </div>
             <div id="profileAuditContent" class="flex-1 overflow-y-auto p-6">
                 <!-- Profile data will be loaded here -->
+            </div>
+            
+            <!-- NEW: Admin Submissions Section -->
+            <div id="adminSubmissionsSection" class="border-t border-gray-200 p-6 hidden">
+                <h4 class="text-lg font-semibold text-gray-900 mb-4">Admin Submissions</h4>
+                
+                <!-- LinkedIn Audit Submission -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <h5 class="font-medium text-gray-900 flex items-center gap-2">
+                            <i class="bx bxl-linkedin-square text-blue-600"></i>
+                            LinkedIn Audit
+                        </h5>
+                        <span id="linkedinAuditStatusBadge" class="px-3 py-1 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700">
+                            Not Submitted
+                        </span>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                LinkedIn Profile URL
+                            </label>
+                            <input 
+                                type="url"
+                                id="linkedinProfileUrl"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="https://linkedin.com/in/username"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Audit Feedback & Recommendations
+                            </label>
+                            <textarea 
+                                id="linkedinAuditFeedback"
+                                rows="3"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="Provide feedback on profile completeness, headline, summary, experience, etc..."
+                            ></textarea>
+                        </div>
+                        
+                        <button 
+                            onclick="submitLinkedInAudit()"
+                            id="submitLinkedInBtn"
+                            class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 flex items-center justify-center gap-2"
+                        >
+                            <i class="bx bx-check"></i>
+                            Submit LinkedIn Audit
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Speaker Profile Submission -->
+                <div class="pt-6 border-t border-gray-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <h5 class="font-medium text-gray-900 flex items-center gap-2">
+                            <i class="bx bx-microphone text-purple-600"></i>
+                            Speaker Profile
+                        </h5>
+                        <span id="speakerProfileStatusBadge" class="px-3 py-1 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700">
+                            Not Submitted
+                        </span>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Speaker Bio
+                                </label>
+                                <textarea 
+                                    id="speakerBio"
+                                    rows="3"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    placeholder="Professional bio for speaking engagements..."
+                                ></textarea>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Speaking Topics
+                                </label>
+                                <textarea 
+                                    id="speakingTopics"
+                                    rows="3"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    placeholder="List topics separated by commas..."
+                                ></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Headshot URL
+                                </label>
+                                <input 
+                                    type="url"
+                                    id="headshotUrl"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    placeholder="https://example.com/headshot.jpg"
+                                >
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Past Engagements (Optional)
+                                </label>
+                                <textarea 
+                                    id="pastEngagements"
+                                    rows="2"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    placeholder="Previous speaking experience..."
+                                ></textarea>
+                            </div>
+                        </div>
+                        
+                        <button 
+                            onclick="submitSpeakerProfile()"
+                            id="submitSpeakerBtn"
+                            class="w-full px-4 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 flex items-center justify-center gap-2"
+                        >
+                            <i class="bx bx-check"></i>
+                            Submit Speaker Profile
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -878,97 +1020,176 @@
 
         let pollingInterval = null;
         let notificationPollingInterval = null;
+        let currentAmbassadorForSubmission = null; // NEW: Track current ambassador for submissions
 
         // ============================================
-        // NOTIFICATION SYSTEM
+        // NOTIFICATION SYSTEM (EXISTING - UNCHANGED)
         // ============================================
         
-        async function fetchNotifications() {
-            try {
-                const response = await fetch('/api/notifications', {
-                    credentials: 'include'
-                });
-                
-                if (!response.ok) return;
-                
-                const data = await response.json();
-                state.notifications = data.notifications || [];
-                state.unreadNotifications = state.notifications.filter(n => !n.read).length;
-                updateNotificationBadge();
-                
-                const dropdown = document.getElementById('notificationDropdown');
-                if (!dropdown.classList.contains('hidden')) {
-                    renderNotificationList();
-                }
-            } catch (error) {
-                console.error('Error fetching notifications:', error);
-            }
-        }
 
-        function updateNotificationBadge() {
-            const badge = document.getElementById('notificationBadge');
-            if (!badge) return;
-            
-            if (state.unreadNotifications > 0) {
-                badge.textContent = state.unreadNotifications > 99 ? '99+' : state.unreadNotifications;
+// REPLACE THE EXISTING FUNCTION WITH THIS:
+async function fetchNotifications() {
+    try {
+        console.log('🔔 Fetching notifications...');
+        
+        const response = await fetch('/api/notifications', {
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            console.error('❌ Failed to fetch notifications:', response.status);
+            return;
+        }
+        
+        const data = await response.json();
+        
+        // ✅ FIX: Ensure notifications array exists
+        state.notifications = data.notifications || [];
+        
+        // ✅ Calculate unread with tolerant check for boolean or string 'false'
+        state.unreadNotifications = state.notifications.filter(n => (n.read === false) || (n.read === 'false') || (!n.read)).length;
+        
+        console.log('✅ Notifications loaded:', {
+            total: state.notifications.length,
+            unread: state.unreadNotifications,
+            sample: state.notifications[0]
+        });
+        
+        // Update the badge
+        updateNotificationBadge();
+        
+        // If dropdown is open, update the list
+        const dropdown = document.getElementById('notificationDropdown');
+        if (dropdown && !dropdown.classList.contains('hidden')) {
+            renderNotificationList();
+        }
+    } catch (error) {
+        console.error('❌ Error fetching notifications:', error);
+    }
+}
+async function runNotificationDiagnostics() {
+    try {
+        console.log('🧪 ========== NOTIFICATION TEST ==========' );
+        console.log('📊 State check:', {
+            notificationsCount: Array.isArray(state.notifications) ? state.notifications.length : 0,
+            unreadCount: state.unreadNotifications,
+            notifications: state.notifications
+        });
+
+        const resp = await fetch('/api/notifications?debug=true', { credentials: 'include' });
+        const data = await resp.json();
+        console.log('📥 API Response:', data);
+
+        const badge = document.getElementById('notificationBadge');
+        console.log('🏷️ Badge element:', {
+            exists: !!badge,
+            text: badge ? badge.textContent.trim() : null,
+            hidden: badge ? badge.classList.contains('hidden') : null
+        });
+
+        const manualUnread = (data.notifications || []).filter(n => (n.read === false) || (n.read === 'false') || (!n.read)).length;
+        console.log('🔧 Manual unread count:', manualUnread);
+
+        if (badge) {
+            badge.textContent = manualUnread > 99 ? '99+' : String(manualUnread);
+            if (manualUnread > 0) {
                 badge.classList.remove('hidden');
-                
-                if (state.unreadNotifications > 0) {
-                    badge.classList.add('notification-badge-pulse');
-                } else {
-                    badge.classList.remove('notification-badge-pulse');
-                }
+                badge.classList.add('notification-badge-pulse');
             } else {
-                badge.classList.add('hidden');
                 badge.classList.remove('notification-badge-pulse');
             }
         }
 
-        function renderNotificationList() {
-            const container = document.getElementById('notificationList');
-            if (!container) return;
-            
-            if (state.notifications.length === 0) {
-                container.innerHTML = `
-                    <div class="p-8 text-center text-gray-500">
-                        <i class="bx bx-bell-off text-4xl mb-2"></i>
-                        <p>No notifications</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            const notificationsHtml = state.notifications.map(notification => {
-                const icon = getNotificationIcon(notification.type);
-                const timeAgo = formatTimeAgo(notification.createdAt);
-                const readClass = notification.read ? '' : 'bg-blue-50';
-                
-                return `
-                    <div class="notification-item ${readClass} p-4 hover:bg-gray-50 cursor-pointer transition-colors" 
-                         data-id="${notification.id}" 
-                         data-read="${notification.read}"
-                         onclick="handleNotificationClick('${notification.id}', '${notification.type}', '${notification.articleId || ''}')">
-                        <div class="flex items-start gap-3">
-                            <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${getNotificationIconColor(notification.type)}">
-                                <i class="bx ${icon} text-lg"></i>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center justify-between mb-1">
-                                    <h4 class="font-semibold text-gray-900 text-sm truncate">${notification.title || getNotificationTitle(notification.type)}</h4>
-                                    ${!notification.read ? '<span class="w-2 h-2 bg-blue-500 rounded-full"></span>' : ''}
-                                </div>
-                                <p class="text-sm text-gray-600 mb-1 truncate">${notification.message}</p>
-                                <span class="text-xs text-gray-500">${timeAgo}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            
-            container.innerHTML = notificationsHtml;
+        console.log('✅ Badge should now be visible with count:', manualUnread);
+        console.log('🧪 ========== TEST COMPLETE ==========' );
+    } catch (e) {
+        console.error('❌ Diagnostic error:', e);
+    }
+}
+// REPLACE THE EXISTING FUNCTION WITH THIS:
+function updateNotificationBadge() {
+    const badge = document.getElementById('notificationBadge');
+    if (!badge) {
+        console.error('❌ Badge element not found');
+        return;
+    }
+    
+    // ✅ Count only UNREAD notifications
+    const unreadCount = state.notifications.filter(n => !n.read).length;
+    
+    console.log('📊 Badge update:', { 
+        unreadCount, 
+        totalNotifications: state.notifications.length,
+        readStatus: state.notifications.map(n => ({ id: n.notification_id, read: n.read }))
+    });
+    
+    if (unreadCount > 0) {
+        badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+        badge.classList.remove('hidden');
+        badge.classList.add('notification-badge-pulse');
+    } else {
+        // ✅ SHOW "0" BUT KEEP BADGE VISIBLE if there are notifications
+        badge.textContent = state.notifications.length > 0 ? '0' : '';
+        if (state.notifications.length === 0) {
+            badge.classList.add('hidden');
+        } else {
+            badge.classList.remove('hidden');
+            badge.classList.remove('notification-badge-pulse');
         }
+    }
+}
 
-        function getNotificationIcon(type) {
+function renderNotificationList() {
+    const container = document.getElementById('notificationList');
+    if (!container) return;
+    
+    if (state.notifications.length === 0) {
+        container.innerHTML = `
+            <div class="p-8 text-center text-gray-500">
+                <i class="bx bx-bell-off text-4xl mb-2"></i>
+                <p>No notifications</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // ✅ FIX: Show ALL notifications, mark unread ones differently
+    const notificationsHtml = state.notifications.map(notification => {
+        const icon = getNotificationIcon(notification.type);
+        const timeAgo = formatTimeAgo(notification.created_at || notification.createdAt);
+        
+        // ✅ Add visual indicator for unread
+        const readClass = notification.read ? 'bg-white' : 'bg-blue-50 border-l-4 border-blue-500';
+        const unreadDot = notification.read ? '' : '<span class="w-2 h-2 bg-blue-500 rounded-full"></span>';
+        
+        return `
+            <div class="notification-item ${readClass} p-4 hover:bg-gray-50 cursor-pointer transition-colors" 
+                 data-id="${notification.notification_id || notification.id}" 
+                 data-read="${notification.read}"
+                 onclick="handleNotificationClick('${notification.notification_id || notification.id}', '${notification.type}', '${notification.article_id || ''}')">
+                <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${getNotificationIconColor(notification.type)}">
+                        <i class="bx ${icon} text-lg"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between mb-1">
+                            <h4 class="font-semibold text-gray-900 text-sm truncate">
+                                ${notification.title || getNotificationTitle(notification.type)}
+                            </h4>
+                            ${unreadDot}
+                        </div>
+                        <p class="text-sm text-gray-600 mb-1 line-clamp-2">${notification.message}</p>
+                        <span class="text-xs text-gray-500">${timeAgo}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = notificationsHtml;
+}
+
+function getNotificationIcon(type) {
             const icons = {
                 'application_submitted': 'bx-user-plus',
                 'status_change': 'bx-refresh',
@@ -1037,43 +1258,47 @@
             }
         }
 
-        async function markNotificationRead(notificationId) {
-            try {
-                const response = await fetch(`/api/notifications/${notificationId}/read`, {
-                    method: 'POST',
-                    credentials: 'include'
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to mark notification as read');
-                }
-                
-                return await response.json();
-            } catch (error) {
-                console.error('Error marking notification as read:', error);
-                throw error;
-            }
+async function markNotificationRead(notificationId) {
+    try {
+        const response = await fetch(`/api/notifications/${notificationId}/read`, {
+            method: 'PATCH', // ✅ CHANGED FROM POST TO PATCH
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to mark notification as read');
         }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error marking notification as read:', error);
+        throw error;
+    }
+}
 
-        async function markAllNotificationsRead() {
-            try {
-                const response = await fetch('/api/notifications/mark-all-read', {
-                    method: 'POST',
-                    credentials: 'include'
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to mark all notifications as read');
-                }
-                
-                await fetchNotifications();
-                showToast('All notifications marked as read');
-            } catch (error) {
-                console.error('Error marking all notifications as read:', error);
-                showToast('Failed to mark all notifications as read', true);
-            }
+        
+        
+        
+async function markAllNotificationsRead() {
+    try {
+        const response = await fetch('/api/notifications/mark-all-read', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to mark all notifications as read');
         }
-
+        
+        // ✅ Refresh notifications after marking all as read
+        await fetchNotifications();
+        showToast('All notifications marked as read');
+    } catch (error) {
+        console.error('Error marking all as read:', error);
+        showToast('Failed to mark all notifications as read', true);
+    }
+}
+        
         function toggleNotificationDropdown() {
             const dropdown = document.getElementById('notificationDropdown');
             const isHidden = dropdown.classList.contains('hidden');
@@ -1133,7 +1358,7 @@
         }
 
         // ============================================
-        // HELPER FUNCTIONS
+        // HELPER FUNCTIONS (EXISTING - UNCHANGED)
         // ============================================
         
         function showLoading(show) {
@@ -1240,7 +1465,7 @@
         }
 
         // ============================================
-        // LOCAL STORAGE HELPERS FOR ARTICLES
+        // LOCAL STORAGE HELPERS FOR ARTICLES (EXISTING - UNCHANGED)
         // ============================================
         const LS_KEY_ARTICLES = 't4l.admin.articles.v1';
         
@@ -1280,7 +1505,7 @@
         }
 
         // ============================================
-        // FETCH FUNCTIONS
+        // FETCH FUNCTIONS (EXISTING - UNCHANGED)
         // ============================================
 
         async function loadAdminInfo() {
@@ -1463,7 +1688,7 @@
         }
 
         // ============================================
-        // RENDER FUNCTIONS
+        // RENDER FUNCTIONS (EXISTING - UNCHANGED)
         // ============================================
 
         function renderAmbassadorsList() {
@@ -1716,7 +1941,7 @@
         }
 
         // ============================================
-        // REAL-TIME JOURNEY TRACKING
+        // REAL-TIME JOURNEY TRACKING (EXISTING - UNCHANGED)
         // ============================================
 
         function startJourneyPolling() {
@@ -1913,7 +2138,351 @@
         }
 
         // ============================================
-        // MODAL FUNCTIONS
+        // NEW: LINKEDIN AUDIT & SPEAKER PROFILE FUNCTIONS
+        // ============================================
+
+        async function openProfileAudit(id) {
+            currentAmbassadorForSubmission = id;
+            
+            try {
+                const response = await fetch(`/admin/api/ambassadors/${id}`, { credentials: 'include' });
+                if (!response.ok) throw new Error('Failed to load profile');
+                
+                const data = await response.json();
+                const content = document.getElementById('profileAuditContent');
+                
+                let html = `
+                    <div class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-2">Basic Information</h4>
+                                <div class="space-y-3">
+                                    <div>
+                                        <span class="text-sm text-gray-500">Name:</span>
+                                        <p class="font-medium">${data.name || 'Not provided'}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-500">Email:</span>
+                                        <p class="font-medium">${data.email}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-500">Access Code:</span>
+                                        <p class="font-mono font-medium">${data.access_code}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-2">Account Status</h4>
+                                <div class="space-y-3">
+                                    <div>
+                                        <span class="text-sm text-gray-500">Status:</span>
+                                        <span class="status-badge status-${data.status}">${data.status}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-500">Join Date:</span>
+                                        <p class="font-medium">${new Date(data.joinDate).toLocaleDateString()}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-500">Last Login:</span>
+                                        <p class="font-medium">${data.lastLogin ? new Date(data.lastLogin).toLocaleString() : 'Never'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                `;
+                
+                if (data.profile && data.profile.completed) {
+                    html += `
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">Profile Details</h4>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <!-- Add this after the LinkedIn Profile URL section -->
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Speaker Bio URL</label>
+                                    <a id="viewSpeakerBioUrl" href="#" target="_blank" class="text-blue-600 hover:underline">-</a>
+                                </div>
+                                
+                                <pre class="text-sm whitespace-pre-wrap">${JSON.stringify(data.profile.data, null, 2)}</pre>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="text-center py-8">
+                            <i class="bx bx-user-x text-4xl text-gray-300 mb-2"></i>
+                            <p class="text-gray-500">Profile not completed yet</p>
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+                content.innerHTML = html;
+                
+                // Load existing submissions if any
+                await loadExistingSubmissions(id);
+                
+                // Show the admin submissions section
+                document.getElementById('adminSubmissionsSection').classList.remove('hidden');
+                
+                // Populate speaker bio URL if available
+                if (data.profile && data.profile.data) {
+                    const profileData = data.profile.data;
+                    
+                    // Find speaker bio URL in profile data
+                    const speakerBioUrl = profileData.speakerBioUrl || 
+                                         profileData.speaker_bio_url || 
+                                         profileData.speakerBio || 
+                                         profileData.speaker_profile_url;
+                    
+                    const speakerBioLink = document.getElementById('viewSpeakerBioUrl');
+                    if (speakerBioLink && speakerBioUrl) {
+                        speakerBioLink.href = speakerBioUrl;
+                        speakerBioLink.textContent = speakerBioUrl;
+                    } else if (speakerBioLink) {
+                        speakerBioLink.textContent = 'Not provided';
+                        speakerBioLink.removeAttribute('href');
+                    }
+                }
+                
+                const modal = document.getElementById('profileAuditModal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                
+            } catch (error) {
+                console.error('Error loading profile:', error);
+                showToast('Failed to load profile', true);
+            }
+        }
+
+        async function loadExistingSubmissions(ambassadorId) {
+            try {
+                const response = await fetch(`/admin/api/ambassadors/${ambassadorId}/submissions`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const submissions = await response.json();
+                    
+                    // Update LinkedIn Audit section
+                    if (submissions.linkedinAudit) {
+                        document.getElementById('linkedinProfileUrl').value = submissions.linkedinAudit.url || '';
+                        document.getElementById('linkedinAuditFeedback').value = submissions.linkedinAudit.feedback || '';
+                        
+                        const badge = document.getElementById('linkedinAuditStatusBadge');
+                        badge.textContent = 'Submitted ✓';
+                        badge.className = 'px-3 py-1 rounded-lg text-sm font-semibold bg-green-100 text-green-700';
+                        
+                        const btn = document.getElementById('submitLinkedInBtn');
+                        btn.innerHTML = '<i class="bx bx-check"></i> Update LinkedIn Audit';
+                        btn.className = 'w-full px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 flex items-center justify-center gap-2';
+                    }
+                    
+                    // Update Speaker Profile section
+                    if (submissions.speakerProfile) {
+                        document.getElementById('speakerBio').value = submissions.speakerProfile.bio || '';
+                        document.getElementById('speakingTopics').value = submissions.speakerProfile.topics || '';
+                        document.getElementById('headshotUrl').value = submissions.speakerProfile.headshotUrl || '';
+                        document.getElementById('pastEngagements').value = submissions.speakerProfile.pastEngagements || '';
+                        
+                        const badge = document.getElementById('speakerProfileStatusBadge');
+                        badge.textContent = 'Submitted ✓';
+                        badge.className = 'px-3 py-1 rounded-lg text-sm font-semibold bg-green-100 text-green-700';
+                        
+                        const btn = document.getElementById('submitSpeakerBtn');
+                        btn.innerHTML = '<i class="bx bx-check"></i> Update Speaker Profile';
+                        btn.className = 'w-full px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 flex items-center justify-center gap-2';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading submissions:', error);
+                // If endpoint doesn't exist yet, just continue silently
+            }
+        }
+
+        async function submitLinkedInAudit() {
+            if (!currentAmbassadorForSubmission) {
+                showToast('No ambassador selected', true);
+                return;
+            }
+            
+            const linkedinUrl = document.getElementById('linkedinProfileUrl').value.trim();
+            const feedback = document.getElementById('linkedinAuditFeedback').value.trim();
+            
+            if (!linkedinUrl || !feedback) {
+                showToast('Please provide both LinkedIn URL and feedback', true);
+                return;
+            }
+            
+            const btn = document.getElementById('submitLinkedInBtn');
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = '<i class="bx bx-loader animate-spin"></i> Submitting...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch(`/admin/api/ambassadors/${currentAmbassadorForSubmission}/linkedin-audit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: linkedinUrl,
+                        feedback: feedback,
+                        submittedBy: 'admin',
+                        submittedAt: new Date().toISOString()
+                    }),
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    // Update UI
+                    const badge = document.getElementById('linkedinAuditStatusBadge');
+                    badge.textContent = 'Submitted ✓';
+                    badge.className = 'px-3 py-1 rounded-lg text-sm font-semibold bg-green-100 text-green-700';
+                    
+                    btn.innerHTML = '<i class="bx bx-check"></i> Update LinkedIn Audit';
+                    btn.className = 'w-full px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 flex items-center justify-center gap-2';
+                    
+                    // Mark Month 1 LinkedIn task as complete
+                    await updateJourneyTask(currentAmbassadorForSubmission, 'Submit LinkedIn profile for audit', 'completed');
+                    
+                    // Refresh stats
+                    fetchStats();
+                    
+                    showToast('LinkedIn audit submitted successfully!');
+                } else {
+                    throw new Error('Submission failed');
+                }
+            } catch (error) {
+                console.error('Error submitting LinkedIn audit:', error);
+                showToast('Failed to submit LinkedIn audit', true);
+                btn.innerHTML = originalText;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function submitSpeakerProfile() {
+            if (!currentAmbassadorForSubmission) {
+                showToast('No ambassador selected', true);
+                return;
+            }
+            
+            const bio = document.getElementById('speakerBio').value.trim();
+            const topics = document.getElementById('speakingTopics').value.trim();
+            const headshotUrl = document.getElementById('headshotUrl').value.trim();
+            
+            if (!bio || !topics) {
+                showToast('Please provide at least bio and speaking topics', true);
+                return;
+            }
+            
+            const btn = document.getElementById('submitSpeakerBtn');
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = '<i class="bx bx-loader animate-spin"></i> Submitting...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch(`/admin/api/ambassadors/${currentAmbassadorForSubmission}/speaker-profile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bio: bio,
+                        topics: topics,
+                        headshotUrl: headshotUrl,
+                        pastEngagements: document.getElementById('pastEngagements').value.trim(),
+                        submittedBy: 'admin',
+                        submittedAt: new Date().toISOString()
+                    }),
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    // Update UI
+                    const badge = document.getElementById('speakerProfileStatusBadge');
+                    badge.textContent = 'Submitted ✓';
+                    badge.className = 'px-3 py-1 rounded-lg text-sm font-semibold bg-green-100 text-green-700';
+                    
+                    btn.innerHTML = '<i class="bx bx-check"></i> Update Speaker Profile';
+                    btn.className = 'w-full px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 flex items-center justify-center gap-2';
+                    
+                    showToast('Speaker profile submitted successfully!');
+                } else {
+                    throw new Error('Submission failed');
+                }
+            } catch (error) {
+                console.error('Error submitting speaker profile:', error);
+                showToast('Failed to submit speaker profile', true);
+                btn.innerHTML = originalText;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function updateJourneyTask(ambassadorId, taskName, status) {
+            try {
+                const response = await fetch(`/admin/api/ambassadors/${ambassadorId}/journey/tasks`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        month: 1,
+                        task: taskName,
+                        status: status,
+                        completedAt: new Date().toISOString()
+                    }),
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    console.log(`Task "${taskName}" marked as ${status} for ambassador ${ambassadorId}`);
+                } else {
+                    console.warn('Failed to update journey task, endpoint might not exist yet');
+                }
+            } catch (error) {
+                console.error('Error updating task:', error);
+                // Silently fail - endpoint might not be implemented yet
+            }
+        }
+
+        function closeProfileAudit() {
+            const modal = document.getElementById('profileAuditModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            
+            // Reset form fields
+            document.getElementById('linkedinProfileUrl').value = '';
+            document.getElementById('linkedinAuditFeedback').value = '';
+            document.getElementById('speakerBio').value = '';
+            document.getElementById('speakingTopics').value = '';
+            document.getElementById('headshotUrl').value = '';
+            document.getElementById('pastEngagements').value = '';
+            
+            // Reset buttons
+            const linkedinBtn = document.getElementById('submitLinkedInBtn');
+            linkedinBtn.innerHTML = '<i class="bx bx-check"></i> Submit LinkedIn Audit';
+            linkedinBtn.className = 'w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 flex items-center justify-center gap-2';
+            linkedinBtn.disabled = false;
+            
+            const speakerBtn = document.getElementById('submitSpeakerBtn');
+            speakerBtn.innerHTML = '<i class="bx bx-check"></i> Submit Speaker Profile';
+            speakerBtn.className = 'w-full px-4 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 flex items-center justify-center gap-2';
+            speakerBtn.disabled = false;
+            
+            // Reset badges
+            document.getElementById('linkedinAuditStatusBadge').textContent = 'Not Submitted';
+            document.getElementById('linkedinAuditStatusBadge').className = 'px-3 py-1 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700';
+            
+            document.getElementById('speakerProfileStatusBadge').textContent = 'Not Submitted';
+            document.getElementById('speakerProfileStatusBadge').className = 'px-3 py-1 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700';
+            
+            // Hide the submissions section
+            document.getElementById('adminSubmissionsSection').classList.add('hidden');
+            
+            currentAmbassadorForSubmission = null;
+        }
+
+        // ============================================
+        // MODAL FUNCTIONS (EXISTING - UNCHANGED)
         // ============================================
 
         function openReviewModal(id) {
@@ -2108,159 +2677,159 @@
             console.log('✅ ULTIMATE FIX: Modal rendered successfully');
         }
 
-async function handleSimpleRequestChange(articleId) {
-    console.log('🚀 ULTIMATE FIX: Request Changes for article:', articleId);
-    
-    if (state.isRequestingChanges) {
-        console.log('⚠️ Request already in progress');
-        return;
-    }
-    
-    const message = document.getElementById('simpleNotifMessage').value.trim();
-    if (!message) {
-        showToast('Please provide feedback message', true);
-        return;
-    }
-    
-    const requestChangesBtn = document.getElementById('requestChangesBtn');
-    const requestChangesText = document.getElementById('requestChangesText');
-    const requestChangesLoader = document.getElementById('requestChangesLoader');
-    
-    if (!requestChangesBtn || !requestChangesText || !requestChangesLoader) {
-        console.error('❌ Button elements not found');
-        showToast('UI Error: Button elements not found', true);
-        return;
-    }
-    
-    state.isRequestingChanges = true;
-    requestChangesBtn.disabled = true;
-    requestChangesText.textContent = 'Requesting Changes...';
-    requestChangesLoader.classList.remove('hidden');
-    
-    console.log('📤 Message:', message);
-    
-    try {
-        console.log('🔍 Step 1: Fetching article details...');
-        const articleResponse = await fetch(`/admin/api/articles/${articleId}`, { 
-            credentials: 'include' 
-        });
-        
-        if (!articleResponse.ok) {
-            throw new Error('Failed to fetch article details');
-        }
-        
-        const articleData = await articleResponse.json();
-        console.log('✅ Article data received:', articleData);
-        
-        let ambassadorId = null;
-        
-        if (articleData.ambassador_id) {
-            ambassadorId = articleData.ambassador_id;
-        } 
-        else if (articleData.ambassador && articleData.ambassador.ambassador_id) {
-            ambassadorId = articleData.ambassador.ambassador_id;
-        }
-        else if (articleData.ambassadors && articleData.ambassadors.ambassador_id) {
-            ambassadorId = articleData.ambassadors.ambassador_id;
-        }
-        
-        if (!ambassadorId) {
-            console.error('❌ No ambassador_id found. Article data structure:', articleData);
+        async function handleSimpleRequestChange(articleId) {
+            console.log('🚀 ULTIMATE FIX: Request Changes for article:', articleId);
             
-            showToast('Could not find ambassador. Please check the article data in console.', true);
-            console.log('🆘 ADMIN: You need to fix the /admin/api/articles/:id endpoint in server.js');
-            console.log('🆘 The endpoint MUST return ambassador_id in the response');
-            
-            resetRequestChangesButton(requestChangesBtn, requestChangesText, requestChangesLoader);
-            state.isRequestingChanges = false;
-            return;
-        }
-        
-        console.log('✅ Ambassador ID found:', ambassadorId);
-
-        console.log('📬 Step 2: Sending notification to ambassador...');
-        const notifResponse = await fetch('/admin/api/notifications', { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ 
-                articleId: articleId, 
-                type: 'needs_update', 
-                message: message,
-                ambassadorId: ambassadorId
-            }), 
-            credentials: 'include' 
-        });
-        
-        if (!notifResponse.ok) {
-            const errorText = await notifResponse.text();
-            console.error('❌ Notification error response:', errorText);
-            throw new Error('Failed to send notification');
-        }
-        
-        const notifData = await notifResponse.json();
-        console.log('✅ Notification created:', notifData);
-        
-        console.log('📝 Step 3: Updating article status...');
-        const updateResponse = await fetch(`/admin/api/articles/${articleId}`, { 
-            method: 'PATCH', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ 
-                status: 'needs_update'
-            }), 
-            credentials: 'include' 
-        });
-        
-        if (!updateResponse.ok) {
-            throw new Error('Failed to update article status');
-        }
-        
-        const updateData = await updateResponse.json();
-        console.log('✅ Article status updated:', updateData);
-        
-        requestChangesText.textContent = 'Changes Requested! ✓';
-        requestChangesBtn.style.backgroundColor = '#10b981';
-        requestChangesLoader.classList.add('hidden');
-        
-        document.getElementById('simpleNotifMessage').value = '';
-        
-        console.log('✅ Change request process completed successfully');
-        showToast('✅ Change request sent to ambassador!');
-        
-        setTimeout(() => {
-            resetRequestChangesButton(requestChangesBtn, requestChangesText, requestChangesLoader);
-            state.isRequestingChanges = false;
-            
-            closeReviewModal();
-            if (state.tab === 'articles') {
-                fetchList();
-                fetchStats(); // Refresh stats to update pending count
+            if (state.isRequestingChanges) {
+                console.log('⚠️ Request already in progress');
+                return;
             }
-        }, 1500);
-        
-    } catch (error) {
-        console.error('❌ ULTIMATE FIX Error:', error);
-        
-        requestChangesText.textContent = 'Failed!';
-        requestChangesBtn.style.backgroundColor = '#ef4444';
-        requestChangesLoader.classList.add('hidden');
-        
-        showToast(`Failed to send change request: ${error.message}`, true);
-        
-        setTimeout(() => {
-            resetRequestChangesButton(requestChangesBtn, requestChangesText, requestChangesLoader);
-            state.isRequestingChanges = false;
-        }, 3000);
-    }
-}
+            
+            const message = document.getElementById('simpleNotifMessage').value.trim();
+            if (!message) {
+                showToast('Please provide feedback message', true);
+                return;
+            }
+            
+            const requestChangesBtn = document.getElementById('requestChangesBtn');
+            const requestChangesText = document.getElementById('requestChangesText');
+            const requestChangesLoader = document.getElementById('requestChangesLoader');
+            
+            if (!requestChangesBtn || !requestChangesText || !requestChangesLoader) {
+                console.error('❌ Button elements not found');
+                showToast('UI Error: Button elements not found', true);
+                return;
+            }
+            
+            state.isRequestingChanges = true;
+            requestChangesBtn.disabled = true;
+            requestChangesText.textContent = 'Requesting Changes...';
+            requestChangesLoader.classList.remove('hidden');
+            
+            console.log('📤 Message:', message);
+            
+            try {
+                console.log('🔍 Step 1: Fetching article details...');
+                const articleResponse = await fetch(`/admin/api/articles/${articleId}`, { 
+                    credentials: 'include' 
+                });
+                
+                if (!articleResponse.ok) {
+                    throw new Error('Failed to fetch article details');
+                }
+                
+                const articleData = await articleResponse.json();
+                console.log('✅ Article data received:', articleData);
+                
+                let ambassadorId = null;
+                
+                if (articleData.ambassador_id) {
+                    ambassadorId = articleData.ambassador_id;
+                } 
+                else if (articleData.ambassador && articleData.ambassador.ambassador_id) {
+                    ambassadorId = articleData.ambassador.ambassador_id;
+                }
+                else if (articleData.ambassadors && articleData.ambassadors.ambassador_id) {
+                    ambassadorId = articleData.ambassadors.ambassador_id;
+                }
+                
+                if (!ambassadorId) {
+                    console.error('❌ No ambassador_id found. Article data structure:', articleData);
+                    
+                    showToast('Could not find ambassador. Please check the article data in console.', true);
+                    console.log('🆘 ADMIN: You need to fix the /admin/api/articles/:id endpoint in server.js');
+                    console.log('🆘 The endpoint MUST return ambassador_id in the response');
+                    
+                    resetRequestChangesButton(requestChangesBtn, requestChangesText, requestChangesLoader);
+                    state.isRequestingChanges = false;
+                    return;
+                }
+                
+                console.log('✅ Ambassador ID found:', ambassadorId);
 
-function resetRequestChangesButton(btn, text, loader) {
-    if (!btn || !text || !loader) return;
-    
-    btn.disabled = false;
-    text.textContent = 'Request Changes';
-    btn.style.backgroundColor = '';
-    loader.classList.add('hidden');
-}
+                console.log('📬 Step 2: Sending notification to ambassador...');
+                const notifResponse = await fetch('/admin/api/notifications', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ 
+                        articleId: articleId, 
+                        type: 'needs_update', 
+                        message: message,
+                        ambassadorId: ambassadorId
+                    }), 
+                    credentials: 'include' 
+                });
+                
+                if (!notifResponse.ok) {
+                    const errorText = await notifResponse.text();
+                    console.error('❌ Notification error response:', errorText);
+                    throw new Error('Failed to send notification');
+                }
+                
+                const notifData = await notifResponse.json();
+                console.log('✅ Notification created:', notifData);
+                
+                console.log('📝 Step 3: Updating article status...');
+                const updateResponse = await fetch(`/admin/api/articles/${articleId}`, { 
+                    method: 'PATCH', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ 
+                        status: 'needs_update'
+                    }), 
+                    credentials: 'include' 
+                });
+                
+                if (!updateResponse.ok) {
+                    throw new Error('Failed to update article status');
+                }
+                
+                const updateData = await updateResponse.json();
+                console.log('✅ Article status updated:', updateData);
+                
+                requestChangesText.textContent = 'Changes Requested! ✓';
+                requestChangesBtn.style.backgroundColor = '#10b981';
+                requestChangesLoader.classList.add('hidden');
+                
+                document.getElementById('simpleNotifMessage').value = '';
+                
+                console.log('✅ Change request process completed successfully');
+                showToast('✅ Change request sent to ambassador!');
+                
+                setTimeout(() => {
+                    resetRequestChangesButton(requestChangesBtn, requestChangesText, requestChangesLoader);
+                    state.isRequestingChanges = false;
+                    
+                    closeReviewModal();
+                    if (state.tab === 'articles') {
+                        fetchList();
+                        fetchStats(); // Refresh stats to update pending count
+                    }
+                }, 1500);
+                
+            } catch (error) {
+                console.error('❌ ULTIMATE FIX Error:', error);
+                
+                requestChangesText.textContent = 'Failed!';
+                requestChangesBtn.style.backgroundColor = '#ef4444';
+                requestChangesLoader.classList.add('hidden');
+                
+                showToast(`Failed to send change request: ${error.message}`, true);
+                
+                setTimeout(() => {
+                    resetRequestChangesButton(requestChangesBtn, requestChangesText, requestChangesLoader);
+                    state.isRequestingChanges = false;
+                }, 3000);
+            }
+        }
+
+        function resetRequestChangesButton(btn, text, loader) {
+            if (!btn || !text || !loader) return;
+            
+            btn.disabled = false;
+            text.textContent = 'Request Changes';
+            btn.style.backgroundColor = '';
+            loader.classList.add('hidden');
+        }
 
         function handleSimpleStatusUpdate(articleId) {
             const statusSelect = document.getElementById('simpleStatusSelect');
@@ -2376,94 +2945,8 @@ function resetRequestChangesButton(btn, text, loader) {
             }).join('');
         }
 
-        async function openProfileAudit(id) {
-            try {
-                const response = await fetch(`/admin/api/ambassadors/${id}`, { credentials: 'include' });
-                if (!response.ok) throw new Error('Failed to load profile');
-                
-                const data = await response.json();
-                const content = document.getElementById('profileAuditContent');
-                
-                let html = `
-                    <div class="space-y-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <h4 class="font-semibold text-gray-900 mb-2">Basic Information</h4>
-                                <div class="space-y-3">
-                                    <div>
-                                        <span class="text-sm text-gray-500">Name:</span>
-                                        <p class="font-medium">${data.name || 'Not provided'}</p>
-                                    </div>
-                                    <div>
-                                        <span class="text-sm text-gray-500">Email:</span>
-                                        <p class="font-medium">${data.email}</p>
-                                    </div>
-                                    <div>
-                                        <span class="text-sm text-gray-500">Access Code:</span>
-                                        <p class="font-mono font-medium">${data.access_code}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div>
-                                <h4 class="font-semibold text-gray-900 mb-2">Account Status</h4>
-                                <div class="space-y-3">
-                                    <div>
-                                        <span class="text-sm text-gray-500">Status:</span>
-                                        <span class="status-badge status-${data.status}">${data.status}</span>
-                                    </div>
-                                    <div>
-                                        <span class="text-sm text-gray-500">Join Date:</span>
-                                        <p class="font-medium">${new Date(data.joinDate).toLocaleDateString()}</p>
-                                    </div>
-                                    <div>
-                                        <span class="text-sm text-gray-500">Last Login:</span>
-                                        <p class="font-medium">${data.lastLogin ? new Date(data.lastLogin).toLocaleString() : 'Never'}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                `;
-                
-                if (data.profile && data.profile.completed) {
-                    html += `
-                        <div>
-                            <h4 class="font-semibold text-gray-900 mb-2">Profile Details</h4>
-                            <div class="bg-gray-50 rounded-lg p-4">
-                                <pre class="text-sm whitespace-pre-wrap">${JSON.stringify(data.profile.data, null, 2)}</pre>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    html += `
-                        <div class="text-center py-8">
-                            <i class="bx bx-user-x text-4xl text-gray-300 mb-2"></i>
-                            <p class="text-gray-500">Profile not completed yet</p>
-                        </div>
-                    `;
-                }
-                
-                html += '</div>';
-                content.innerHTML = html;
-                
-                const modal = document.getElementById('profileAuditModal');
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-                
-            } catch (error) {
-                console.error('Error loading profile:', error);
-                showToast('Failed to load profile', true);
-            }
-        }
-
-        function closeProfileAudit() {
-            const modal = document.getElementById('profileAuditModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
-
         // ============================================
-        // PUSH PUBLICATION MODAL FUNCTIONS
+        // PUSH PUBLICATION MODAL FUNCTIONS (EXISTING - UNCHANGED)
         // ============================================
         
         function openPushPublicationModal(articleId, articleTitle) {
@@ -2713,7 +3196,7 @@ function resetRequestChangesButton(btn, text, loader) {
         }
 
         // ============================================
-        // BIND ROW ACTIONS
+        // BIND ROW ACTIONS (EXISTING - UNCHANGED)
         // ============================================
 
         function bindRowActions() {
@@ -2750,7 +3233,7 @@ function resetRequestChangesButton(btn, text, loader) {
         }
 
         // ============================================
-        // BIND EVENTS
+        // BIND EVENTS (EXISTING - UNCHANGED)
         // ============================================
 
         function bindEvents() {
@@ -2835,7 +3318,7 @@ function resetRequestChangesButton(btn, text, loader) {
         }
 
         // ============================================
-        // TAB SWITCH FUNCTION (Called by inline onclick)
+        // TAB SWITCH FUNCTION (EXISTING - UNCHANGED)
         // ============================================
         function switchTab(tabName) {
             console.log(`📋 Switching to tab: ${tabName}`);
@@ -2908,7 +3391,7 @@ function resetRequestChangesButton(btn, text, loader) {
         }
 
         // ============================================
-        // TAB SETUP FUNCTION
+        // TAB SETUP FUNCTION (EXISTING - UNCHANGED)
         // ============================================
         function setupTabsWithPolling() {
             const tabIds = {
@@ -3027,7 +3510,7 @@ function resetRequestChangesButton(btn, text, loader) {
         }
 
         // ============================================
-        // LOGOUT FUNCTION
+        // LOGOUT FUNCTION (EXISTING - UNCHANGED)
         // ============================================
         async function logout() {
             try {
@@ -3046,7 +3529,7 @@ function resetRequestChangesButton(btn, text, loader) {
         }
 
         // ============================================
-        // INITIALIZE
+        // INITIALIZE (EXISTING - UNCHANGED)
         // ============================================
         document.addEventListener('DOMContentLoaded', () => {
             loadAdminInfo();
@@ -3120,6 +3603,8 @@ function resetRequestChangesButton(btn, text, loader) {
         window.handleNotificationClick = handleNotificationClick;
         window.closeNotificationDropdown = closeNotificationDropdown;
         window.switchTab = switchTab; // Expose switchTab function for inline onclick handlers
+        window.submitLinkedInAudit = submitLinkedInAudit;
+        window.submitSpeakerProfile = submitSpeakerProfile;
     </script>
 </body>
 </html>

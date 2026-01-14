@@ -14,11 +14,27 @@
   // ============================================
   // INITIALIZE NOTIFICATION SYSTEM
   // ============================================
-  function initNotifications() {
+  async function initNotifications() {
     if (isInitialized) return;
     isInitialized = true;
 
     console.log('🔔 Initializing global notification system...');
+
+    try {
+      const res = await fetch('/api/me', { credentials: 'include' });
+      if (!res.ok) return;
+      const me = await res.json();
+      if (!me || me.role !== 'admin') {
+        const bellIcons = document.querySelectorAll('.bx-bell');
+        bellIcons.forEach(bell => {
+          const el = bell.closest('button, div, a, i') || bell;
+          if (el) el.style.display = 'none';
+        });
+        return;
+      }
+    } catch (e) {
+      return;
+    }
 
     // Create the notification panel HTML
     createNotificationPanel();
@@ -804,8 +820,8 @@
   // ============================================
   async function markAllAsRead() {
     try {
-      const response = await fetch('/api/notifications/read-all', {
-        method: 'PATCH',
+      const response = await fetch('/api/notifications/mark-all-read', {
+        method: 'POST',
         credentials: 'include'
       });
       

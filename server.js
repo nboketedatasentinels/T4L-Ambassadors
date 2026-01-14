@@ -407,6 +407,11 @@ const {
   updateServiceRequestStatus,
   getPartnerUserIdFromPartnerId,
   getAmbassadorUserIdFromAmbassadorId,
+  createLinkedInAudit,
+  getLinkedInAuditByAmbassadorId,
+  updateLinkedInAudit,
+  deleteLinkedInAudit,
+  getLinkedInAudits
 } = require("./models/db.js");
 
 // ============================================
@@ -993,6 +998,30 @@ app.post(
         // Don't fail the whole request if notification fails
       }
 
+      // Notify admins about the new application
+      try {
+        const { data: admins } = await supabase.from("admins").select("user_id");
+        if (admins && admins.length > 0) {
+          const ambassadorName = `${ambassador.first_name || ""} ${
+            ambassador.last_name || ""
+          }`.trim() || "An ambassador";
+          for (const admin of admins) {
+            await createNotification(
+              admin.user_id,
+              "admin",
+              "application_submitted",
+              "📋 New Application",
+              `${ambassadorName} applied to "${postTitle || post.title}"`,
+              `/admin-dashboard.html`,
+              applicationId
+            );
+          }
+          console.log("   ✅ Admin notifications sent");
+        }
+      } catch (adminNotifError) {
+        console.error("   ⚠️ Failed to notify admins:", adminNotifError.message);
+      }
+
       console.log("\n🎉 ========== SUCCESS ==========\n");
 
       return res.json({
@@ -1242,6 +1271,28 @@ app.post("/api/services/:id/request", requireAuth, async (req, res) => {
     );
 
     console.log("✅ Ambassador notification sent");
+
+    // Notify admins about the new service request
+    try {
+      const { data: admins } = await supabase.from("admins").select("user_id");
+      if (admins && admins.length > 0) {
+        for (const admin of admins) {
+          await createNotification(
+            admin.user_id,
+            "admin",
+            "service_request",
+            "🔧 New Service Request",
+            `${ambassadorName} requested service: "${service.title}"`,
+            `/admin-dashboard.html`,
+            null,
+            requestId
+          );
+        }
+        console.log("✅ Admin notifications sent for service request");
+      }
+    } catch (notifError) {
+      console.error("⚠️ Failed to notify admins:", notifError.message);
+    }
 
     console.log("\n🎉 ========== SERVICE REQUEST SUCCESS ==========\n");
 
@@ -1741,7 +1792,6 @@ app.put(
 // NOTIFICATION ENDPOINTS
 // ============================================
 
-// Get notifications for current user
 app.get("/api/notifications", requireAuth, async (req, res) => {
   try {
     const userId = req.auth.userId;
@@ -1749,15 +1799,36 @@ app.get("/api/notifications", requireAuth, async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const unreadOnly = req.query.unread === "true";
 
+    if (req.query.debug === "true") {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("recipient_type", "admin")
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (error) {
+        console.error("Error fetching debug notifications:", error);
+        throw error;
+      }
+      return res.json({
+        notifications: data || [],
+        debug: true,
+        total: data?.length || 0,
+        unreadCount: (data || []).filter((n) => !n.read).length,
+      });
+    }
+
     console.log("📬 Fetching notifications for:", userId, role);
 
-    let query = supabase
-      .from("notifications")
-      .select("*")
-      .eq("recipient_id", userId)
-      .eq("recipient_type", role)
-      .order("created_at", { ascending: false })
-      .limit(limit);
+let query = supabase
+    .from("notifications")
+    .select("*")
+    .eq("recipient_id", userId)
+    // .eq("recipient_type", role)  // ✅ COMMENT OUT OR REMOVE THIS LINE
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+console.log("🔍 Querying notifications for user:", userId, "without role filter");
 
     if (unreadOnly) {
       query = query.eq("read", false);
@@ -1770,7 +1841,10 @@ app.get("/api/notifications", requireAuth, async (req, res) => {
       throw error;
     }
 
+    // ✅ LOG: Check if notifications have 'read' field
     console.log("✅ Found", notifications?.length || 0, "notifications");
+    console.log("📊 First notification read status:", notifications?.[0]?.read);
+    console.log("📊 Unread count:", notifications?.filter(n => !n.read).length);
 
     return res.json({
       notifications: notifications || [],
@@ -1785,7 +1859,6 @@ app.get("/api/notifications", requireAuth, async (req, res) => {
     });
   }
 });
-
 // ============================================
 // GET AMBASSADOR PORTFOLIO/PROFILE
 // ============================================
@@ -1902,14 +1975,23 @@ app.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
 app.post("/api/notifications/mark-all-read", requireAuth, async (req, res) => {
   try {
     const userId = req.auth.userId;
+    const role = req.auth.role;
+
+    console.log('📝 Marking all notifications as read for:', userId);
 
     const { error } = await supabase
       .from("notifications")
       .update({ read: true })
       .eq("recipient_id", userId)
+      .eq("recipient_type", role)
       .eq("read", false);
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Error:', error);
+      throw error;
+    }
+
+    console.log('✅ All notifications marked as read');
 
     return res.json({
       success: true,
@@ -1917,7 +1999,10 @@ app.post("/api/notifications/mark-all-read", requireAuth, async (req, res) => {
     });
   } catch (error) {
     console.error("Error marking all as read:", error);
-    return res.status(500).json({ error: "Failed to update notifications" });
+    return res.status(500).json({ 
+      error: "Failed to update notifications",
+      details: error.message 
+    });
   }
 });
 
@@ -3592,6 +3677,165 @@ app.post("/admin-signin", async (req, res) => {
   }
 });
 
+// Admin submits LinkedIn audit for an ambassador
+app.post('/admin/api/ambassadors/:id/linkedin-audit', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const ambassadorId = req.params.id;
+    const { url, speaker_bio_url, feedback } = req.body; // ✅ ADD speaker_bio_url here
+
+    console.log('📝 Admin submitting LinkedIn audit for:', ambassadorId);
+
+    // Validate input
+    if (!url || !feedback) {
+      return res.status(400).json({ error: 'LinkedIn URL and feedback are required' });
+    }
+
+    // Verify ambassador exists
+    const { data: ambassador, error: ambassadorError } = await supabase
+      .from('ambassadors')
+      .select('*')
+      .eq('ambassador_id', ambassadorId)
+      .single();
+
+    if (ambassadorError || !ambassador) {
+      console.error('❌ Ambassador not found:', ambassadorId);
+      return res.status(404).json({ error: 'Ambassador not found' });
+    }
+
+    console.log('✅ Found ambassador:', ambassador.email);
+
+    // Store LinkedIn audit data WITH speaker_bio_url
+    const { data: auditData, error: auditError } = await supabase
+      .from('linkedin_audits')
+      .upsert({
+        ambassador_id: ambassadorId,
+        linkedin_url: url,
+        speaker_bio_url: speaker_bio_url || null, // ✅ ADD THIS LINE
+        feedback: feedback,
+        submitted_by: req.auth.userId, // Admin who submitted it
+        submitted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'ambassador_id'
+      })
+      .select()
+      .single();
+
+    if (auditError) {
+      console.error('❌ Error storing audit:', auditError);
+      return res.status(500).json({ error: 'Failed to store audit data' });
+    }
+
+    console.log('✅ LinkedIn audit stored successfully');
+
+    // Update journey progress for the AMBASSADOR (not admin!)
+    try {
+      await upsertJourneyProgress(
+        ambassadorId, // ✅ Use ambassador's ID, NOT req.auth.userId
+        1, // Month 1
+        'Submit LinkedIn profile for audit',
+        'completed'
+      );
+      console.log('✅ Journey progress updated for ambassador');
+    } catch (journeyError) {
+      console.error('⚠️ Could not update journey progress:', journeyError);
+      // Don't fail the whole request if journey update fails
+    }
+
+    // Send notification to ambassador
+    try {
+      await supabase.from('notifications').insert({
+        user_id: ambassadorId,
+        type: 'linkedin_audit_completed',
+        title: 'LinkedIn Audit Complete',
+        message: 'Your LinkedIn profile audit has been completed by the admin team. Check your feedback!',
+        read: false,
+        created_at: new Date().toISOString()
+      });
+      console.log('✅ Notification sent to ambassador');
+    } catch (notifError) {
+      console.error('⚠️ Could not send notification:', notifError);
+    }
+
+    res.json({
+      success: true,
+      message: 'LinkedIn audit submitted successfully',
+      audit: auditData
+    });
+
+  } catch (error) {
+    console.error('❌ Error submitting LinkedIn audit:', error);
+    res.status(500).json({ error: error.message || 'Failed to submit LinkedIn audit' });
+  }
+});
+
+// Get LinkedIn audit for an ambassador
+app.get('/admin/api/ambassadors/:id/linkedin-audit', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const ambassadorId = req.params.id;
+
+    const { data, error } = await supabase
+      .from('linkedin_audits')
+      .select('*')
+      .eq('ambassador_id', ambassadorId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+      throw error;
+    }
+
+    res.json({
+      hasAudit: !!data,
+      audit: data || null
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching LinkedIn audit:', error);
+    res.status(500).json({ error: 'Failed to fetch audit data' });
+  }
+});
+
+// ============================================
+// AMBASSADOR: Get Own LinkedIn Audit
+// ============================================
+app.get(
+  "/api/journey/linkedin-audit",
+  requireAuth,
+  requireRole("ambassador"),
+  async (req, res) => {
+    try {
+      const userId = req.auth.userId;
+
+      console.log("📖 Ambassador fetching LinkedIn audit");
+
+      // Get journey progress
+      const progress = await getJourneyProgress(userId);
+
+      if (!progress || !progress.linkedin_audit) {
+        return res.json({
+          hasAudit: false,
+          audit: null
+        });
+      }
+
+      return res.json({
+        hasAudit: true,
+        audit: {
+          url: progress.linkedin_audit.url,
+          feedback: progress.linkedin_audit.feedback,
+          submittedAt: progress.linkedin_audit.submittedAt
+        }
+      });
+    } catch (error) {
+      console.error("❌ Error fetching LinkedIn audit:", error);
+      return res.status(500).json({
+        error: "Failed to fetch LinkedIn audit",
+        details: error.message,
+      });
+    }
+  }
+);
+
 // ------------------------
 // Protected Pages
 // ------------------------
@@ -3869,6 +4113,39 @@ app.patch("/api/profile", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("Error updating profile:", error);
     return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Mark notification as read
+app.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
+  try {
+    const notificationId = req.params.id;
+    const userId = req.auth.userId;
+
+    console.log('📝 Marking notification as read:', notificationId);
+
+    const { data, error } = await supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("notification_id", notificationId)
+      .eq("recipient_id", userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error:', error);
+      throw error;
+    }
+
+    console.log('✅ Notification marked as read');
+
+    return res.json({ success: true, notification: data });
+  } catch (error) {
+    console.error("Error marking notification as read:", error);
+    return res.status(500).json({ 
+      error: "Failed to update notification",
+      details: error.message 
+    });
   }
 });
 
@@ -5967,6 +6244,32 @@ app.post(
 
       console.log("Article created successfully:", newArticle?.article_id);
 
+      // Notify admins about the new article submission
+      try {
+        const { data: admins } = await supabase.from("admins").select("user_id");
+        if (admins && admins.length > 0) {
+          const ambassadorName = `${user.first_name || ""} ${
+            user.last_name || ""
+          }`.trim() || "An ambassador";
+          for (const admin of admins) {
+            await createNotification(
+              admin.user_id,
+              "admin",
+              "article_submitted",
+              "📝 New Article Submitted",
+              `${ambassadorName} submitted a new article: "${title}"`,
+              `/admin-dashboard.html`,
+              null,
+              null,
+              newArticle.article_id
+            );
+          }
+          console.log("✅ Admin notifications sent for article submission");
+        }
+      } catch (notifError) {
+        console.error("⚠️ Failed to notify admins:", notifError.message);
+      }
+
       return res.json({
         success: true,
         id: newArticle.article_id,
@@ -6380,6 +6683,39 @@ app.post(
 
       console.log("✅ Post created successfully:", newPost.post_id);
 
+      // Notify admins about the new post created by a partner
+      try {
+        const { data: admins } = await supabase.from("admins").select("user_id");
+        let partnerName = "A partner";
+        try {
+          const { data: partnerProfile } = await supabase
+            .from("partners")
+            .select("organization_name, contact_person")
+            .eq("partner_id", partner.partner_id)
+            .single();
+          partnerName =
+            partnerProfile?.organization_name ||
+            partnerProfile?.contact_person ||
+            partnerName;
+        } catch (e) {}
+
+        if (admins && admins.length > 0) {
+          for (const admin of admins) {
+            await createNotification(
+              admin.user_id,
+              "admin",
+              "post_created",
+              "💼 New Opportunity Posted",
+              `${partnerName} posted a new opportunity: "${title}"`,
+              `/admin-dashboard.html`
+            );
+          }
+          console.log("✅ Admin notifications sent for new post");
+        }
+      } catch (notifError) {
+        console.error("⚠️ Failed to notify admins:", notifError.message);
+      }
+
       return res.json({
         success: true,
         post: newPost,
@@ -6590,6 +6926,49 @@ app.post("/api/notifications/clear", requireAuth, (req, res) => {
   return res.json({ success: true });
 });
 
+// Add this to server.js for debugging
+app.get("/api/notifications/debug", requireAuth, async (req, res) => {
+    try {
+        const userId = req.auth.userId;
+        
+        console.log("🔍 DEBUG: Fetching ALL notifications for user:", userId);
+        
+        const { data: notifications, error } = await supabase
+            .from("notifications")
+            .select("*")
+            .eq("recipient_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(50);
+        
+        if (error) throw error;
+        
+        console.log("📊 DEBUG: Found", notifications?.length || 0, "notifications");
+        
+        // Log each notification
+        notifications?.forEach((n, i) => {
+            console.log(`  ${i+1}. ID: ${n.notification_id.substring(0,8)}...`);
+            console.log(`     Type: ${n.type}`);
+            console.log(`     Recipient Type: ${n.recipient_type}`);
+            console.log(`     Read: ${n.read}`);
+            console.log(`     Message: ${n.message_text?.substring(0, 50)}...`);
+            console.log(`     Created: ${n.created_at}`);
+        });
+        
+        return res.json({
+            userId,
+            total: notifications?.length || 0,
+            unreadCount: notifications?.filter(n => !n.read).length || 0,
+            notifications: notifications || [],
+            byRecipientType: notifications?.reduce((acc, n) => {
+                acc[n.recipient_type] = (acc[n.recipient_type] || 0) + 1;
+                return acc;
+            }, {})
+        });
+    } catch (error) {
+        console.error("❌ Debug error:", error);
+        return res.status(500).json({ error: error.message });
+    }
+});
 // ------------------------
 // Dashboard Stats
 // ------------------------

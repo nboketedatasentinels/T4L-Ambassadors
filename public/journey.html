@@ -352,8 +352,8 @@
       color: #4b0d7f;
       margin-bottom: 16px;
       display: flex;
-        align-items: center;
-        justify-content: center;
+      align-items: center;
+      justify-content: center;
       gap: 8px;
       font-size: 1.1em;
       font-weight: 600;
@@ -867,6 +867,72 @@
   <script src="/js/notifications.js"></script>
   <!-- Note: Journey page has its own React-based sidebar, so global sidebar is not used here -->
   <div id="root"></div>
+
+  <!-- Profile Audit Recommendations Popup -->
+  <div id="profileAuditRecommendationsPopup" class="popup-overlay hidden">
+    <div class="popup-content">
+      <button class="popup-close" onclick="closeProfileAuditRecommendationsPopup()">×</button>
+      <div class="template-container">
+        <span class="badge"><i class='bx bx-user-check'></i> Profile Audit Results</span>
+        <h1 class="template-title"><i class='bx bx-search-alt'></i> Your Profile Audit Recommendations</h1>
+        <p class="template-subtitle">Review the personalized recommendations from our team</p>
+
+        <div class="instructions">
+          <h3><i class='bx bx-list-check'></i> How to Use These Recommendations</h3>
+          <ol>
+            <li><strong>Review both documents</strong> - your LinkedIn profile audit and speaker bio recommendations</li>
+            <li><strong>Implement the suggestions</strong> on your LinkedIn profile and speaker materials</li>
+            <li><strong>Track your progress</strong> as you update your profiles</li>
+            <li><strong>Mark as complete</strong> once you've implemented the key recommendations</li>
+          </ol>
+        </div>
+
+        <!-- LinkedIn Profile Audit Section -->
+        <div class="upload-section" id="linkedinAuditSection">
+          <h3><i class='bx bxl-linkedin'></i> LinkedIn Profile Audit</h3>
+          
+          <div id="linkedinAuditPlaceholder" class="text-center py-6">
+            <i class='bx bx-time text-4xl text-gray-400 mb-4'></i>
+            <p class="text-gray-600">Your LinkedIn profile audit is being prepared by our team.</p>
+            <p class="text-sm text-gray-500 mt-2">Check back in 24-48 hours for your personalized recommendations.</p>
+          </div>
+          
+          <div id="linkedinAuditContent" class="hidden">
+            <p class="text-gray-700 mb-4">Our team has reviewed your LinkedIn profile. Here are your personalized recommendations:</p>
+            <a href="#" id="linkedinAuditLink" target="_blank" class="btn-canva w-full justify-center">
+              <i class='bx bx-file'></i> View LinkedIn Audit Recommendations
+            </a>
+            <p class="text-sm text-gray-500 mt-2">Last updated: <span id="linkedinAuditDate">-</span></p>
+          </div>
+        </div>
+
+        <!-- Speaker Bio Audit Section -->
+        <div class="upload-section" id="speakerBioAuditSection">
+          <h3><i class='bx bx-microphone'></i> Speaker Bio Audit</h3>
+          
+          <div id="speakerBioPlaceholder" class="text-center py-6">
+            <i class='bx bx-time text-4xl text-gray-400 mb-4'></i>
+            <p class="text-gray-600">Your speaker bio recommendations are being prepared.</p>
+            <p class="text-sm text-gray-500 mt-2">Our team will send you personalized speaker bio feedback.</p>
+          </div>
+          
+          <div id="speakerBioContent" class="hidden">
+            <p class="text-gray-700 mb-4">Our team has reviewed your speaker bio. Here are your personalized recommendations:</p>
+            <a href="#" id="speakerBioLink" target="_blank" class="btn-canva w-full justify-center">
+              <i class='bx bx-file'></i> View Speaker Bio Recommendations
+            </a>
+            <p class="text-sm text-gray-500 mt-2">Last updated: <span id="speakerBioDate">-</span></p>
+          </div>
+        </div>
+
+        <div class="action-buttons mt-6">
+          <button class="btn-submit" onclick="markProfileAuditAsComplete()">
+            <i class='bx bx-check-shield'></i> Mark Recommendations as Implemented
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Transformation Story Popup - UPDATED: No file upload, direct email -->
   <div id="transformationPopup" class="popup-overlay hidden">
@@ -1464,6 +1530,144 @@
 
   <script type="text/babel">
     const { useState, useEffect, useCallback } = React;
+
+    // Store for audit recommendations (in real app, this would come from API)
+    let auditRecommendations = {
+      linkedin: {
+        hasRecommendations: false,
+        url: '',
+        lastUpdated: ''
+      },
+      speakerBio: {
+        hasRecommendations: false,
+        url: '',
+        lastUpdated: ''
+      }
+    };
+
+    // Function to load audit recommendations (simulating API call)
+    function loadAuditRecommendations() {
+      // In real app, this would be a fetch to your API
+      // For demo, we'll check localStorage first
+      const saved = localStorage.getItem('audit_recommendations');
+      if (saved) {
+        auditRecommendations = JSON.parse(saved);
+      }
+      
+      // Check if admin has sent recommendations (simulated)
+      // In real app, this would check with your backend
+      const adminHasSent = Math.random() > 0.5; // 50% chance for demo
+      
+      if (adminHasSent && !auditRecommendations.linkedin.hasRecommendations) {
+        // Simulate admin sending recommendations
+        auditRecommendations = {
+          linkedin: {
+            hasRecommendations: true,
+            url: 'https://gamma.app/docs/Your-LinkedIn-Profile-Audit-Recommendations-xyz123',
+            lastUpdated: new Date().toLocaleDateString()
+          },
+          speakerBio: {
+            hasRecommendations: true,
+            url: 'https://gamma.app/docs/Your-Speaker-Bio-Recommendations-abc456',
+            lastUpdated: new Date().toLocaleDateString()
+          }
+        };
+        localStorage.setItem('audit_recommendations', JSON.stringify(auditRecommendations));
+      }
+      
+      return auditRecommendations;
+    }
+
+    // Open profile audit recommendations popup
+    function openProfileAuditRecommendationsPopup() {
+      const popup = document.getElementById('profileAuditRecommendationsPopup');
+      popup.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      
+      // Load recommendations
+      const recommendations = loadAuditRecommendations();
+      
+      // Update LinkedIn section
+      const linkedinPlaceholder = document.getElementById('linkedinAuditPlaceholder');
+      const linkedinContent = document.getElementById('linkedinAuditContent');
+      const linkedinLink = document.getElementById('linkedinAuditLink');
+      const linkedinDate = document.getElementById('linkedinAuditDate');
+      
+      if (recommendations.linkedin.hasRecommendations) {
+        linkedinPlaceholder.classList.add('hidden');
+        linkedinContent.classList.remove('hidden');
+        linkedinLink.href = recommendations.linkedin.url;
+        linkedinDate.textContent = recommendations.linkedin.lastUpdated;
+      } else {
+        linkedinPlaceholder.classList.remove('hidden');
+        linkedinContent.classList.add('hidden');
+      }
+      
+      // Update Speaker Bio section
+      const speakerBioPlaceholder = document.getElementById('speakerBioPlaceholder');
+      const speakerBioContent = document.getElementById('speakerBioContent');
+      const speakerBioLink = document.getElementById('speakerBioLink');
+      const speakerBioDate = document.getElementById('speakerBioDate');
+      
+      if (recommendations.speakerBio.hasRecommendations) {
+        speakerBioPlaceholder.classList.add('hidden');
+        speakerBioContent.classList.remove('hidden');
+        speakerBioLink.href = recommendations.speakerBio.url;
+        speakerBioDate.textContent = recommendations.speakerBio.lastUpdated;
+      } else {
+        speakerBioPlaceholder.classList.remove('hidden');
+        speakerBioContent.classList.add('hidden');
+      }
+    }
+
+    // Close popup
+    function closeProfileAuditRecommendationsPopup() {
+      const popup = document.getElementById('profileAuditRecommendationsPopup');
+      popup.classList.add('hidden');
+      document.body.style.overflow = 'auto';
+    }
+
+    // Mark as complete
+    function markProfileAuditAsComplete() {
+      // In real app, this would update the task status via API
+      alert('Task marked as complete! The task will now show as checked.');
+      closeProfileAuditRecommendationsPopup();
+      
+      // Find and check the task checkbox (simulated)
+      const taskCheckbox = document.querySelector('input[id*="implement_audit"]');
+      if (taskCheckbox) {
+        taskCheckbox.checked = true;
+        taskCheckbox.dispatchEvent(new Event('change'));
+      }
+    }
+
+    // ADMIN FUNCTION: Simulate admin sending recommendations
+    // In real app, this would be an admin endpoint
+    function adminSendAuditRecommendations(userId, linkedinUrl, speakerBioUrl) {
+      const recommendations = {
+        linkedin: {
+          hasRecommendations: true,
+          url: linkedinUrl,
+          lastUpdated: new Date().toLocaleDateString()
+        },
+        speakerBio: {
+          hasRecommendations: true,
+          url: speakerBioUrl,
+          lastUpdated: new Date().toLocaleDateString()
+        }
+      };
+      
+      // Save to localStorage (in real app, save to database)
+      localStorage.setItem('audit_recommendations', JSON.stringify(recommendations));
+      
+      // In real app, you would:
+      // 1. Save to your database
+      // 2. Send notification to user
+      // 3. Update user's task status
+      
+      console.log('Admin sent recommendations:', recommendations);
+      return recommendations;
+    }
 
     // Carousel selection state for Month 1 (NEW: 3 options)
     let selectedMonth1CarouselIndex = 0;
@@ -2297,7 +2501,7 @@ What quote guides your approach to leadership or change?
           'second_course': 'https://www.t4leader.com/challenge-page/transformational-leadership?programId=d4e58ca0-f0e6-4f12-b2a8-9dc5fcf6e335',
           'connect_10': 'https://www.linkedin.com/in/nono-bokete/',
           'post_3x': 'popup:month1-carousel',
-          'implement_audit': 'https://gamma.app/docs/COMMUNITY-ARTICLE-GUIDELINES-OVERVIEW-obkq8cd4z49qfvq',
+          'implement_audit': 'popup:audit-recommendations', // Changed to new popup
           'third_course': 'https://www.t4leader.com/challenge-page/the-science-of-you-personality-strengths-for-growth?programId=18da4c45-2f2d-4535-9bf3-fd3672ec8121',
           'submit_article_1': '/article-amb.html',
           'engage_15': 'https://www.linkedin.com/company/t4leader/posts/?feedView=all',
@@ -2371,6 +2575,9 @@ What quote guides your approach to leadership or change?
           openMonth11YearEndPopup();
         } else if (action === 'popup:profile-audit') {
           openProfileAuditPopup();
+        } else if (action === 'popup:audit-recommendations') {
+          // NEW: Open the profile audit recommendations popup
+          openProfileAuditRecommendationsPopup();
         } else if (action === 'email' || action.startsWith('email:')) {
           let subject, body;
 
@@ -3172,5 +3379,4 @@ Best,
     root.render(<App />);
   </script>
 </body>
-
 </html>
