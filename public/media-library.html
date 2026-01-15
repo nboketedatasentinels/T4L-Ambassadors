@@ -38,37 +38,58 @@
         display: none !important;
       }
       
-      /* Card styling updates */
+      /* Card styling updates - Professional two-tone design */
       .grid > div {
         height: auto !important;
-        min-height: 380px !important;
+        min-height: 420px !important;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        border-radius: 16px !important;
+        overflow: hidden !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
       }
       
       .grid > div > div:first-child {
-        height: 140px !important;
-        padding: 1rem !important;
+        height: 180px !important;
+        padding: 1.5rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        position: relative !important;
+        overflow: hidden !important;
+      }
+      
+      .grid > div > div:first-child::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        opacity: 0.1;
+        background: url('data:image/svg+xml,<svg width="60" height="60" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M 60 0 L 0 0 0 60" fill="none" stroke="white" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grid)"/></svg>');
       }
       
       .grid > div > div:last-child {
-        padding: 1.25rem !important;
+        padding: 1.5rem !important;
+        background: linear-gradient(to bottom, #ffffff, #f8f9fa) !important;
       }
       
       .grid > div h4 {
-        font-size: 1.125rem !important;
+        font-size: 1.25rem !important;
         margin-bottom: 0.75rem !important;
         color: #1f2937 !important;
+        font-weight: 700 !important;
       }
       
       .grid > div p {
-        font-size: 0.875rem !important;
-        line-height: 1.5 !important;
-        margin-bottom: 1.25rem !important;
-        color: #6b7280 !important;
+        font-size: 0.9rem !important;
+        line-height: 1.6 !important;
+        margin-bottom: 1.5rem !important;
+        color: #4b5563 !important;
       }
       
       .grid > div button {
-        padding: 0.625rem 1rem !important;
+        padding: 0.75rem 1.25rem !important;
         font-size: 0.875rem !important;
         font-weight: 600 !important;
         border-radius: 0.5rem !important;
@@ -77,16 +98,39 @@
         border: none;
         cursor: pointer;
         width: 100%;
-        transition: background-color 0.3s ease;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
       }
       
       .grid > div button:hover {
         background-color: #3a0a63 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(75, 13, 127, 0.3);
       }
       
       .grid > div:hover {
-        transform: translateY(-4px) !important;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+        transform: translateY(-6px) !important;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.08) !important;
+      }
+      
+      /* Card image styling */
+      .card-image {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .card-image img,
+      .card-image svg {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
       }
       
       /* Update gradients to use new purple */
@@ -1271,36 +1315,40 @@
             
             <!-- Badges Card -->
             <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow">
-              <div class="bg-gradient-to-br from-[#4b0d7f] to-[#5b21b6] h-48 flex items-center justify-center">
-                <div class="w-32 h-32 bg-yellow-300 rounded-full flex items-center justify-center border-4 border-[#4b0d7f]">
-                  <div class="text-center">
-                    <div class="text-xs font-bold text-[#4b0d7f]">THE UNWIRED NETWORK</div>
-                    <div class="text-2xl font-black text-[#4b0d7f]">LEADER</div>
-                    <div class="text-[10px] text-[#4b0d7f]">AMBASSADOR</div>
+              <div class="bg-gradient-to-br from-[#4b0d7f] to-[#6d28d9] h-48 flex items-center justify-center" style="background: linear-gradient(135deg, #4b0d7f 0%, #6d28d9 100%);">
+                <div class="card-image">
+                  <div class="w-36 h-36 bg-yellow-300 rounded-full flex items-center justify-center border-4 border-white shadow-xl">
+                    <div class="text-center">
+                      <div class="text-xs font-bold text-[#4b0d7f]">THE UNWIRED NETWORK</div>
+                      <div class="text-2xl font-black text-[#4b0d7f]">LEADER</div>
+                      <div class="text-[10px] text-[#4b0d7f]">AMBASSADOR</div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div class="p-6">
+              <div class="p-6" style="background: linear-gradient(to bottom, #fef3c7, #fde68a);">
                 <h4 class="text-xl font-bold text-gray-900 mb-3">Badges</h4>
                 <p class="text-sm text-gray-600 mb-4">Show off your new role with ready-to-use Ambassador badges for social media, webinars, and slide decks.</p>
-                <button onclick="downloadResource('badges')" class="w-full bg-[#4b0d7f] hover:bg-[#3a0a63] text-white font-bold py-3 px-4 rounded-lg transition-colors">
-                  DOWNLOAD BADGES
+                <button onclick="openBadgesCanva()" class="w-full bg-[#4b0d7f] hover:bg-[#3a0a63] text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                  OPEN BADGES TEMPLATE
                 </button>
               </div>
             </div>
 
             <!-- Branded Templates Card -->
             <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow">
-              <div class="bg-gradient-to-br from-[#4b0d7f] to-[#7c3aed] h-48 flex items-center justify-center p-4">
-                <div class="w-full max-w-[200px] bg-white rounded-lg shadow-lg p-4 relative">
-                  <div class="absolute top-2 left-2 right-2 bottom-2 bg-gradient-to-br from-green-400 to-blue-500 rounded"></div>
-                  <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-20 h-20 bg-[#4b0d7f] rounded-full flex items-center justify-center text-white text-xs font-bold">
-                    COMMUNITY<br/>TRANSFORMATION
+              <div class="h-48 flex items-center justify-center p-4" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                <div class="card-image">
+                  <div class="w-full max-w-[220px] bg-white rounded-xl shadow-2xl p-4 relative transform rotate-3">
+                    <div class="absolute top-2 left-2 right-2 bottom-2 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-lg"></div>
+                    <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-24 h-24 bg-[#4b0d7f] rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg">
+                      COMMUNITY<br/>TRANSFORMATION
+                    </div>
                   </div>
                 </div>
               </div>
-              <div class="p-6">
-                <h4 class="text-xl font-bold text-gray-900 mb-3">Branded templates</h4>
+              <div class="p-6" style="background: linear-gradient(to bottom, #dbeafe, #bfdbfe);">
+                <h4 class="text-xl font-bold text-gray-900 mb-3">Announcement Templates</h4>
                 <p class="text-sm text-gray-600 mb-4">Use our pre-designed announcement posts for LinkedIn. Just drop in your name and you're good to go.</p>
                 <button onclick="openMonth1CarouselPopup()" class="w-full bg-[#4b0d7f] hover:bg-[#3a0a63] text-white font-bold py-3 px-4 rounded-lg transition-colors">
                   USE TEMPLATE
@@ -1310,20 +1358,25 @@
 
             <!-- LinkedIn Header Card -->
             <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow">
-              <div class="bg-gradient-to-br from-[#4b0d7f] to-[#5b21b6] h-48 flex items-center justify-center p-4">
-                <div class="text-center text-white">
-                  <div class="w-24 h-24 bg-white rounded-full mx-auto mb-2 overflow-hidden">
-                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23ddd' width='100' height='100'/%3E%3Ctext x='50' y='55' font-size='40' text-anchor='middle' fill='%23999'%3E👤%3C/text%3E%3C/svg%3E" alt="Profile" class="w-full h-full object-cover">
+              <div class="h-48 flex items-center justify-center p-4" style="background: linear-gradient(135deg, #0077b5 0%, #004182 100%);">
+                <div class="card-image">
+                  <div class="text-center text-white">
+                    <div class="w-28 h-28 bg-white rounded-full mx-auto mb-3 overflow-hidden shadow-2xl border-4 border-white">
+                      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                        <rect fill="#0077b5" width="100" height="100"/>
+                        <text x="50" y="60" font-size="50" text-anchor="middle" fill="white">in</text>
+                      </svg>
+                    </div>
+                    <div class="font-bold text-sm drop-shadow-lg">TRANSFORMATION LEADER</div>
+                    <div class="text-2xl font-black drop-shadow-lg">AMBASSADOR</div>
                   </div>
-                  <div class="font-bold text-sm">TRANSFORMATION LEADER</div>
-                  <div class="text-2xl font-black">AMBASSADOR</div>
                 </div>
               </div>
-              <div class="p-6">
+              <div class="p-6" style="background: linear-gradient(to bottom, #e0f2fe, #bae6fd);">
                 <h4 class="text-xl font-bold text-gray-900 mb-3">LinkedIn header</h4>
                 <p class="text-sm text-gray-600 mb-4">Update your LinkedIn header with our professionally designed template optimised for desktop.</p>
-                <button onclick="downloadResource('linkedin-header')" class="w-full bg-[#4b0d7f] hover:bg-[#3a0a63] text-white font-bold py-3 px-4 rounded-lg transition-colors">
-                  DOWNLOAD LINKEDIN HEADER
+                <button onclick="openLinkedInHeaderFolder()" class="w-full bg-[#4b0d7f] hover:bg-[#3a0a63] text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                  OPEN LINKEDIN HEADER FOLDER
                 </button>
               </div>
             </div>
@@ -1338,39 +1391,43 @@
             
             <!-- Social Media Carousels Card -->
             <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow">
-              <div class="bg-gradient-to-br from-[#4b0d7f] to-[#7c3aed] h-48 flex items-center justify-center p-4">
-                <div class="grid grid-cols-3 gap-2 w-full max-w-[250px]">
-                  <div class="bg-[#3a0a63] rounded-lg p-2 text-white text-center text-xs font-bold flex items-center justify-center">
-                    WEEKLY CONTENT
-                  </div>
-                  <div class="bg-[#4b0d7f] rounded-lg p-2 text-white text-center text-xs font-bold flex items-center justify-center">
-                    APPLY IN RESPECTIVE COLLECTIVE
-                  </div>
-                  <div class="bg-[#4b0d7f] rounded-lg p-2 text-white text-center text-xs font-bold flex items-center justify-center">
-                    JOIN TO DONNNEY
+              <div class="h-48 flex items-center justify-center p-4" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                <div class="card-image">
+                  <div class="grid grid-cols-3 gap-2 w-full max-w-[260px]">
+                    <div class="bg-white/90 rounded-lg p-3 text-[#4b0d7f] text-center text-[10px] font-bold flex items-center justify-center shadow-lg">
+                      WEEKLY CONTENT
+                    </div>
+                    <div class="bg-white/90 rounded-lg p-3 text-[#4b0d7f] text-center text-[10px] font-bold flex items-center justify-center shadow-lg">
+                      APPLY IN RESPECTIVE COLLECTIVE
+                    </div>
+                    <div class="bg-white/90 rounded-lg p-3 text-[#4b0d7f] text-center text-[10px] font-bold flex items-center justify-center shadow-lg">
+                      JOIN TO DONNNEY
+                    </div>
                   </div>
                 </div>
               </div>
-              <div class="p-6">
+              <div class="p-6" style="background: linear-gradient(to bottom, #f3e8ff, #e9d5ff);">
                 <h4 class="text-xl font-bold text-gray-900 mb-3">Social media carousels</h4>
                 <p class="text-sm text-gray-600 mb-4">Ready-made carousels you can post to introduce yourself and engage your audience.</p>
-                <button onclick="openMonth7CarouselPopup()" class="w-full bg-[#4b0d7f] hover:bg-[#3a0a63] text-white font-bold py-3 px-4 rounded-lg transition-colors">
-                  DOWNLOAD CAROUSELS
+                <button onclick="openSocialMediaCarousels()" class="w-full bg-[#4b0d7f] hover:bg-[#3a0a63] text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                  OPEN SOCIAL MEDIA CAROUSELS
                 </button>
               </div>
             </div>
 
             <!-- Quote Templates Card -->
             <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow">
-              <div class="bg-gradient-to-br from-gray-100 to-gray-200 h-48 flex items-center justify-center p-4">
-                <div class="bg-[#4b0d7f] rounded-lg p-6 max-w-[200px] border-4 border-[#4b0d7f]">
-                  <div class="text-4xl mb-2">💬</div>
-                  <div class="w-full h-2 bg-[#4b0d7f] rounded mb-1"></div>
-                  <div class="w-3/4 h-2 bg-[#4b0d7f] rounded mb-1"></div>
-                  <div class="w-full h-2 bg-[#4b0d7f] rounded"></div>
+              <div class="h-48 flex items-center justify-center p-4" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <div class="card-image">
+                  <div class="bg-white rounded-xl p-6 max-w-[220px] border-4 border-white shadow-2xl">
+                    <div class="text-5xl mb-3 text-center">💬</div>
+                    <div class="w-full h-3 bg-gradient-to-r from-[#4b0d7f] to-[#6d28d9] rounded mb-2"></div>
+                    <div class="w-3/4 h-3 bg-gradient-to-r from-[#4b0d7f] to-[#6d28d9] rounded mb-2 mx-auto"></div>
+                    <div class="w-full h-3 bg-gradient-to-r from-[#4b0d7f] to-[#6d28d9] rounded"></div>
+                  </div>
                 </div>
               </div>
-              <div class="p-6">
+              <div class="p-6" style="background: linear-gradient(to bottom, #fef3c7, #fde68a);">
                 <h4 class="text-xl font-bold text-gray-900 mb-3">Quote templates</h4>
                 <p class="text-sm text-gray-600 mb-4">Ready-to-use quote graphics that help you attract, engage, and inspire your audience.</p>
                 <button onclick="openMonth4CarouselPopup()" class="w-full bg-[#4b0d7f] hover:bg-[#3a0a63] text-white font-bold py-3 px-4 rounded-lg transition-colors">
@@ -1379,23 +1436,21 @@
               </div>
             </div>
 
-            <!-- Story & Reel Prompts Card -->
+            <!-- TikTok Design Card -->
             <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow">
-              <div class="bg-gradient-to-br from-[#4b0d7f] to-[#5b21b6] h-48 flex items-center justify-center p-4">
-                <div class="relative">
-                  <div class="bg-[#4b0d7f] rounded-full p-8">
-                    <div class="flex items-center gap-2">
-                      <div class="text-4xl">💬</div>
-                      <div class="text-4xl">🎥</div>
-                    </div>
+              <div class="h-48 flex items-center justify-center p-4" style="background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);">
+                <div class="card-image">
+                  <div class="bg-gradient-to-br from-cyan-500 to-pink-500 rounded-xl p-6 flex items-center justify-center shadow-2xl transform rotate-2">
+                    <div class="text-5xl mr-3">🎵</div>
+                    <div class="text-white font-bold text-xl drop-shadow-lg">TikTok</div>
                   </div>
                 </div>
               </div>
-              <div class="p-6">
-                <h4 class="text-xl font-bold text-gray-900 mb-3">Story & Reel prompts</h4>
-                <p class="text-sm text-gray-600 mb-4">Quick prompts and scripts you can use to introduce your journey on Stories and Reels.</p>
-                <button onclick="downloadResource('video-prompts')" class="w-full bg-[#4b0d7f] hover:bg-[#3a0a63] text-white font-bold py-3 px-4 rounded-lg transition-colors">
-                  DOWNLOAD VIDEO PROMPTS
+              <div class="p-6" style="background: linear-gradient(to bottom, #fce7f3, #fbcfe8);">
+                <h4 class="text-xl font-bold text-gray-900 mb-3">TikTok Design</h4>
+                <p class="text-sm text-gray-600 mb-4">Engaging TikTok video templates optimized for short-form video content and maximum reach.</p>
+                <button onclick="openTikTokDesign()" class="w-full bg-[#4b0d7f] hover:bg-[#3a0a63] text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                  OPEN TIKTOK TEMPLATE
                 </button>
               </div>
             </div>
@@ -1410,32 +1465,41 @@
             
             <!-- Email Signature Card -->
             <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow">
-              <div class="bg-gradient-to-br from-[#4b0d7f] to-[#5b21b6] h-48 flex items-center justify-center p-4">
-                <div class="bg-yellow-300 rounded-lg p-4 w-full max-w-[200px] border-2 border-[#4b0d7f]">
-                  <div class="text-xs font-bold text-[#4b0d7f] mb-1">AMBASSADOR "TRANSFORMATION"</div>
-                  <div class="text-xl font-black text-gray-900">(01)040</div>
+              <div class="h-48 flex items-center justify-center p-4" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <div class="card-image">
+                  <div class="bg-white rounded-lg p-5 w-full max-w-[220px] border-4 border-white shadow-2xl">
+                    <div class="text-xs font-bold text-[#4b0d7f] mb-2 text-center">AMBASSADOR "TRANSFORMATION"</div>
+                    <div class="text-2xl font-black text-gray-900 text-center">(01)040</div>
+                    <div class="mt-3 flex items-center justify-center gap-2">
+                      <div class="w-8 h-8 bg-[#4b0d7f] rounded-full"></div>
+                      <div class="w-8 h-8 bg-[#6d28d9] rounded-full"></div>
+                      <div class="w-8 h-8 bg-[#3b82f6] rounded-full"></div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="p-6">
+              <div class="p-6" style="background: linear-gradient(to bottom, #d1fae5, #a7f3d0);">
                 <h4 class="text-xl font-bold text-gray-900 mb-3">Email signature</h4>
                 <p class="text-sm text-gray-600 mb-4">Add an official email signature that showcases your ambassador status in every email you send.</p>
-                <button onclick="downloadResource('email-signature')" class="w-full bg-[#4b0d7f] hover:bg-[#3a0a63] text-white font-bold py-3 px-4 rounded-lg transition-colors">
-                  DOWNLOAD SIGNATURE
+                <button onclick="openEmailSignatureCanva()" class="w-full bg-[#4b0d7f] hover:bg-[#3a0a63] text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                  OPEN EMAIL SIGNATURE TEMPLATE
                 </button>
               </div>
             </div>
 
             <!-- Speaker Profile Card -->
             <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow">
-              <div class="bg-gradient-to-br from-[#4b0d7f] to-[#5b21b6] h-48 flex items-center justify-center p-4">
-                <div class="bg-[#4b0d7f] rounded-lg p-6 border-4 border-[#5b21b6]">
-                  <div class="text-4xl mb-2">📄</div>
-                  <div class="w-full h-2 bg-[#5b21b6] rounded mb-1"></div>
-                  <div class="w-3/4 h-2 bg-[#5b21b6] rounded mb-1"></div>
-                  <div class="w-full h-2 bg-[#5b21b6] rounded"></div>
+              <div class="h-48 flex items-center justify-center p-4" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);">
+                <div class="card-image">
+                  <div class="bg-white rounded-xl p-6 border-4 border-white shadow-2xl">
+                    <div class="text-5xl mb-3 text-center">📄</div>
+                    <div class="w-full h-3 bg-gradient-to-r from-[#4b0d7f] to-[#6d28d9] rounded mb-2"></div>
+                    <div class="w-3/4 h-3 bg-gradient-to-r from-[#4b0d7f] to-[#6d28d9] rounded mb-2 mx-auto"></div>
+                    <div class="w-full h-3 bg-gradient-to-r from-[#4b0d7f] to-[#6d28d9] rounded"></div>
+                  </div>
                 </div>
               </div>
-              <div class="p-6">
+              <div class="p-6" style="background: linear-gradient(to bottom, #fce7f3, #fbcfe8);">
                 <h4 class="text-xl font-bold text-gray-900 mb-3">Speaker profile</h4>
                 <p class="text-sm text-gray-600 mb-4">Professional speaker profile template to use when pitching for speaking engagements and events.</p>
                 <button onclick="openMonth8SpeakerPopup()" class="w-full bg-[#4b0d7f] hover:bg-[#3a0a63] text-white font-bold py-3 px-4 rounded-lg transition-colors">
@@ -1446,13 +1510,22 @@
 
             <!-- Brand Guidelines Card -->
             <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow">
-              <div class="bg-gradient-to-br from-gray-100 to-white h-48 flex items-center justify-center p-4 border-4 border-[#4b0d7f]">
-                <div class="text-center">
-                  <div class="text-5xl mb-2">⭐</div>
-                  <div class="text-xs font-bold text-[#4b0d7f]">✏️</div>
+              <div class="h-48 flex items-center justify-center p-4" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <div class="card-image">
+                  <div class="bg-white rounded-xl p-6 border-4 border-white shadow-2xl">
+                    <div class="text-center">
+                      <div class="text-6xl mb-2">⭐</div>
+                      <div class="text-2xl font-bold text-[#4b0d7f]">✏️</div>
+                      <div class="mt-2 flex gap-1 justify-center">
+                        <div class="w-3 h-3 bg-[#4b0d7f] rounded-full"></div>
+                        <div class="w-3 h-3 bg-[#6d28d9] rounded-full"></div>
+                        <div class="w-3 h-3 bg-[#3b82f6] rounded-full"></div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="p-6">
+              <div class="p-6" style="background: linear-gradient(to bottom, #fef3c7, #fde68a);">
                 <h4 class="text-xl font-bold text-gray-900 mb-3">Brand guidelines</h4>
                 <p class="text-sm text-gray-600 mb-4">Everything you need to know about T4L's visual identity, colours, fonts, and brand usage rules.</p>
                 <button onclick="openBrandGuidelines()" class="w-full bg-[#4b0d7f] hover:bg-[#3a0a63] text-white font-bold py-3 px-4 rounded-lg transition-colors">
@@ -1466,18 +1539,6 @@
 
         <!-- Custom Requests Section -->
         <section class="mb-12">
-          <div class="bg-gradient-to-r from-[#4b0d7f] to-[#5b21b6] rounded-2xl p-8 text-white text-center shadow-xl">
-            <h3 class="text-2xl md:text-3xl font-bold mb-3">Need something custom?</h3>
-            <p class="text-base md:text-lg mb-6 opacity-90">Whether it's a custom graphic, video edit, or special request, we're here to help.</p>
-            <p class="text-sm mb-6 opacity-80">Custom requests range from $100-$350</p>
-            <button onclick="openCustomWorkModal()" class="bg-[#4b0d7f] hover:bg-[#3a0a63] text-white font-bold py-3 px-8 rounded-lg transition-colors inline-flex items-center gap-2">
-              <i class="bx bx-envelope text-xl"></i>
-              REQUEST CUSTOM WORK
-            </button>
-          </div>
-        </section>
-      </main>
-    </div>
 
     <!-- =========================================== -->
     <!-- POPUP MODALS FROM JOURNEY PAGE (REUSED) -->
@@ -1962,6 +2023,35 @@
     <div id="toastContainer"></div>
 
     <script>
+      // ============================================
+      // NEW CANVA LINK FUNCTIONS
+      // ============================================
+      
+      function openBadgesCanva() {
+        window.open('https://www.canva.com/design/DAG-eYS8uW4/OGMvg3kkN3JJH6XgGQuCGg/edit?utm_content=DAG-eYS8uW4&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton', '_blank');
+        showToast('🎨 Badges template opened in Canva! Customize and download your badges.', 'success');
+      }
+      
+      function openEmailSignatureCanva() {
+        window.open('https://www.canva.com/design/DAG-MgtPZ4k/gv7rVTfLLqYEHh1rs3iFpw/edit?utm_content=DAG-MgtPZ4k&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton', '_blank');
+        showToast('📧 Email signature template opened in Canva! Add your details and download.', 'success');
+      }
+      
+      function openSocialMediaCarousels() {
+        window.open('https://www.canva.com/design/DAG-Moooczc/xz1eoGUv9mzupjrcGEaw7w/edit?utm_content=DAG-Moooczc&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton', '_blank');
+        showToast('📱 Social media carousels opened in Canva! Customize for your platforms.', 'success');
+      }
+      
+      function openLinkedInHeaderFolder() {
+        window.open('https://www.canva.com/folder/FAF-edDFygg', '_blank');
+        showToast('💼 LinkedIn header folder opened! Choose and customize your header.', 'success');
+      }
+      
+      function openTikTokDesign() {
+        window.open('https://www.canva.com/design/DAG-MlWxYNw/jGRmWo7RYmkuTinDmUZKXg/edit?utm_content=DAG-MlWxYNw&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton', '_blank');
+        showToast('🎵 TikTok design template opened! Create engaging short-form videos.', 'success');
+      }
+      
       // ============================================
       // JOURNEY PAGE FUNCTIONS (REUSED)
       // ============================================
@@ -2464,11 +2554,11 @@ The connections I'm making and the impact we're creating together continue to in
           });
         }
 
-        // Logout
+        // Logout - use credentials: 'include' to match other pages
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
           logoutBtn.addEventListener('click', function() {
-            fetch('/api/logout', { method: 'POST' })
+            fetch('/api/logout', { method: 'POST', credentials: 'include' })
               .then(() => {
                 window.location.href = '/signin';
               })

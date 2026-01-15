@@ -520,16 +520,51 @@
 
                 if (!response.ok) {
                     const error = await response.json();
-                    throw new Error(error.error || 'Failed to submit audit');
+                    const errorMessage = error.details 
+                        ? `${error.error}: ${error.details}` 
+                        : error.error || 'Failed to submit audit';
+                    throw new Error(errorMessage);
                 }
 
                 const result = await response.json();
                 
+                // Immediately update the ambassador's audit data in the local array
+                const ambassador = ambassadors.find(a => a.id === ambassadorId);
+                if (ambassador && result.audit) {
+                    // Update audit data with the response
+                    ambassador.auditData = {
+                        audit_id: result.audit.id || result.audit.audit_id,
+                        url: result.audit.url || result.audit.linkedin_url,
+                        linkedin_url: result.audit.url || result.audit.linkedin_url,
+                        speaker_bio_url: result.audit.speaker_bio_url,
+                        feedback: result.audit.feedback,
+                        status: result.audit.status,
+                        submittedAt: result.audit.submittedAt || result.audit.submitted_at,
+                        submitted_at: result.audit.submittedAt || result.audit.submitted_at
+                    };
+                    
+                    // Re-render the list with updated data (instant update, no page reload needed)
+                    renderAmbassadorsList();
+                    updateStats();
+                } else {
+                    // Fallback: reload audit status for this specific ambassador
+                    console.log('⚠️ Ambassador not found in array, reloading audit status...');
+                    const auditResponse = await fetch(`/admin/api/ambassadors/${ambassadorId}/linkedin-audit`, {
+                        credentials: 'include'
+                    });
+                    if (auditResponse.ok) {
+                        const auditData = await auditResponse.json();
+                        const ambassador = ambassadors.find(a => a.id === ambassadorId);
+                        if (ambassador) {
+                            ambassador.auditData = auditData.hasAudit ? auditData.audit : null;
+                            renderAmbassadorsList();
+                            updateStats();
+                        }
+                    }
+                }
+                
                 showToast('✅ LinkedIn audit submitted successfully!', 'success');
                 closeUploadModal();
-                
-                // Reload the list
-                await loadAmbassadors();
             } catch (error) {
                 console.error('❌ Error submitting audit:', error);
                 showToast(error.message || 'Failed to submit audit', 'error');

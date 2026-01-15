@@ -1457,13 +1457,21 @@ function createOpportunityCard(post) {
         console.error('❌ Application form NOT found!');
       }
       
-      // Fetch user data and update UI
-      fetch('/api/me')
+      // Fetch user data and update UI - NO REDIRECTS on page load
+      fetch('/api/me', { credentials: 'include' })
         .then(response => {
-          if (!response.ok) throw new Error('Not authenticated');
+          // NO REDIRECTS - just try to get user data if available
+          if (!response.ok) {
+            return null; // Silently return null instead of throwing
+          }
           return response.json();
         })
         .then(data => {
+          if (!data) {
+            // No user data - that's okay, just continue
+            return;
+          }
+          
           console.log('User data:', data);
           
           const homeLink = document.getElementById('homeLink');
@@ -1481,15 +1489,15 @@ function createOpportunityCard(post) {
           updateUserAvatar(data);
         })
         .catch(error => {
-          console.error('Error fetching user data:', error);
-          window.location.href = '/signin';
+          // Silently ignore all errors - NO REDIRECTS on page load
+          // User can navigate freely, auth will be checked when needed
         });
 
-      // Logout functionality
+      // Logout functionality - use /api/logout to match other pages
       const logoutBtn = document.getElementById('logoutBtn');
       if (logoutBtn) {
         logoutBtn.addEventListener('click', function() {
-          fetch('/logout', { method: 'POST' })
+          fetch('/api/logout', { method: 'POST', credentials: 'include' })
             .then(() => {
               window.location.href = '/signin';
             })

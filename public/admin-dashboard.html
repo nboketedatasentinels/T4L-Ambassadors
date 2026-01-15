@@ -1027,10 +1027,10 @@
         // ============================================
         
 
-// REPLACE THE EXISTING FUNCTION WITH THIS:
+// ✅ FIXED: Fetch admin notifications with proper filtering
 async function fetchNotifications() {
     try {
-        console.log('🔔 Fetching notifications...');
+        console.log('🔔 Fetching admin notifications...');
         
         const response = await fetch('/api/notifications', {
             credentials: 'include'
@@ -1038,24 +1038,32 @@ async function fetchNotifications() {
         
         if (!response.ok) {
             console.error('❌ Failed to fetch notifications:', response.status);
+            state.notifications = [];
+            state.unreadNotifications = 0;
+            updateNotificationBadge();
             return;
         }
         
         const data = await response.json();
         
-        // ✅ FIX: Ensure notifications array exists
-        state.notifications = data.notifications || [];
+        // ✅ FIX: Ensure notifications array exists and filter for admin only
+        state.notifications = (data.notifications || []).filter(n => {
+            // Double-check on client side that these are admin notifications
+            return n.recipient_type === 'admin' || !n.recipient_type; // Allow legacy notifications without type
+        });
         
         // ✅ Calculate unread with tolerant check for boolean or string 'false'
-        state.unreadNotifications = state.notifications.filter(n => (n.read === false) || (n.read === 'false') || (!n.read)).length;
+        state.unreadNotifications = state.notifications.filter(n => {
+            return n.read === false || n.read === 'false' || n.read === 0 || !n.read;
+        }).length;
         
-        console.log('✅ Notifications loaded:', {
+        console.log('✅ Admin notifications loaded:', {
             total: state.notifications.length,
             unread: state.unreadNotifications,
             sample: state.notifications[0]
         });
         
-        // Update the badge
+        // Update the badge with accurate count
         updateNotificationBadge();
         
         // If dropdown is open, update the list
@@ -1065,6 +1073,9 @@ async function fetchNotifications() {
         }
     } catch (error) {
         console.error('❌ Error fetching notifications:', error);
+        state.notifications = [];
+        state.unreadNotifications = 0;
+        updateNotificationBadge();
     }
 }
 async function runNotificationDiagnostics() {
@@ -1106,7 +1117,7 @@ async function runNotificationDiagnostics() {
         console.error('❌ Diagnostic error:', e);
     }
 }
-// REPLACE THE EXISTING FUNCTION WITH THIS:
+// ✅ FIXED: Update notification badge with accurate count
 function updateNotificationBadge() {
     const badge = document.getElementById('notificationBadge');
     if (!badge) {
@@ -1114,28 +1125,29 @@ function updateNotificationBadge() {
         return;
     }
     
-    // ✅ Count only UNREAD notifications
-    const unreadCount = state.notifications.filter(n => !n.read).length;
+    // ✅ Count only UNREAD notifications - handle both boolean false and string 'false'
+    const unreadCount = state.notifications.filter(n => {
+        return n.read === false || n.read === 'false' || n.read === 0 || !n.read;
+    }).length;
     
     console.log('📊 Badge update:', { 
         unreadCount, 
         totalNotifications: state.notifications.length,
-        readStatus: state.notifications.map(n => ({ id: n.notification_id, read: n.read }))
+        readStatus: state.notifications.map(n => ({ 
+            id: n.notification_id || n.id, 
+            read: n.read,
+            type: typeof n.read
+        }))
     });
     
     if (unreadCount > 0) {
-        badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+        badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
         badge.classList.remove('hidden');
         badge.classList.add('notification-badge-pulse');
     } else {
-        // ✅ SHOW "0" BUT KEEP BADGE VISIBLE if there are notifications
-        badge.textContent = state.notifications.length > 0 ? '0' : '';
-        if (state.notifications.length === 0) {
-            badge.classList.add('hidden');
-        } else {
-            badge.classList.remove('hidden');
-            badge.classList.remove('notification-badge-pulse');
-        }
+        // Hide badge if no unread notifications
+        badge.classList.add('hidden');
+        badge.classList.remove('notification-badge-pulse');
     }
 }
 
@@ -1158,9 +1170,12 @@ function renderNotificationList() {
         const icon = getNotificationIcon(notification.type);
         const timeAgo = formatTimeAgo(notification.created_at || notification.createdAt);
         
+        // ✅ Check read status - handle both boolean and string values
+        const isRead = notification.read === true || notification.read === 'true' || notification.read === 1;
+        
         // ✅ Add visual indicator for unread
-        const readClass = notification.read ? 'bg-white' : 'bg-blue-50 border-l-4 border-blue-500';
-        const unreadDot = notification.read ? '' : '<span class="w-2 h-2 bg-blue-500 rounded-full"></span>';
+        const readClass = isRead ? 'bg-white' : 'bg-blue-50 border-l-4 border-blue-500';
+        const unreadDot = isRead ? '' : '<span class="w-2 h-2 bg-blue-500 rounded-full"></span>';
         
         return `
             <div class="notification-item ${readClass} p-4 hover:bg-gray-50 cursor-pointer transition-colors" 
@@ -1245,16 +1260,31 @@ function getNotificationIcon(type) {
 
         async function handleNotificationClick(notificationId, type, articleId) {
             try {
+                // ✅ Mark as read first
                 await markNotificationRead(notificationId);
+                
+                // ✅ Update local state immediately for instant UI feedback
+                const notification = state.notifications.find(n => 
+                    (n.notification_id || n.id) === notificationId
+                );
+                if (notification) {
+                    notification.read = true;
+                    state.unreadNotifications = Math.max(0, state.unreadNotifications - 1);
+                    updateNotificationBadge();
+                    renderNotificationList();
+                }
+                
+                // ✅ Then refresh from server to ensure consistency
+                await fetchNotifications();
                 
                 if (articleId && (type === 'article_submitted' || type === 'needs_update' || type === 'article_published')) {
                     openReviewModal(articleId);
                     closeNotificationDropdown();
                 }
-                
-                fetchNotifications();
             } catch (error) {
                 console.error('Error handling notification click:', error);
+                // Still refresh even if mark as read failed
+                await fetchNotifications();
             }
         }
 
@@ -1290,12 +1320,22 @@ async function markAllNotificationsRead() {
             throw new Error('Failed to mark all notifications as read');
         }
         
-        // ✅ Refresh notifications after marking all as read
+        // ✅ Update local state immediately for instant UI feedback
+        state.notifications.forEach(n => {
+            n.read = true;
+        });
+        state.unreadNotifications = 0;
+        updateNotificationBadge();
+        renderNotificationList();
+        
+        // ✅ Then refresh from server to ensure consistency
         await fetchNotifications();
         showToast('All notifications marked as read');
     } catch (error) {
         console.error('Error marking all as read:', error);
         showToast('Failed to mark all notifications as read', true);
+        // Still refresh to show current state
+        await fetchNotifications();
     }
 }
         
@@ -1304,9 +1344,12 @@ async function markAllNotificationsRead() {
             const isHidden = dropdown.classList.contains('hidden');
             
             if (isHidden) {
-                dropdown.classList.remove('hidden');
-                renderNotificationList();
-                setupClickOutsideListener();
+                // ✅ FIX: Fetch fresh notifications when opening dropdown
+                fetchNotifications().then(() => {
+                    dropdown.classList.remove('hidden');
+                    renderNotificationList();
+                    setupClickOutsideListener();
+                });
             } else {
                 closeNotificationDropdown();
             }

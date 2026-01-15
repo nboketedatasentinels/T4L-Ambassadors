@@ -11,18 +11,18 @@ const { v4: uuidv4 } = require("uuid");
 // ========== EMAIL SERVICE (NODEMAILER) ==========
 const nodemailer = require("nodemailer");
 
-// Gmail SMTP Configuration (hardcoded)
+// Gmail SMTP Configuration (from environment variables)
 const SMTP_CONFIG = {
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // true for 465, false for other ports
+  host: process.env.SMTP_HOST || "smtp.gmail.com",
+  port: parseInt(process.env.SMTP_PORT) || 587,
+  secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
   auth: {
-    user: "syntichemusawu645@gmail.com",
-    pass: "ouwkdejtuwqryqf", // Gmail App Password (spaces removed automatically)
+    user: process.env.SMTP_USER || process.env.EMAIL_USER,
+    pass: process.env.SMTP_PASS || process.env.EMAIL_PASSWORD || "", // Gmail App Password
   },
 };
 
-const SMTP_FROM = "syntichemusawu645@gmail.com";
+const SMTP_FROM = process.env.SMTP_FROM || process.env.EMAIL_USER || "";
 
 class EmailService {
   constructor() {
@@ -411,90 +411,10 @@ const {
   getLinkedInAuditByAmbassadorId,
   updateLinkedInAudit,
   deleteLinkedInAudit,
-  getLinkedInAudits
+  getLinkedInAudits,
+  // Notification function (from db.js)
+  createNotification
 } = require("./models/db.js");
-
-// ============================================
-// NOTIFICATION HELPER FUNCTION
-// ============================================
-async function createNotification(
-  recipientId,
-  recipientType,
-  notificationType,
-  title,
-  message,
-  link = null,
-  applicationId = null,
-  requestId = null,
-  articleId = null
-) {
-  try {
-    console.log(
-      "📬 Creating notification for:",
-      recipientId,
-      "- Type:",
-      notificationType
-    );
-
-    // 🚨 IMPORTANT: Prepare data with all reference IDs null by default
-    const notificationData = {
-      notification_id: uuidv4(),
-      recipient_id: recipientId,
-      recipient_type: recipientType,
-      type: notificationType,
-      title: title,
-      message: message,
-      link: link,
-      read: false,
-      created_at: new Date().toISOString(),
-      application_id: null,
-      request_id: null,
-      article_id: null,
-    };
-
-    // 🚨 CRITICAL: Set ONLY ONE reference ID based on what's provided
-    // This ensures the database constraint is satisfied
-    if (applicationId) {
-      notificationData.application_id = applicationId;
-      // Leave request_id and article_id as null
-    } else if (requestId) {
-      notificationData.request_id = requestId;
-      // Leave application_id and article_id as null
-    } else if (articleId) {
-      notificationData.article_id = articleId;
-      // Leave application_id and request_id as null
-    } else {
-      // If no reference ID is provided, this might violate the constraint
-      console.log("⚠️ Warning: No reference ID provided for notification");
-    }
-
-    console.log("📝 Notification data:", {
-      type: notificationType,
-      hasApplicationId: !!notificationData.application_id,
-      hasRequestId: !!notificationData.request_id,
-      hasArticleId: !!notificationData.article_id,
-    });
-
-    // Try to create notification
-    const { data, error } = await supabase
-      .from("notifications")
-      .insert([notificationData])
-      .select()
-      .single();
-
-    if (error) {
-      console.log("⚠️ Notification failed:", error.message);
-      console.log("📋 Failed notification data:", notificationData);
-      return null;
-    }
-
-    console.log("✅ Notification created successfully");
-    return data;
-  } catch (error) {
-    console.log("⚠️ Notification error:", error.message);
-    return null;
-  }
-}
 
 // ------------------------
 // Basic Middleware
@@ -1820,15 +1740,16 @@ app.get("/api/notifications", requireAuth, async (req, res) => {
 
     console.log("📬 Fetching notifications for:", userId, role);
 
-let query = supabase
-    .from("notifications")
-    .select("*")
-    .eq("recipient_id", userId)
-    // .eq("recipient_type", role)  // ✅ COMMENT OUT OR REMOVE THIS LINE
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    // ✅ CRITICAL: Filter by BOTH recipient_id AND recipient_type to ensure admins only see admin notifications
+    let query = supabase
+        .from("notifications")
+        .select("*")
+        .eq("recipient_id", userId)
+        .eq("recipient_type", role)  // ✅ FIX: Filter by role to ensure admins only see admin notifications
+        .order("created_at", { ascending: false })
+        .limit(limit);
 
-console.log("🔍 Querying notifications for user:", userId, "without role filter");
+    console.log("🔍 Querying notifications for user:", userId, "with role filter:", role);
 
     if (unreadOnly) {
       query = query.eq("read", false);
@@ -1953,17 +1874,28 @@ app.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
   try {
     const notificationId = req.params.id;
     const userId = req.auth.userId;
+    const role = req.auth.role;
 
+    // ✅ CRITICAL: Filter by BOTH recipient_id AND recipient_type to ensure admins can only mark their own notifications as read
     const { data, error } = await supabase
       .from("notifications")
       .update({ read: true })
       .eq("notification_id", notificationId)
       .eq("recipient_id", userId)
+      .eq("recipient_type", role)  // ✅ FIX: Ensure admin can only mark admin notifications as read
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error marking notification as read:", error);
+      throw error;
+    }
 
+    if (!data) {
+      return res.status(404).json({ error: "Notification not found or unauthorized" });
+    }
+
+    console.log("✅ Notification marked as read:", notificationId);
     return res.json({ success: true, notification: data });
   } catch (error) {
     console.error("Error marking notification as read:", error);
@@ -2770,6 +2702,8 @@ function setSessionCookie(res, sessionId, maxAgeMs) {
     `sid=${encodeURIComponent(sessionId)}`,
     "HttpOnly",
     "Path=/",
+    // Use SameSite=Lax for localhost (works without HTTPS)
+    // For production with HTTPS, you can change to SameSite=None; Secure
     "SameSite=Lax",
   ];
   if (maxAgeMs && Number.isFinite(maxAgeMs)) {
@@ -3677,17 +3611,21 @@ app.post("/admin-signin", async (req, res) => {
   }
 });
 
-// Admin submits LinkedIn audit for an ambassador
+// ============================================
+// ADMIN: Submit LinkedIn Audit for Ambassador (FINAL FIX)
+// ============================================
 app.post('/admin/api/ambassadors/:id/linkedin-audit', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const ambassadorId = req.params.id;
-    const { url, speaker_bio_url, feedback } = req.body; // ✅ ADD speaker_bio_url here
+    const { url, speaker_bio_url, feedback } = req.body;
 
     console.log('📝 Admin submitting LinkedIn audit for:', ambassadorId);
 
     // Validate input
     if (!url || !feedback) {
-      return res.status(400).json({ error: 'LinkedIn URL and feedback are required' });
+      return res.status(400).json({ 
+        error: 'LinkedIn URL and feedback are required' 
+      });
     }
 
     // Verify ambassador exists
@@ -3704,68 +3642,126 @@ app.post('/admin/api/ambassadors/:id/linkedin-audit', requireAuth, requireRole('
 
     console.log('✅ Found ambassador:', ambassador.email);
 
-    // Store LinkedIn audit data WITH speaker_bio_url
-    const { data: auditData, error: auditError } = await supabase
-      .from('linkedin_audits')
-      .upsert({
-        ambassador_id: ambassadorId,
-        linkedin_url: url,
-        speaker_bio_url: speaker_bio_url || null, // ✅ ADD THIS LINE
-        feedback: feedback,
-        submitted_by: req.auth.userId, // Admin who submitted it
-        submitted_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'ambassador_id'
-      })
-      .select()
+    // Get admin record
+    const { data: adminData, error: adminError } = await supabase
+      .from('admins')
+      .select('admin_id')
+      .eq('user_id', req.auth.userId)
       .single();
 
+    if (adminError || !adminData) {
+      console.error('❌ Admin not found for user_id:', req.auth.userId);
+      return res.status(404).json({ error: 'Admin record not found' });
+    }
+
+    const adminId = adminData.admin_id;
+    const now = new Date().toISOString();
+
+    console.log('✅ Found admin_id:', adminId);
+
+    // Prepare audit data - SIMPLIFIED VERSION
+    const auditPayload = {
+      ambassador_id: ambassadorId,
+      admin_id: adminId,
+      linkedin_url: url,
+      feedback: feedback,
+      status: 'submitted', // Use 'submitted' which is in the allowed list
+      submitted_at: now,
+      updated_at: now,
+      created_at: now
+    };
+
+    // Add speaker_bio_url only if provided
+    if (speaker_bio_url && speaker_bio_url.trim() !== '') {
+      auditPayload.speaker_bio_url = speaker_bio_url.trim();
+    }
+
+    console.log('💾 Saving audit with payload:', {
+      ambassador_id: auditPayload.ambassador_id,
+      admin_id: auditPayload.admin_id,
+      status: auditPayload.status,
+      hasFeedback: !!feedback
+    });
+
+    // Check if audit already exists
+    const { data: existingAudit } = await supabase
+      .from('linkedin_audits')
+      .select('audit_id')
+      .eq('ambassador_id', ambassadorId)
+      .single();
+
+    let auditData, auditError;
+
+    if (existingAudit) {
+      // Update existing audit
+      console.log('🔄 Updating existing audit...');
+      const result = await supabase
+        .from('linkedin_audits')
+        .update(auditPayload)
+        .eq('ambassador_id', ambassadorId)
+        .select()
+        .single();
+      auditData = result.data;
+      auditError = result.error;
+    } else {
+      // Insert new audit
+      console.log('🆕 Inserting new audit...');
+      auditPayload.audit_id = uuidv4(); // Add UUID for new audit
+      const result = await supabase
+        .from('linkedin_audits')
+        .insert([auditPayload])
+        .select()
+        .single();
+      auditData = result.data;
+      auditError = result.error;
+    }
+
     if (auditError) {
-      console.error('❌ Error storing audit:', auditError);
-      return res.status(500).json({ error: 'Failed to store audit data' });
-    }
-
-    console.log('✅ LinkedIn audit stored successfully');
-
-    // Update journey progress for the AMBASSADOR (not admin!)
-    try {
-      await upsertJourneyProgress(
-        ambassadorId, // ✅ Use ambassador's ID, NOT req.auth.userId
-        1, // Month 1
-        'Submit LinkedIn profile for audit',
-        'completed'
-      );
-      console.log('✅ Journey progress updated for ambassador');
-    } catch (journeyError) {
-      console.error('⚠️ Could not update journey progress:', journeyError);
-      // Don't fail the whole request if journey update fails
-    }
-
-    // Send notification to ambassador
-    try {
-      await supabase.from('notifications').insert({
-        user_id: ambassadorId,
-        type: 'linkedin_audit_completed',
-        title: 'LinkedIn Audit Complete',
-        message: 'Your LinkedIn profile audit has been completed by the admin team. Check your feedback!',
-        read: false,
-        created_at: new Date().toISOString()
+      console.error('❌ Database error storing audit:', {
+        message: auditError.message,
+        code: auditError.code,
+        details: auditError.details,
+        hint: auditError.hint
       });
-      console.log('✅ Notification sent to ambassador');
-    } catch (notifError) {
-      console.error('⚠️ Could not send notification:', notifError);
+      
+      // Check for specific constraint violations
+      if (auditError.code === '23514') {
+        return res.status(400).json({ 
+          error: 'Invalid status value. Must be one of: pending, submitted, reviewed, completed, approved' 
+        });
+      }
+      
+      return res.status(500).json({ 
+        error: 'Failed to store audit data',
+        details: auditError.message
+      });
     }
+
+    console.log('✅ LinkedIn audit stored successfully:', auditData?.audit_id);
+
+    // Transform response for frontend
+    const transformedAudit = auditData ? {
+      id: auditData.audit_id,
+      url: auditData.linkedin_url,
+      speaker_bio_url: auditData.speaker_bio_url,
+      feedback: auditData.feedback,
+      status: auditData.status,
+      submittedAt: auditData.submitted_at,
+      submitted_by: auditData.submitted_by // Will be null, that's OK
+    } : null;
 
     res.json({
       success: true,
       message: 'LinkedIn audit submitted successfully',
-      audit: auditData
+      audit: transformedAudit
     });
 
   } catch (error) {
-    console.error('❌ Error submitting LinkedIn audit:', error);
-    res.status(500).json({ error: error.message || 'Failed to submit LinkedIn audit' });
+    console.error('❌ Unexpected error submitting LinkedIn audit:', error);
+    res.status(500).json({ 
+      error: 'Failed to submit LinkedIn audit',
+      details: error.message 
+    });
   }
 });
 
@@ -3784,9 +3780,16 @@ app.get('/admin/api/ambassadors/:id/linkedin-audit', requireAuth, requireRole('a
       throw error;
     }
 
+    // Transform database fields to match frontend expectations
+    const transformedAudit = data ? {
+      ...data,
+      url: data.linkedin_url, // Map linkedin_url to url for frontend
+      submittedAt: data.submitted_at // Map submitted_at to submittedAt for frontend
+    } : null;
+
     res.json({
       hasAudit: !!data,
-      audit: data || null
+      audit: transformedAudit
     });
 
   } catch (error) {

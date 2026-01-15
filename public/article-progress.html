@@ -657,17 +657,27 @@
             return params.get('articleId');
         }
 
-        // Auth check
-        function checkAuth() {
+        // Auth check - NO REDIRECTS on page load, returns null if auth fails
+        function checkAuth(silent = false) {
             return fetch('/api/me', { credentials: 'include' })
-                .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+                .then(r => { 
+                    if (!r.ok) {
+                        if (silent) return null;
+                        throw new Error(String(r.status)); 
+                    }
+                    return r.json(); 
+                })
                 .then(me => {
                     if (!me || me.role !== 'ambassador') {
+                        if (silent) return null;
                         throw new Error('forbidden');
                     }
                     return me;
                 })
                 .catch(err => {
+                    // In silent mode, never redirect - just return null
+                    if (silent) return null;
+                    // Only redirect in non-silent mode (when user action requires auth)
                     const redirectParam = encodeURIComponent(window.location.pathname);
                     window.location.href = `/signin?redirect=${redirectParam}`;
                     throw err;
@@ -979,11 +989,22 @@
             }
         });
 
-        // Initialize
+        // Initialize - NO REDIRECTS on page load
         document.addEventListener('DOMContentLoaded', function() {
-            checkAuth()
-                .then(() => loadArticleProgress())
-                .catch(() => {});
+            // Use silent mode on page load - no redirects
+            checkAuth(true)
+                .then((authResult) => {
+                    if (authResult) {
+                        loadArticleProgress();
+                    } else {
+                        // Auth failed but don't redirect - just try to load anyway
+                        loadArticleProgress();
+                    }
+                })
+                .catch(() => {
+                    // Silently continue - don't redirect on page load
+                    loadArticleProgress();
+                });
         });
     </script>
 </body>

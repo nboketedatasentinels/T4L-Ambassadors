@@ -530,11 +530,29 @@
         return params.get('articleId');
       }
 
-      function ensureAmbassador() {
+      function ensureAmbassador(silent = false) {
         return fetch('/api/me', { credentials: 'include' })
-          .then(r => { if (!r.ok) throw new Error('auth'); return r.json(); })
-          .then(me => { if (me.role !== 'ambassador') throw new Error('forbidden'); return me; })
-          .catch(() => { window.location.href = '/signin'; throw new Error('redirect'); });
+          .then(r => { 
+            if (!r.ok) {
+              if (silent) return null;
+              throw new Error('auth'); 
+            }
+            return r.json(); 
+          })
+          .then(me => { 
+            if (!me || me.role !== 'ambassador') {
+              if (silent) return null;
+              throw new Error('forbidden'); 
+            }
+            return me; 
+          })
+          .catch((err) => { 
+            // In silent mode, never redirect - just return null
+            if (silent) return null;
+            // Only redirect in non-silent mode
+            window.location.href = '/signin'; 
+            throw new Error('redirect'); 
+          });
       }
 
       // ==========================================
@@ -913,7 +931,8 @@ async function debugNotifications(articleId) {
       // ==========================================
       
       document.addEventListener('DOMContentLoaded', function() {
-        ensureAmbassador()
+        // Use silent mode on page load - NO REDIRECTS
+        ensureAmbassador(true)
           .then(() => loadArticle())
           .catch((err) => {
             const container = document.getElementById('article-container');

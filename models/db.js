@@ -1259,4 +1259,6 @@ module.exports = {
   updateLinkedInAudit,
   deleteLinkedInAudit,
   getLinkedInAudits,
+  // Notification function
+  createNotification,
 };

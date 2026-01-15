@@ -370,15 +370,21 @@
           });
         }
 
-        // Fetch user profile data
-        fetch('/api/profile')
+        // Fetch user profile data - NO REDIRECTS on page load
+        fetch('/api/profile', { credentials: 'include' })
           .then(response => {
+            // NO REDIRECTS - just try to get user data if available
             if (!response.ok) {
-              throw new Error('Not authenticated');
+              return null; // Silently return null instead of throwing
             }
             return response.json();
           })
           .then(data => {
+            if (!data) {
+              // No user data - that's okay, just continue
+              return;
+            }
+            
             console.log('Profile data:', data);
             
             // Update dashboard URL based on role
@@ -402,7 +408,7 @@
             const logoutBtn = document.getElementById('logoutBtn');
             if (logoutBtn) {
               logoutBtn.addEventListener('click', function() {
-                fetch('/logout', { method: 'POST' })
+                fetch('/api/logout', { method: 'POST', credentials: 'include' })
                   .then(() => {
                     if (data.role === 'partner') {
                       window.location.href = '/partner-signin';
@@ -501,8 +507,8 @@
             }
           })
           .catch(error => {
-            console.error('Error fetching profile data:', error);
-            window.location.href = '/signin';
+            // Silently ignore all errors - NO REDIRECTS on page load
+            // User can navigate freely, auth will be checked when needed
           });
 
         // Handle profile form submission

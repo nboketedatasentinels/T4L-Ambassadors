@@ -367,15 +367,18 @@
             credentials: 'include'
           });
           
+          // NO REDIRECTS on page load - just try to get user data if available
           if (response.ok) {
             currentUser = await response.json();
             updateUIForUser();
           } else {
-            window.location.href = '/signin';
+            // Silently continue - don't redirect on page load
+            currentUser = null;
           }
         } catch (error) {
-          console.error('Error loading user:', error);
-          window.location.href = '/signin';
+          // Silently ignore all errors - NO REDIRECTS on page load
+          // User can navigate freely, auth will be checked when needed
+          currentUser = null;
         }
       }
 
