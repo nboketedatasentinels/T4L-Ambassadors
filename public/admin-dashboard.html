@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- v2.0 - Force browser to not cache this page -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Admin Dashboard - T4LA Ambassador Program</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/boxicons/2.1.0/css/boxicons.min.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -3166,7 +3170,7 @@ async function markAllNotificationsRead() {
         }
 
         async function handleSimpleRequestChange(articleId) {
-            console.log('🚀 ULTIMATE FIX: Request Changes for article:', articleId);
+            console.log('🚀 VERSION 2.0 - Direct status notification - article:', articleId);
             
             if (state.isRequestingChanges) {
                 console.log('⚠️ Request already in progress');
@@ -3235,34 +3239,29 @@ async function markAllNotificationsRead() {
                 
                 console.log('✅ Ambassador ID found:', ambassadorId);
 
-                // Get the selected status from dropdown
+                // Get the selected status from dropdown - SEND EXACT STATUS VALUE
                 const statusSelect = document.getElementById('simpleStatusSelect');
                 const selectedStatus = statusSelect ? statusSelect.value : 'needs_update';
                 
-                // Determine notification type based on status
-                let notificationType = 'needs_update';
-                if (selectedStatus === 'approved') {
-                    notificationType = 'article_approved';
-                } else if (selectedStatus === 'published') {
-                    notificationType = 'article_published';
-                } else if (selectedStatus === 'rejected') {
-                    notificationType = 'article_rejected';
-                } else if (selectedStatus === 'pending') {
-                    notificationType = 'article_pending';
-                }
+                console.log('🔍 DEBUG v2: Dropdown found:', !!statusSelect);
+                console.log('🔍 DEBUG v2: Selected status:', selectedStatus);
+                console.log('🔍 DEBUG v2: Sending notification with type =', selectedStatus);
                 
-                console.log('📬 Step 2: Sending notification to ambassador with status:', selectedStatus);
+                // SIMPLIFIED: Send the EXACT status value as the notification type
+                // No more mapping - what admin selects is what ambassador sees
                 const notifResponse = await fetch('/admin/api/notifications', { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' }, 
                     body: JSON.stringify({ 
                         articleId: articleId, 
-                        type: notificationType, 
+                        type: selectedStatus,  // DIRECT: approved, published, rejected, pending, needs_update
                         message: message,
                         ambassadorId: ambassadorId
                     }), 
                     credentials: 'include' 
                 });
+                
+                console.log('📬 Step 2: Notification sent with type:', selectedStatus);
                 
                 if (!notifResponse.ok) {
                     const errorText = await notifResponse.text();

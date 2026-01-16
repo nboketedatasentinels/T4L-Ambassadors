@@ -729,6 +729,9 @@
   // GET NOTIFICATION ICON CLASS
   // ============================================
   function getNotificationIconClass(type) {
+    // Normalize type to handle both old format (article_approved) and new direct format (approved)
+    const normalizedType = (type || '').toLowerCase().replace('article_', '');
+    
     const typeClasses = {
       'application_submitted': 'type-application_submitted',
       'application_status_change': 'type-application_status_change',
@@ -737,19 +740,22 @@
       'service_request_status': 'type-service_request_status',
       'needs_update': 'type-needs_update',
       'ready_to_publish': 'type-ready_to_publish',
-      'article_published': 'type-article_published',
-      'article_approved': 'type-ready_to_publish',
-      'article_rejected': 'type-article_rejected',
-      'article_pending': 'type-article_pending',
-      'article_submitted': 'type-application_submitted'
+      'published': 'type-article_published',
+      'approved': 'type-ready_to_publish',
+      'rejected': 'type-article_rejected',
+      'pending': 'type-article_pending',
+      'submitted': 'type-application_submitted'
     };
-    return typeClasses[type] || 'type-default';
+    return typeClasses[normalizedType] || typeClasses[type] || 'type-default';
   }
 
   // ============================================
   // GET NOTIFICATION ICON
   // ============================================
   function getNotificationIcon(type) {
+    // Normalize type to handle both old format (article_approved) and new direct format (approved)
+    const normalizedType = (type || '').toLowerCase().replace('article_', '');
+    
     const icons = {
       'application_submitted': 'bx-send',
       'application_status_change': 'bx-check-circle',
@@ -758,13 +764,13 @@
       'service_request_status': 'bx-briefcase-alt-2',
       'needs_update': 'bx-edit',
       'ready_to_publish': 'bx-rocket',
-      'article_published': 'bx-party',
-      'article_approved': 'bx-check-circle',
-      'article_rejected': 'bx-x-circle',
-      'article_pending': 'bx-time-five',
-      'article_submitted': 'bx-file'
+      'published': 'bx-party',
+      'approved': 'bx-check-circle',
+      'rejected': 'bx-x-circle',
+      'pending': 'bx-time-five',
+      'submitted': 'bx-file'
     };
-    return icons[type] || 'bx-bell';
+    return icons[normalizedType] || icons[type] || 'bx-bell';
   }
 
   // ============================================

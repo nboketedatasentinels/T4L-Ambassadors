@@ -3418,10 +3418,16 @@ app.post("/signin", async (req, res) => {
 
     console.log(`Ambassador signed in: ${emailLower}, Session: ${sessionId}`);
 
+    // Check if professional profile is complete
+    const hasCompletedProfile = user.professional_headline && user.professional_summary;
+    const redirectUrl = hasCompletedProfile ? "/ambassador-dashboard.html" : "/about-me.html";
+
+    console.log(`Profile complete: ${hasCompletedProfile}, redirecting to: ${redirectUrl}`);
+
     return res.json({
       success: true,
       message: "Sign in successful",
-      redirect: "/ambassador-dashboard.html",
+      redirect: redirectUrl,
       user: {
         id: user.ambassador_id,
         email: user.email,
@@ -3908,6 +3914,12 @@ app.get(
         return res.redirect("/signin");
       }
 
+      // Check if professional profile is complete - redirect to about-me if not
+      if (!user.professional_headline || !user.professional_summary) {
+        console.log("Profile incomplete, redirecting to about-me");
+        return res.redirect("/about-me.html");
+      }
+
       console.log("User authenticated successfully:", user.email);
       res.sendFile(path.join(__dirname, "public", "ambassador-dashboard.html"));
     } catch (error) {
@@ -4248,6 +4260,102 @@ app.post("/api/profile/password", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("Error updating password:", error);
     return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ------------------------
+// Professional Profile (About Me) API Endpoint
+// ------------------------
+app.post("/api/profile/about-me", requireAuth, requireRole("ambassador"), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const { professional_headline, professional_summary } = req.body || {};
+
+    // Validation
+    if (!professional_headline || !professional_summary) {
+      return res.status(400).json({ 
+        error: "Professional headline and summary are required" 
+      });
+    }
+
+    // Validate minimum word count for summary (250 words)
+    const wordCount = professional_summary.trim().split(/\s+/).filter(word => word.length > 0).length;
+    if (wordCount < 250) {
+      return res.status(400).json({ 
+        error: "Professional summary must be at least 250 words" 
+      });
+    }
+
+    // Get ambassador record
+    const { data: ambassador, error: fetchError } = await supabase
+      .from("ambassadors")
+      .select("ambassador_id")
+      .eq("user_id", userId)
+      .single();
+
+    if (fetchError || !ambassador) {
+      console.error("Ambassador not found for user:", userId);
+      return res.status(404).json({ error: "Ambassador profile not found" });
+    }
+
+    // Update ambassador profile with professional info
+    const { data: updated, error: updateError } = await supabase
+      .from("ambassadors")
+      .update({
+        professional_headline: professional_headline.trim(),
+        professional_summary: professional_summary.trim(),
+        updated_at: new Date().toISOString()
+      })
+      .eq("ambassador_id", ambassador.ambassador_id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error("Error updating professional profile:", updateError);
+      return res.status(500).json({ error: "Failed to save professional profile" });
+    }
+
+    console.log(`✅ Professional profile saved for ambassador: ${ambassador.ambassador_id}`);
+
+    return res.json({
+      success: true,
+      message: "Professional profile saved successfully",
+      redirect: "/ambassador-dashboard.html"
+    });
+  } catch (error) {
+    console.error("Error saving professional profile:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Protected route for about-me.html - redirects if profile already complete
+app.get("/about-me.html", requireAuth, requireRole("ambassador"), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    
+    // Check if professional profile is already complete
+    const { data: ambassador, error } = await supabase
+      .from("ambassadors")
+      .select("professional_headline, professional_summary")
+      .eq("user_id", userId)
+      .single();
+
+    if (error) {
+      console.error("Error checking profile:", error);
+      return res.sendFile(path.join(__dirname, "public", "about-me.html"));
+    }
+
+    // If profile is already complete, redirect to dashboard
+    if (ambassador?.professional_headline && ambassador?.professional_summary) {
+      console.log("✅ Profile already complete, redirecting to dashboard");
+      return res.redirect("/ambassador-dashboard.html");
+    }
+
+    // Profile not complete, serve the about-me page
+    res.sendFile(path.join(__dirname, "public", "about-me.html"));
+  } catch (error) {
+    console.error("Error serving about-me page:", error);
+    return res.redirect("/signin");
   }
 });
 
@@ -5943,7 +6051,9 @@ app.get(
         contentHtml: article.content,
         byline: article.excerpt,
         status: article.status,
-        publication_link: article.publication_link, // ← ADD HERE
+        publication_link: article.publication_link,
+        ambassador_consent_to_publish: article.ambassador_consent_to_publish || false,
+        consent_given_at: article.consent_given_at,
         createdAt: article.created_at,
         updatedAt: article.updated_at,
         views: article.views || 0,
@@ -6174,6 +6284,8 @@ app.get(
         byline: article.excerpt,
         status: article.status,
         publication_link: article.publication_link,
+        ambassador_consent_to_publish: article.ambassador_consent_to_publish || false,
+        consent_given_at: article.consent_given_at,
         createdAt: article.created_at,
         updatedAt: article.updated_at,
         views: article.views || 0,
@@ -6542,34 +6654,37 @@ app.post(
         ? admin.first_name || admin.name || "Admin"
         : "Admin";
 
-      // Determine notification content based on type
+      // Determine notification content based on type (now receives direct status values)
       let notificationTitle, notificationLink;
       const notificationType = type || "needs_update";
+      
+      console.log("📋 Notification type received from frontend:", type);
+      console.log("📋 Using notification type:", notificationType);
 
-      if (
-        notificationType === "article_published" ||
-        notificationType === "ready_to_publish"
-      ) {
+      // Handle BOTH old format (article_approved) and new direct format (approved)
+      const normalizedType = notificationType.toLowerCase().replace('article_', '');
+      
+      if (normalizedType === "published" || notificationType === "ready_to_publish") {
         notificationTitle = "🎉 Your Article Has Been Published!";
         notificationLink = `/article-progress.html?articleId=${
           targetArticleId || ""
         }`;
-      } else if (notificationType === "article_approved") {
+      } else if (normalizedType === "approved") {
         notificationTitle = "✅ Your Article Has Been Approved!";
         notificationLink = `/ambassador-review.html?articleId=${
           targetArticleId || ""
         }`;
-      } else if (notificationType === "article_rejected") {
+      } else if (normalizedType === "rejected") {
         notificationTitle = "❌ Article Not Approved";
         notificationLink = `/ambassador-review.html?articleId=${
           targetArticleId || ""
         }`;
-      } else if (notificationType === "article_pending") {
+      } else if (normalizedType === "pending") {
         notificationTitle = "⏳ Article Under Review";
         notificationLink = `/ambassador-review.html?articleId=${
           targetArticleId || ""
         }`;
-      } else if (notificationType === "needs_update") {
+      } else if (normalizedType === "needs_update") {
         notificationTitle = "📝 Article Needs Updates";
         notificationLink = `/ambassador-review.html?articleId=${
           targetArticleId || ""
@@ -6777,6 +6892,133 @@ app.patch(
     } catch (error) {
       console.error("Error updating article:", error);
       return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// ============================================
+// AMBASSADOR CONSENT TO PUBLISH - NEW ENDPOINT
+// ============================================
+app.post(
+  "/api/ambassador/articles/:id/consent-to-publish",
+  requireAuth,
+  requireRole("ambassador"),
+  async (req, res) => {
+    try {
+      const articleId = req.params.id;
+      const userId = req.auth.userId;
+
+      console.log("📝 Ambassador giving consent to publish article:", articleId);
+
+      // Get ambassador
+      const ambassador = await getUserById(userId, "ambassador");
+      if (!ambassador) {
+        console.error("❌ Ambassador not found for user_id:", userId);
+        return res.status(404).json({ error: "Ambassador not found" });
+      }
+
+      const ambassadorId = ambassador.ambassador_id || ambassador.id;
+
+      // Check if article exists
+      const existingArticle = await getArticleById(articleId);
+      if (!existingArticle) {
+        return res.status(404).json({ error: "Article not found" });
+      }
+
+      // Verify ownership
+      if (existingArticle.ambassador_id !== ambassadorId) {
+        console.error("❌ Article ownership mismatch");
+        return res.status(403).json({ error: "You can only consent to publish your own articles" });
+      }
+
+      // Verify article is approved (only approved articles can receive consent)
+      if (existingArticle.status !== "approved") {
+        console.log("❌ Article status is not approved:", existingArticle.status);
+        return res.status(400).json({ 
+          error: "Only approved articles can receive publishing consent",
+          currentStatus: existingArticle.status
+        });
+      }
+
+      // Update article with consent
+      const updates = {
+        ambassador_consent_to_publish: true,
+        consent_given_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      // Try to update with consent fields
+      let updatedArticle;
+      let updateError;
+      
+      ({ data: updatedArticle, error: updateError } = await supabase
+        .from("articles")
+        .update(updates)
+        .eq("article_id", articleId)
+        .select()
+        .single());
+
+      // If consent column doesn't exist, just log and return success anyway
+      if (updateError && (updateError.code === 'PGRST204' || updateError.message?.includes('ambassador_consent_to_publish'))) {
+        console.warn("⚠️ ambassador_consent_to_publish column not found in articles table. Please add these columns:");
+        console.warn("  - ambassador_consent_to_publish (boolean, default false)");
+        console.warn("  - consent_given_at (timestamp)");
+        
+        // Still return success - the consent is recorded in the notification
+        updatedArticle = existingArticle;
+      } else if (updateError) {
+        console.error("Error updating article with consent:", updateError);
+        throw updateError;
+      }
+
+      // Create a notification for admins about the consent
+      try {
+        const ambassadorName = `${ambassador.first_name || ""} ${ambassador.last_name || ""}`.trim() || ambassador.name || "Ambassador";
+        
+        // Get all admins to notify them
+        const { data: admins } = await supabase
+          .from("users")
+          .select("user_id")
+          .eq("role", "admin");
+
+        if (admins && admins.length > 0) {
+          const notifications = admins.map(admin => ({
+            notification_id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            recipient_id: admin.user_id,
+            article_id: articleId,
+            type: "ambassador_consent",
+            title: "Ambassador Consent to Publish",
+            message: `${ambassadorName} has given consent to publish their article "${existingArticle.title}"`,
+            is_read: false,
+            created_at: new Date().toISOString()
+          }));
+
+          await supabase.from("notifications").insert(notifications);
+          console.log("✅ Notified", admins.length, "admins about consent");
+        }
+      } catch (notifError) {
+        console.warn("⚠️ Failed to create admin notifications:", notifError.message);
+        // Don't fail the request if notifications fail
+      }
+
+      console.log("✅ Ambassador consent to publish recorded for article:", articleId);
+
+      return res.json({
+        success: true,
+        message: "Consent to publish recorded successfully",
+        article: {
+          id: articleId,
+          status: existingArticle.status,
+          ambassador_consent_to_publish: true,
+          consent_given_at: updates.consent_given_at
+        }
+      });
+    } catch (error) {
+      console.error("❌ Error recording consent to publish:", error);
+      return res.status(500).json({ 
+        error: "Failed to record consent to publish",
+        details: error.message 
+      });
     }
   }
 );

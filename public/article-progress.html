@@ -590,6 +590,16 @@
                                 <i class="bx bx-book-open"></i>
                                 My Published Content
                             </button>
+                            <!-- Consent to Publish Button - Only visible when article is approved -->
+                            <button id="btnConsentToPublish" class="btn" style="display: none; background: #10b981; color: white;">
+                                <i class="bx bx-check-circle"></i>
+                                Allow Admin to Publish
+                            </button>
+                            <!-- Consent Already Given Badge -->
+                            <div id="consentGivenBadge" class="btn" style="display: none; background: #d1fae5; color: #065f46; border: 2px solid #10b981; cursor: default;">
+                                <i class="bx bx-check-double"></i>
+                                Publishing Consent Given
+                            </div>
                         </div>
                     </div>
 
@@ -913,6 +923,9 @@
                 document.getElementById('currentStatus').textContent = formatStatus(article.status);
                 document.getElementById('btnViewArticle').href = `/ambassador-review.html?articleId=${articleId}`;
 
+                // ✅ Handle consent to publish button
+                updateConsentButton(article);
+
                 // Render timeline
                 renderTimeline(article);
 
@@ -952,6 +965,103 @@
                 'draft': 'Draft'
             };
             return statusMap[status] || status;
+        }
+
+        // ✅ UPDATE CONSENT BUTTON BASED ON ARTICLE STATUS
+        function updateConsentButton(article) {
+            const btnConsentToPublish = document.getElementById('btnConsentToPublish');
+            const consentGivenBadge = document.getElementById('consentGivenBadge');
+            
+            if (!btnConsentToPublish || !consentGivenBadge) return;
+
+            const status = (article.status || '').toLowerCase();
+            const hasGivenConsent = article.ambassador_consent_to_publish === true;
+
+            if (status === 'approved') {
+                if (hasGivenConsent) {
+                    // Already gave consent - show badge
+                    btnConsentToPublish.style.display = 'none';
+                    consentGivenBadge.style.display = 'inline-flex';
+                } else {
+                    // Article approved but no consent yet - show button
+                    btnConsentToPublish.style.display = 'inline-flex';
+                    consentGivenBadge.style.display = 'none';
+                    
+                    // Set up click handler
+                    btnConsentToPublish.onclick = async () => {
+                        await giveConsentToPublish(article.article_id || article.id);
+                    };
+                }
+            } else {
+                // Not approved - hide both
+                btnConsentToPublish.style.display = 'none';
+                consentGivenBadge.style.display = 'none';
+            }
+        }
+
+        // ✅ GIVE CONSENT TO PUBLISH
+        async function giveConsentToPublish(articleId) {
+            if (!articleId) {
+                showToast('No article selected', true);
+                return;
+            }
+
+            const btnConsentToPublish = document.getElementById('btnConsentToPublish');
+            const consentGivenBadge = document.getElementById('consentGivenBadge');
+            
+            // Show loading state
+            if (btnConsentToPublish) {
+                btnConsentToPublish.disabled = true;
+                const originalContent = btnConsentToPublish.innerHTML;
+                btnConsentToPublish.innerHTML = `
+                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="animation: spin 1s linear infinite;">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Processing...</span>
+                `;
+            }
+
+            try {
+                const response = await fetch(`/api/ambassador/articles/${articleId}/consent-to-publish`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to give consent');
+                }
+
+                const data = await response.json();
+                console.log('✅ Consent recorded:', data);
+
+                // Update UI to show consent given
+                if (btnConsentToPublish) {
+                    btnConsentToPublish.style.display = 'none';
+                }
+                if (consentGivenBadge) {
+                    consentGivenBadge.style.display = 'inline-flex';
+                }
+
+                showToast('Publishing consent given! Admin can now publish your article.');
+
+            } catch (error) {
+                console.error('❌ Error giving consent:', error);
+                showToast(error.message || 'Failed to give consent to publish', true);
+                
+                // Restore button
+                if (btnConsentToPublish) {
+                    btnConsentToPublish.disabled = false;
+                    btnConsentToPublish.innerHTML = `
+                        <i class="bx bx-check-circle"></i>
+                        Allow Admin to Publish
+                    `;
+                }
+            }
         }
 
         // Mobile menu toggle
