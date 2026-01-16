@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LocalStorage Test</title>
+</head>
+<body>
+    <h1>LocalStorage Test</h1>
+    <button onclick="testLocalStorage()">Test LocalStorage</button>
+    <pre id="output"></pre>
+
+    <script>
+        function testLocalStorage() {
+            const output = document.getElementById('output');
+            output.textContent = '';
+            
+            // Test 1: Check if data exists
+            const key = 'journey_tasks_default';
+            const data = localStorage.getItem(key);
+            output.textContent += `Key: ${key}\n`;
+            output.textContent += `Data exists: ${data ? 'YES' : 'NO'}\n`;
+            
+            if (data) {
+                try {
+                    const parsed = JSON.parse(data);
+                    output.textContent += `Parsed data:\n`;
+                    output.textContent += JSON.stringify(parsed, null, 2);
+                    output.textContent += `\n\nTotal tasks: ${Object.keys(parsed).length}`;
+                } catch (e) {
+                    output.textContent += `Error parsing: ${e.message}`;
+                }
+            } else {
+                output.textContent += `\nNo data found in localStorage!`;
+            }
+        }
+        
+        // Auto-test on load
+        window.onload = testLocalStorage;
+    </script>
+</body>
+</html>

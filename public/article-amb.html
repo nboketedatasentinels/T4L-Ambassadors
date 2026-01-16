@@ -240,9 +240,8 @@
                 />
                 <i class="bx bx-search absolute left-3 top-2.5 text-gray-500"></i>
               </div>
-              <button class="relative p-2 hover:bg-gray-100 rounded-full transition-colors">
+              <button id="notificationBell" class="relative p-2 hover:bg-gray-100 rounded-full transition-colors" title="Notifications">
                 <i class="bx bx-bell text-2xl text-gray-700"></i>
-                <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
               <div class="w-10 h-10 bg-gradient-to-br from-purple-600 to-purple-800 flex items-center justify-center rounded-full font-bold text-white shadow-md cursor-pointer hover:shadow-lg transition-shadow">
                 SM
@@ -540,31 +539,68 @@
             }
         });
 
-        // Auth check
-        function checkAuth() {
-            return fetch('/api/me', { credentials: 'include' })
-                .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+        // Auth check - with silent mode to prevent redirects on page load
+        function checkAuth(silent = false) {
+            // Add timeout to prevent hanging requests
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+            
+            return fetch('/api/me', { 
+                credentials: 'include',
+                signal: controller.signal
+            })
+                .then(r => {
+                    clearTimeout(timeoutId);
+                    if (!r.ok) {
+                        // Only throw for actual auth errors, not network issues
+                        if (r.status === 401 || r.status === 403) {
+                            throw new Error(String(r.status));
+                        }
+                        // For other errors (500, etc), return null instead of throwing
+                        console.warn('Auth check returned non-ok status:', r.status);
+                        return null;
+                    }
+                    return r.json();
+                })
                 .then(me => {
-                    if (!me || me.role !== 'ambassador') {
+                    if (!me) {
+                        // If we got null from previous step, return null
+                        return null;
+                    }
+                    if (me.role !== 'ambassador') {
+                        if (!silent) {
+                            showToast('You do not have permission to submit articles.', true);
+                            window.location.href = '/signin';
+                        }
                         throw new Error('forbidden');
                     }
                     return me;
                 })
                 .catch(err => {
-                    const redirectParam = encodeURIComponent(window.location.pathname);
+                    clearTimeout(timeoutId);
+                    // Handle abort/timeout errors - don't redirect
+                    if (err.name === 'AbortError' || err.name === 'TimeoutError') {
+                        console.warn('Auth check timed out, but continuing...');
+                        return null; // Don't redirect on timeout
+                    }
+                    // Only redirect on actual auth failures, and only if not silent
                     if (err.message === '401') {
-                        // Not logged in
-                        window.location.href = `/signin?redirect=${redirectParam}`;
+                        if (!silent) {
+                            const redirectParam = encodeURIComponent(window.location.pathname);
+                            window.location.href = `/signin?redirect=${redirectParam}`;
+                        }
                         throw err;
                     }
-                    if (err.message === 'forbidden' || err.message === '403') {
-                        showToast('You do not have permission to submit articles.', true);
-                        window.location.href = '/signin';
+                    if (err.message === '403' || err.message === 'forbidden') {
+                        if (!silent) {
+                            showToast('You do not have permission to submit articles.', true);
+                            window.location.href = '/signin';
+                        }
                         throw err;
                     }
-                    // Unknown error -> force signin
-                    window.location.href = `/signin?redirect=${redirectParam}`;
-                    throw err;
+                    // For network errors or other issues, don't redirect - just log and return null
+                    console.warn('Auth check failed (non-critical):', err.message);
+                    return null; // Return null instead of redirecting
                 });
         }
 
@@ -851,8 +887,13 @@
                 });
             };
 
-            // Ensure authenticated before submit
-            checkAuth().then(() => {
+            // Ensure authenticated before submit - use non-silent mode to redirect if needed
+            checkAuth(false).then((authResult) => {
+                if (!authResult) {
+                    // If auth check failed but didn't redirect, show error and stop
+                    showToast('Please sign in to submit articles. If you are signed in, please try again.', true);
+                    throw new Error('Not authenticated');
+                }
                 return submitUpdate();
             }).then(async res => {
                 if (!res.ok) {
@@ -924,12 +965,15 @@
             });
         }
 
-        // Logout functionality
+        // Logout functionality - use /api/logout to match dashboard
         function setupLogout() {
             const logoutBtn = document.getElementById('logoutBtn');
             if (logoutBtn) {
                 logoutBtn.addEventListener('click', function() {
-                    fetch('/logout', { method: 'POST' })
+                    fetch('/api/logout', { 
+                        method: 'POST',
+                        credentials: 'include'
+                    })
                         .then(() => {
                             window.location.href = '/signin';
                         })
@@ -965,7 +1009,18 @@
 
         // Gate page on load and bind event listeners
         document.addEventListener('DOMContentLoaded', function() {
-            checkAuth().catch(() => {});
+            // CRITICAL: Use silent mode on page load to prevent redirects
+            // Auth will be checked when user tries to submit
+            checkAuth(true).then(authResult => {
+                if (authResult) {
+                    console.log('✅ User authenticated');
+                } else {
+                    console.log('⚠️ Auth check returned null, but continuing (might be network issue)');
+                }
+            }).catch(() => {
+                // Silently fail - don't redirect on page load
+                console.log('Initial auth check error (non-critical)');
+            });
             
             // Setup editor placeholder
             setupEditorPlaceholder();

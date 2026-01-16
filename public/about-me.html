@@ -98,10 +98,44 @@
     const textarea = document.getElementById("about");
     const wordCountEl = document.getElementById("wordCount");
     const form = document.getElementById("profileForm");
+    const submitBtn = form.querySelector('button[type="submit"]');
 
     function countWords(text) {
       return text.trim().split(/\s+/).filter(word => word.length > 0).length;
     }
+
+    // Check authentication on page load
+    async function checkAuth() {
+      try {
+        const response = await fetch('/api/me', {
+          method: 'GET',
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          // Not authenticated, redirect to signin
+          window.location.href = '/signin';
+          return false;
+        }
+        
+        const data = await response.json();
+        
+        // If not an ambassador, redirect
+        if (data.role !== 'ambassador') {
+          window.location.href = '/signin';
+          return false;
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        window.location.href = '/signin';
+        return false;
+      }
+    }
+
+    // Check auth when page loads
+    checkAuth();
 
     textarea.addEventListener("input", () => {
       const words = countWords(textarea.value);
@@ -110,7 +144,7 @@
       wordCountEl.classList.toggle("text-green-600", words >= 250);
     });
 
-    form.addEventListener("submit", (e) => {
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
       const words = countWords(textarea.value);
@@ -119,16 +153,39 @@
         return;
       }
 
-      const data = {
-        headline: form.headline.value,
-        about: textarea.value
-      };
+      // Disable submit button
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Saving...";
 
-      // Save locally or replace with API call
-      localStorage.setItem("professionalProfile", JSON.stringify(data));
+      try {
+        const response = await fetch('/api/profile/about-me', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            professional_headline: form.headline.value.trim(),
+            professional_summary: textarea.value.trim()
+          })
+        });
 
-      // Redirect
-      window.location.href = "/home.html";
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to save profile');
+        }
+
+        // Success! Redirect to dashboard
+        window.location.href = data.redirect || '/ambassador-dashboard.html';
+      } catch (error) {
+        console.error('Error saving profile:', error);
+        alert(error.message || 'Failed to save profile. Please try again.');
+        
+        // Re-enable submit button
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Save & Continue";
+      }
     });
   </script>
 

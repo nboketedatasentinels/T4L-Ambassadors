@@ -11,18 +11,18 @@ const { v4: uuidv4 } = require("uuid");
 // ========== EMAIL SERVICE (NODEMAILER) ==========
 const nodemailer = require("nodemailer");
 
-// Gmail SMTP Configuration (hardcoded)
+// Gmail SMTP Configuration (from environment variables)
 const SMTP_CONFIG = {
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // true for 465, false for other ports
+  host: process.env.SMTP_HOST || "smtp.gmail.com",
+  port: parseInt(process.env.SMTP_PORT) || 587,
+  secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
   auth: {
-    user: "syntichemusawu645@gmail.com",
-    pass: "ouwkdejtuwqryqf", // Gmail App Password (spaces removed automatically)
+    user: process.env.SMTP_USER || process.env.EMAIL_USER,
+    pass: process.env.SMTP_PASS || process.env.EMAIL_PASSWORD || "", // Gmail App Password
   },
 };
 
-const SMTP_FROM = "syntichemusawu645@gmail.com";
+const SMTP_FROM = process.env.SMTP_FROM || process.env.EMAIL_USER || "";
 
 class EmailService {
   constructor() {
@@ -407,95 +407,20 @@ const {
   updateServiceRequestStatus,
   getPartnerUserIdFromPartnerId,
   getAmbassadorUserIdFromAmbassadorId,
+  createLinkedInAudit,
+  getLinkedInAuditByAmbassadorId,
+  updateLinkedInAudit,
+  deleteLinkedInAudit,
+  getLinkedInAudits,
+  // Notification function (from db.js)
+  createNotification
 } = require("./models/db.js");
-
-// ============================================
-// NOTIFICATION HELPER FUNCTION
-// ============================================
-async function createNotification(
-  recipientId,
-  recipientType,
-  notificationType,
-  title,
-  message,
-  link = null,
-  applicationId = null,
-  requestId = null,
-  articleId = null
-) {
-  try {
-    console.log(
-      "📬 Creating notification for:",
-      recipientId,
-      "- Type:",
-      notificationType
-    );
-
-    // 🚨 IMPORTANT: Prepare data with all reference IDs null by default
-    const notificationData = {
-      notification_id: uuidv4(),
-      recipient_id: recipientId,
-      recipient_type: recipientType,
-      type: notificationType,
-      title: title,
-      message: message,
-      link: link,
-      read: false,
-      created_at: new Date().toISOString(),
-      application_id: null,
-      request_id: null,
-      article_id: null,
-    };
-
-    // 🚨 CRITICAL: Set ONLY ONE reference ID based on what's provided
-    // This ensures the database constraint is satisfied
-    if (applicationId) {
-      notificationData.application_id = applicationId;
-      // Leave request_id and article_id as null
-    } else if (requestId) {
-      notificationData.request_id = requestId;
-      // Leave application_id and article_id as null
-    } else if (articleId) {
-      notificationData.article_id = articleId;
-      // Leave application_id and request_id as null
-    } else {
-      // If no reference ID is provided, this might violate the constraint
-      console.log("⚠️ Warning: No reference ID provided for notification");
-    }
-
-    console.log("📝 Notification data:", {
-      type: notificationType,
-      hasApplicationId: !!notificationData.application_id,
-      hasRequestId: !!notificationData.request_id,
-      hasArticleId: !!notificationData.article_id,
-    });
-
-    // Try to create notification
-    const { data, error } = await supabase
-      .from("notifications")
-      .insert([notificationData])
-      .select()
-      .single();
-
-    if (error) {
-      console.log("⚠️ Notification failed:", error.message);
-      console.log("📋 Failed notification data:", notificationData);
-      return null;
-    }
-
-    console.log("✅ Notification created successfully");
-    return data;
-  } catch (error) {
-    console.log("⚠️ Notification error:", error.message);
-    return null;
-  }
-}
 
 // ------------------------
 // Basic Middleware
 // ------------------------
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '10mb' }));
 
 // Add debug middleware to see incoming requests
 app.use((req, res, next) => {
@@ -528,6 +453,7 @@ const notificationsByUserId = new Map();
 const sessions = new Map();
 const postsById = new Map();
 const journeyProgressByAmbassador = new Map();
+const mediaLibrary = []; // User media library storage
 
 // ------------------------
 // File-based persistence
@@ -992,6 +918,59 @@ app.post(
         // Don't fail the whole request if notification fails
       }
 
+      // Notify admins about the new application
+      try {
+        const { data: admins } = await supabase.from("admins").select("user_id");
+        if (admins && admins.length > 0) {
+          const ambassadorName = `${ambassador.first_name || ""} ${
+            ambassador.last_name || ""
+          }`.trim() || "An ambassador";
+          for (const admin of admins) {
+            await createNotification(
+              admin.user_id,
+              "admin",
+              "application_submitted",
+              "📋 New Application",
+              `${ambassadorName} applied to "${postTitle || post.title}"`,
+              `/admin-dashboard.html`,
+              applicationId
+            );
+          }
+          console.log("   ✅ Admin notifications sent");
+        }
+      } catch (adminNotifError) {
+        console.error("   ⚠️ Failed to notify admins:", adminNotifError.message);
+      }
+
+      // Notify the partner who posted the opportunity
+      try {
+        if (post.partner_id) {
+          const { data: partner } = await supabase
+            .from("partners")
+            .select("user_id, company_name")
+            .eq("partner_id", post.partner_id)
+            .single();
+
+          if (partner && partner.user_id) {
+            const ambassadorName = `${ambassador.first_name || ""} ${
+              ambassador.last_name || ""
+            }`.trim() || "An ambassador";
+            await createNotification(
+              partner.user_id,
+              "partner",
+              "application_received",
+              "🎯 New Application Received",
+              `${ambassadorName} has applied to your opportunity "${postTitle || post.title}"`,
+              `/applications.html`,
+              applicationId
+            );
+            console.log("   ✅ Partner notification sent");
+          }
+        }
+      } catch (partnerNotifError) {
+        console.error("   ⚠️ Failed to notify partner:", partnerNotifError.message);
+      }
+
       console.log("\n🎉 ========== SUCCESS ==========\n");
 
       return res.json({
@@ -1022,6 +1001,350 @@ app.post(
           process.env.NODE_ENV === "development"
             ? error.message
             : "Internal server error",
+      });
+    }
+  }
+);
+
+// ============================================
+// QUICK APPLY - One-click application using stored profile data
+// ============================================
+app.post(
+  "/api/applications/quick-apply",
+  requireAuth,
+  requireRole("ambassador"),
+  async (req, res) => {
+    console.log("\n🚀 ========== QUICK APPLY START ==========");
+
+    try {
+      const { postId } = req.body;
+      const userId = req.auth.userId;
+
+      console.log("📋 Auth info:", { userId, role: req.auth.role });
+
+      // Validation
+      if (!postId) {
+        return res.status(400).json({
+          success: false,
+          error: "Post ID is required",
+        });
+      }
+
+      // Get ambassador profile with all relevant data
+      console.log("🔍 Looking up ambassador profile for user_id:", userId);
+      let { data: ambassador, error: ambassadorError } = await supabase
+        .from("ambassadors")
+        .select("ambassador_id, first_name, last_name, email, user_id, professional_headline, professional_summary, cv_filename")
+        .eq("user_id", userId)
+        .single();
+
+      // If not found by user_id, try alternative lookup methods
+      if (ambassadorError || !ambassador) {
+        console.log("⚠️ Ambassador not found by user_id, trying alternative lookups...");
+        console.log("   Supabase error:", ambassadorError);
+        
+        // FALLBACK 1: Try looking up ambassador directly by ambassador_id 
+        // (in case session has old ambassador_id instead of user_id)
+        console.log("🔍 Trying ambassador_id lookup (legacy):", userId);
+        const { data: ambById, error: ambIdError } = await supabase
+          .from("ambassadors")
+          .select("ambassador_id, first_name, last_name, email, user_id, professional_headline, professional_summary, cv_filename")
+          .eq("ambassador_id", userId)
+          .single();
+
+        if (ambById && !ambIdError) {
+          ambassador = ambById;
+          console.log("✅ Found ambassador by ambassador_id (legacy session):", ambassador.first_name);
+        } else {
+          console.log("   ambassador_id lookup failed:", ambIdError);
+        }
+        
+        // FALLBACK 2: Try via users table email lookup
+        if (!ambassador) {
+          const { data: userData, error: userError } = await supabase
+            .from("users")
+            .select("email, access_code")
+            .eq("user_id", userId)
+            .single();
+
+          console.log("📋 User data from users table:", userData);
+          console.log("   User lookup error:", userError);
+
+          if (userData && userData.email) {
+            // Try to find ambassador by email
+            console.log("📧 Trying email lookup:", userData.email);
+            
+            const { data: ambByEmail, error: emailError } = await supabase
+              .from("ambassadors")
+              .select("ambassador_id, first_name, last_name, email, user_id, professional_headline, professional_summary, cv_filename")
+              .eq("email", userData.email)
+              .single();
+
+            if (ambByEmail && !emailError) {
+              ambassador = ambByEmail;
+              console.log("✅ Found ambassador by email:", ambassador.first_name);
+              
+              // Update the ambassador record with the correct user_id for future lookups
+              if (!ambByEmail.user_id || ambByEmail.user_id !== userId) {
+                await supabase
+                  .from("ambassadors")
+                  .update({ user_id: userId })
+                  .eq("ambassador_id", ambByEmail.ambassador_id);
+                console.log("🔧 Updated ambassador with user_id");
+              }
+            } else {
+              console.log("   Email lookup failed:", emailError);
+              
+              // Try case-insensitive email lookup
+              console.log("🔍 Trying case-insensitive email lookup...");
+              
+              const { data: ambByIlikeEmail, error: ilikeError } = await supabase
+                .from("ambassadors")
+                .select("ambassador_id, first_name, last_name, email, user_id, professional_headline, professional_summary, cv_filename")
+                .ilike("email", userData.email)
+                .single();
+
+              if (ambByIlikeEmail && !ilikeError) {
+                ambassador = ambByIlikeEmail;
+                console.log("✅ Found ambassador by case-insensitive email:", ambassador.first_name);
+                
+                // Update the ambassador record with the correct user_id
+                if (!ambByIlikeEmail.user_id || ambByIlikeEmail.user_id !== userId) {
+                  await supabase
+                    .from("ambassadors")
+                    .update({ user_id: userId })
+                    .eq("ambassador_id", ambByIlikeEmail.ambassador_id);
+                  console.log("🔧 Updated ambassador with user_id");
+                }
+              } else {
+                console.log("   Case-insensitive email lookup failed:", ilikeError);
+              }
+            }
+          }
+        }
+      }
+
+      if (!ambassador) {
+        console.error("❌ Ambassador not found by any method");
+        console.error("   user_id searched:", userId);
+        
+        // Log debugging info
+        const { data: allAmbs } = await supabase
+          .from("ambassadors")
+          .select("ambassador_id, email, user_id, first_name")
+          .limit(5);
+        console.log("   Sample ambassadors in DB:", allAmbs);
+        
+        // Log the user info
+        const { data: userInfo } = await supabase
+          .from("users")
+          .select("user_id, email, user_type")
+          .eq("user_id", userId)
+          .single();
+        console.log("   User info from session:", userInfo);
+        
+        return res.status(404).json({
+          success: false,
+          error: "Ambassador profile not found",
+          details: "Your account may not be properly linked. Try logging out and signing in again, or contact support."
+        });
+      }
+
+      console.log("✅ Ambassador found:", ambassador.first_name, ambassador.last_name);
+
+      // Check if ambassador has completed their about-me profile
+      if (!ambassador.professional_headline || !ambassador.professional_summary) {
+        console.log("❌ Ambassador has not completed about-me profile");
+        return res.status(400).json({
+          success: false,
+          error: "Please complete your professional profile first",
+          details: "Go to your About Me page to add your professional headline and summary.",
+          redirect: "/about-me.html"
+        });
+      }
+
+      console.log("✅ About-me profile is complete");
+
+      // Check if post exists and get partner info
+      console.log("🔍 Verifying post...");
+      const { data: post, error: postError } = await supabase
+        .from("posts")
+        .select("post_id, title, partner_id")
+        .eq("post_id", postId)
+        .single();
+
+      if (postError || !post) {
+        console.error("❌ Post not found:", postError);
+        return res.status(404).json({
+          success: false,
+          error: "Opportunity not found",
+        });
+      }
+
+      console.log("✅ Post found:", post.title);
+
+      // Check for existing application
+      console.log("🔍 Checking for duplicate application...");
+      const { data: existingApp } = await supabase
+        .from("applications")
+        .select("application_id")
+        .eq("post_id", postId)
+        .eq("ambassador_id", ambassador.ambassador_id)
+        .single();
+
+      if (existingApp) {
+        console.log("⚠️ Already applied to this opportunity");
+        return res.status(400).json({
+          success: false,
+          error: "You have already applied to this opportunity",
+        });
+      }
+
+      // Try to get a CV filename - either from ambassador profile or from previous application
+      let cvFilename = ambassador.cv_filename;
+      
+      if (!cvFilename) {
+        // Check if they have a previous application with a CV
+        console.log("🔍 Looking for existing CV from previous applications...");
+        const { data: prevApp } = await supabase
+          .from("applications")
+          .select("cv_filename")
+          .eq("ambassador_id", ambassador.ambassador_id)
+          .not("cv_filename", "is", null)
+          .order("applied_at", { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (prevApp && prevApp.cv_filename) {
+          cvFilename = prevApp.cv_filename;
+          console.log("✅ Found CV from previous application:", cvFilename);
+        }
+      }
+
+      // Create application
+      console.log("💾 Creating application...");
+      const applicationId = uuidv4();
+
+      const applicationData = {
+        application_id: applicationId,
+        post_id: postId,
+        ambassador_id: ambassador.ambassador_id,
+        partner_id: post.partner_id,
+        cv_filename: cvFilename || null,
+        status: "pending",
+        applied_at: new Date().toISOString(),
+        subscribe_to_newsletter: false,
+        terms_accepted: true,
+        // Professional info is fetched from ambassadors table when viewing the application
+      };
+
+      console.log("📋 Application data prepared");
+
+      const { data: savedApp, error: dbError } = await supabase
+        .from("applications")
+        .insert([applicationData])
+        .select()
+        .single();
+
+      if (dbError) {
+        console.error("❌ Database error:", dbError);
+        return res.status(500).json({
+          success: false,
+          error: "Failed to save application",
+          details: dbError.message,
+        });
+      }
+
+      console.log("✅ Application saved:", savedApp.application_id);
+
+      // Create notification for ambassador
+      try {
+        await createNotification(
+          userId,
+          "ambassador",
+          "application_submitted",
+          "✅ Application Submitted",
+          `Your application for "${post.title}" has been sent with your profile info.`,
+          `/Partner-Calls.html`,
+          applicationId
+        );
+        console.log("✅ Ambassador notification sent");
+      } catch (notifError) {
+        console.error("⚠️ Notification failed:", notifError.message);
+      }
+
+      // Notify admins
+      try {
+        const { data: admins } = await supabase.from("admins").select("user_id");
+        if (admins && admins.length > 0) {
+          const ambassadorName = `${ambassador.first_name || ""} ${ambassador.last_name || ""}`.trim() || "An ambassador";
+          for (const admin of admins) {
+            await createNotification(
+              admin.user_id,
+              "admin",
+              "application_submitted",
+              "📋 New Application",
+              `${ambassadorName} applied to "${post.title}"`,
+              `/admin-dashboard.html`,
+              applicationId
+            );
+          }
+          console.log("✅ Admin notifications sent");
+        }
+      } catch (adminNotifError) {
+        console.error("⚠️ Failed to notify admins:", adminNotifError.message);
+      }
+
+      // Notify the partner who posted the opportunity
+      try {
+        if (post.partner_id) {
+          // Get partner's user_id from partners table
+          const { data: partner } = await supabase
+            .from("partners")
+            .select("user_id, company_name")
+            .eq("partner_id", post.partner_id)
+            .single();
+
+          if (partner && partner.user_id) {
+            const ambassadorName = `${ambassador.first_name || ""} ${ambassador.last_name || ""}`.trim() || "An ambassador";
+            await createNotification(
+              partner.user_id,
+              "partner",
+              "application_received",
+              "🎯 New Application Received",
+              `${ambassadorName} has applied to your opportunity "${post.title}"`,
+              `/applications.html`,
+              applicationId
+            );
+            console.log("✅ Partner notification sent to:", partner.company_name || partner.user_id);
+          }
+        }
+      } catch (partnerNotifError) {
+        console.error("⚠️ Failed to notify partner:", partnerNotifError.message);
+      }
+
+      console.log("\n🎉 ========== QUICK APPLY SUCCESS ==========\n");
+
+      return res.json({
+        success: true,
+        applicationId: savedApp.application_id,
+        message: "Application submitted successfully! Your profile has been shared with the partner.",
+        ambassadorProfile: {
+          name: `${ambassador.first_name} ${ambassador.last_name}`,
+          headline: ambassador.professional_headline,
+          hasCV: !!cvFilename
+        }
+      });
+
+    } catch (error) {
+      console.error("\n❌ ========== QUICK APPLY ERROR ==========");
+      console.error("Error:", error.message);
+      console.error("Stack:", error.stack);
+
+      return res.status(500).json({
+        success: false,
+        error: "Failed to submit application",
+        details: process.env.NODE_ENV === "development" ? error.message : "Internal server error",
       });
     }
   }
@@ -1241,6 +1564,28 @@ app.post("/api/services/:id/request", requireAuth, async (req, res) => {
     );
 
     console.log("✅ Ambassador notification sent");
+
+    // Notify admins about the new service request
+    try {
+      const { data: admins } = await supabase.from("admins").select("user_id");
+      if (admins && admins.length > 0) {
+        for (const admin of admins) {
+          await createNotification(
+            admin.user_id,
+            "admin",
+            "service_request",
+            "🔧 New Service Request",
+            `${ambassadorName} requested service: "${service.title}"`,
+            `/admin-dashboard.html`,
+            null,
+            requestId
+          );
+        }
+        console.log("✅ Admin notifications sent for service request");
+      }
+    } catch (notifError) {
+      console.error("⚠️ Failed to notify admins:", notifError.message);
+    }
 
     console.log("\n🎉 ========== SERVICE REQUEST SUCCESS ==========\n");
 
@@ -1740,7 +2085,6 @@ app.put(
 // NOTIFICATION ENDPOINTS
 // ============================================
 
-// Get notifications for current user
 app.get("/api/notifications", requireAuth, async (req, res) => {
   try {
     const userId = req.auth.userId;
@@ -1748,15 +2092,37 @@ app.get("/api/notifications", requireAuth, async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const unreadOnly = req.query.unread === "true";
 
+    if (req.query.debug === "true") {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("recipient_type", "admin")
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (error) {
+        console.error("Error fetching debug notifications:", error);
+        throw error;
+      }
+      return res.json({
+        notifications: data || [],
+        debug: true,
+        total: data?.length || 0,
+        unreadCount: (data || []).filter((n) => !n.read).length,
+      });
+    }
+
     console.log("📬 Fetching notifications for:", userId, role);
 
+    // ✅ CRITICAL: Filter by BOTH recipient_id AND recipient_type to ensure admins only see admin notifications
     let query = supabase
-      .from("notifications")
-      .select("*")
-      .eq("recipient_id", userId)
-      .eq("recipient_type", role)
-      .order("created_at", { ascending: false })
-      .limit(limit);
+        .from("notifications")
+        .select("*")
+        .eq("recipient_id", userId)
+        .eq("recipient_type", role)  // ✅ FIX: Filter by role to ensure admins only see admin notifications
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+    console.log("🔍 Querying notifications for user:", userId, "with role filter:", role);
 
     if (unreadOnly) {
       query = query.eq("read", false);
@@ -1769,7 +2135,10 @@ app.get("/api/notifications", requireAuth, async (req, res) => {
       throw error;
     }
 
+    // ✅ LOG: Check if notifications have 'read' field
     console.log("✅ Found", notifications?.length || 0, "notifications");
+    console.log("📊 First notification read status:", notifications?.[0]?.read);
+    console.log("📊 Unread count:", notifications?.filter(n => !n.read).length);
 
     return res.json({
       notifications: notifications || [],
@@ -1784,7 +2153,6 @@ app.get("/api/notifications", requireAuth, async (req, res) => {
     });
   }
 });
-
 // ============================================
 // GET AMBASSADOR PORTFOLIO/PROFILE
 // ============================================
@@ -1879,17 +2247,28 @@ app.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
   try {
     const notificationId = req.params.id;
     const userId = req.auth.userId;
+    const role = req.auth.role;
 
+    // ✅ CRITICAL: Filter by BOTH recipient_id AND recipient_type to ensure admins can only mark their own notifications as read
     const { data, error } = await supabase
       .from("notifications")
       .update({ read: true })
       .eq("notification_id", notificationId)
       .eq("recipient_id", userId)
+      .eq("recipient_type", role)  // ✅ FIX: Ensure admin can only mark admin notifications as read
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error marking notification as read:", error);
+      throw error;
+    }
 
+    if (!data) {
+      return res.status(404).json({ error: "Notification not found or unauthorized" });
+    }
+
+    console.log("✅ Notification marked as read:", notificationId);
     return res.json({ success: true, notification: data });
   } catch (error) {
     console.error("Error marking notification as read:", error);
@@ -1901,14 +2280,23 @@ app.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
 app.post("/api/notifications/mark-all-read", requireAuth, async (req, res) => {
   try {
     const userId = req.auth.userId;
+    const role = req.auth.role;
+
+    console.log('📝 Marking all notifications as read for:', userId);
 
     const { error } = await supabase
       .from("notifications")
       .update({ read: true })
       .eq("recipient_id", userId)
+      .eq("recipient_type", role)
       .eq("read", false);
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Error:', error);
+      throw error;
+    }
+
+    console.log('✅ All notifications marked as read');
 
     return res.json({
       success: true,
@@ -1916,7 +2304,10 @@ app.post("/api/notifications/mark-all-read", requireAuth, async (req, res) => {
     });
   } catch (error) {
     console.error("Error marking all as read:", error);
-    return res.status(500).json({ error: "Failed to update notifications" });
+    return res.status(500).json({ 
+      error: "Failed to update notifications",
+      details: error.message 
+    });
   }
 });
 
@@ -2064,7 +2455,7 @@ app.get(
       if (application.ambassador_id) {
         const { data: ambassador } = await supabase
           .from("ambassadors")
-          .select("first_name, last_name, email, cv_filename")
+          .select("first_name, last_name, email, cv_filename, professional_headline, professional_summary")
           .eq("ambassador_id", application.ambassador_id)
           .single();
 
@@ -2076,6 +2467,8 @@ app.get(
             name: ambassadorName,
             email: ambassador.email,
             cvFilename: ambassador.cv_filename,
+            professionalHeadline: ambassador.professional_headline,
+            professionalSummary: ambassador.professional_summary,
           };
         }
       }
@@ -2684,6 +3077,8 @@ function setSessionCookie(res, sessionId, maxAgeMs) {
     `sid=${encodeURIComponent(sessionId)}`,
     "HttpOnly",
     "Path=/",
+    // Use SameSite=Lax for localhost (works without HTTPS)
+    // For production with HTTPS, you can change to SameSite=None; Secure
     "SameSite=Lax",
   ];
   if (maxAgeMs && Number.isFinite(maxAgeMs)) {
@@ -3398,10 +3793,16 @@ app.post("/signin", async (req, res) => {
 
     console.log(`Ambassador signed in: ${emailLower}, Session: ${sessionId}`);
 
+    // Check if professional profile is complete
+    const hasCompletedProfile = user.professional_headline && user.professional_summary;
+    const redirectUrl = hasCompletedProfile ? "/ambassador-dashboard.html" : "/about-me.html";
+
+    console.log(`Profile complete: ${hasCompletedProfile}, redirecting to: ${redirectUrl}`);
+
     return res.json({
       success: true,
       message: "Sign in successful",
-      redirect: "/ambassador-dashboard.html",
+      redirect: redirectUrl,
       user: {
         id: user.ambassador_id,
         email: user.email,
@@ -3591,6 +3992,286 @@ app.post("/admin-signin", async (req, res) => {
   }
 });
 
+// ============================================
+// ADMIN: Submit LinkedIn Audit for Ambassador (FINAL FIX)
+// ============================================
+app.post('/admin/api/ambassadors/:id/linkedin-audit', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const ambassadorId = req.params.id;
+    const { url, speaker_bio_url, feedback } = req.body;
+
+    console.log('📝 Admin submitting LinkedIn audit for:', ambassadorId);
+
+    // Validate input
+    if (!url || !feedback) {
+      return res.status(400).json({ 
+        error: 'LinkedIn URL and feedback are required' 
+      });
+    }
+
+    // Verify ambassador exists
+    const { data: ambassador, error: ambassadorError } = await supabase
+      .from('ambassadors')
+      .select('*')
+      .eq('ambassador_id', ambassadorId)
+      .single();
+
+    if (ambassadorError || !ambassador) {
+      console.error('❌ Ambassador not found:', ambassadorId);
+      return res.status(404).json({ error: 'Ambassador not found' });
+    }
+
+    console.log('✅ Found ambassador:', ambassador.email);
+
+    // Get admin record
+    const { data: adminData, error: adminError } = await supabase
+      .from('admins')
+      .select('admin_id')
+      .eq('user_id', req.auth.userId)
+      .single();
+
+    if (adminError || !adminData) {
+      console.error('❌ Admin not found for user_id:', req.auth.userId);
+      return res.status(404).json({ error: 'Admin record not found' });
+    }
+
+    const adminId = adminData.admin_id;
+    const now = new Date().toISOString();
+
+    console.log('✅ Found admin_id:', adminId);
+
+    // Prepare audit data - SIMPLIFIED VERSION
+    const auditPayload = {
+      ambassador_id: ambassadorId,
+      admin_id: adminId,
+      linkedin_url: url,
+      feedback: feedback,
+      status: 'submitted', // Use 'submitted' which is in the allowed list
+      submitted_at: now,
+      updated_at: now,
+      created_at: now
+    };
+
+    // Add speaker_bio_url only if provided
+    if (speaker_bio_url && speaker_bio_url.trim() !== '') {
+      auditPayload.speaker_bio_url = speaker_bio_url.trim();
+    }
+
+    console.log('💾 Saving audit with payload:', {
+      ambassador_id: auditPayload.ambassador_id,
+      admin_id: auditPayload.admin_id,
+      status: auditPayload.status,
+      hasFeedback: !!feedback
+    });
+
+    // Check if audit already exists
+    const { data: existingAudit } = await supabase
+      .from('linkedin_audits')
+      .select('audit_id')
+      .eq('ambassador_id', ambassadorId)
+      .single();
+
+    let auditData, auditError;
+
+    if (existingAudit) {
+      // Update existing audit
+      console.log('🔄 Updating existing audit...');
+      const result = await supabase
+        .from('linkedin_audits')
+        .update(auditPayload)
+        .eq('ambassador_id', ambassadorId)
+        .select()
+        .single();
+      auditData = result.data;
+      auditError = result.error;
+    } else {
+      // Insert new audit
+      console.log('🆕 Inserting new audit...');
+      auditPayload.audit_id = uuidv4(); // Add UUID for new audit
+      const result = await supabase
+        .from('linkedin_audits')
+        .insert([auditPayload])
+        .select()
+        .single();
+      auditData = result.data;
+      auditError = result.error;
+    }
+
+    if (auditError) {
+      console.error('❌ Database error storing audit:', {
+        message: auditError.message,
+        code: auditError.code,
+        details: auditError.details,
+        hint: auditError.hint
+      });
+      
+      // Check for specific constraint violations
+      if (auditError.code === '23514') {
+        return res.status(400).json({ 
+          error: 'Invalid status value. Must be one of: pending, submitted, reviewed, completed, approved' 
+        });
+      }
+      
+      return res.status(500).json({ 
+        error: 'Failed to store audit data',
+        details: auditError.message
+      });
+    }
+
+    console.log('✅ LinkedIn audit stored successfully:', auditData?.audit_id);
+
+    // Transform response for frontend
+    const transformedAudit = auditData ? {
+      id: auditData.audit_id,
+      url: auditData.linkedin_url,
+      speaker_bio_url: auditData.speaker_bio_url,
+      feedback: auditData.feedback,
+      status: auditData.status,
+      submittedAt: auditData.submitted_at,
+      submitted_by: auditData.submitted_by // Will be null, that's OK
+    } : null;
+
+    res.json({
+      success: true,
+      message: 'LinkedIn audit submitted successfully',
+      audit: transformedAudit
+    });
+
+  } catch (error) {
+    console.error('❌ Unexpected error submitting LinkedIn audit:', error);
+    res.status(500).json({ 
+      error: 'Failed to submit LinkedIn audit',
+      details: error.message 
+    });
+  }
+});
+
+// Get LinkedIn audit for an ambassador
+app.get('/admin/api/ambassadors/:id/linkedin-audit', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const ambassadorId = req.params.id;
+
+    const { data, error } = await supabase
+      .from('linkedin_audits')
+      .select('*')
+      .eq('ambassador_id', ambassadorId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+      throw error;
+    }
+
+    // Transform database fields to match frontend expectations
+    const transformedAudit = data ? {
+      ...data,
+      url: data.linkedin_url, // Map linkedin_url to url for frontend
+      submittedAt: data.submitted_at // Map submitted_at to submittedAt for frontend
+    } : null;
+
+    res.json({
+      hasAudit: !!data,
+      audit: transformedAudit
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching LinkedIn audit:', error);
+    res.status(500).json({ error: 'Failed to fetch audit data' });
+  }
+});
+
+// Get LinkedIn Audits Count (for admin dashboard stats)
+app.get('/admin/api/linkedin-audits/count', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    // Count total LinkedIn audits submitted by admin
+    const { count, error } = await supabase
+      .from('linkedin_audits')
+      .select('*', { count: 'exact', head: true });
+
+    if (error) {
+      console.error('❌ Error counting LinkedIn audits:', error);
+      return res.status(500).json({ error: 'Failed to count audits' });
+    }
+
+    console.log('✅ LinkedIn audits count:', count);
+    res.json({ count: count || 0 });
+  } catch (error) {
+    console.error('❌ Error fetching LinkedIn audit count:', error);
+    res.status(500).json({ error: 'Failed to fetch audit count' });
+  }
+});
+
+// ============================================
+// AMBASSADOR: Get Own LinkedIn Audit
+// ============================================
+app.get(
+  "/api/journey/linkedin-audit",
+  requireAuth,
+  requireRole("ambassador"),
+  async (req, res) => {
+    try {
+      const userId = req.auth.userId;
+
+      console.log("📖 Ambassador fetching LinkedIn audit for user:", userId);
+
+      // First, get the ambassador's actual ambassador_id from the ambassadors table
+      // The userId from auth might be different from the ambassador_id
+      const ambassador = await getUserById(userId, "ambassador");
+      
+      if (!ambassador) {
+        console.log("❌ Ambassador not found for user:", userId);
+        return res.json({
+          hasAudit: false,
+          audit: null
+        });
+      }
+
+      // Use the ambassador's actual ID (ambassador_id field or id field)
+      const ambassadorId = ambassador.ambassador_id || ambassador.id;
+      console.log("🔍 Looking for audit with ambassador_id:", ambassadorId);
+
+      // Fetch directly from linkedin_audits table (where admin submits)
+      const { data, error } = await supabase
+        .from('linkedin_audits')
+        .select('*')
+        .eq('ambassador_id', ambassadorId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 = no rows found, which is OK
+        console.error("❌ Error fetching LinkedIn audit:", error);
+        throw error;
+      }
+
+      if (!data) {
+        console.log("📭 No LinkedIn audit found for ambassador:", ambassadorId);
+        return res.json({
+          hasAudit: false,
+          audit: null
+        });
+      }
+
+      console.log("✅ LinkedIn audit found for ambassador:", ambassadorId);
+      return res.json({
+        hasAudit: true,
+        audit: {
+          linkedin_url: data.linkedin_url,
+          speaker_bio_url: data.speaker_bio_url,
+          feedback: data.feedback,
+          status: data.status,
+          submittedAt: data.submitted_at,
+          updatedAt: data.updated_at
+        }
+      });
+    } catch (error) {
+      console.error("❌ Error fetching LinkedIn audit:", error);
+      return res.status(500).json({
+        error: "Failed to fetch LinkedIn audit",
+        details: error.message,
+      });
+    }
+  }
+);
+
 // ------------------------
 // Protected Pages
 // ------------------------
@@ -3606,6 +4287,12 @@ app.get(
       if (!user) {
         console.log("User not found in database, redirecting to signin");
         return res.redirect("/signin");
+      }
+
+      // Check if professional profile is complete - redirect to about-me if not
+      if (!user.professional_headline || !user.professional_summary) {
+        console.log("Profile incomplete, redirecting to about-me");
+        return res.redirect("/about-me.html");
       }
 
       console.log("User authenticated successfully:", user.email);
@@ -3871,6 +4558,39 @@ app.patch("/api/profile", requireAuth, async (req, res) => {
   }
 });
 
+// Mark notification as read
+app.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
+  try {
+    const notificationId = req.params.id;
+    const userId = req.auth.userId;
+
+    console.log('📝 Marking notification as read:', notificationId);
+
+    const { data, error } = await supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("notification_id", notificationId)
+      .eq("recipient_id", userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error:', error);
+      throw error;
+    }
+
+    console.log('✅ Notification marked as read');
+
+    return res.json({ success: true, notification: data });
+  } catch (error) {
+    console.error("Error marking notification as read:", error);
+    return res.status(500).json({ 
+      error: "Failed to update notification",
+      details: error.message 
+    });
+  }
+});
+
 app.post("/api/profile/password", requireAuth, async (req, res) => {
   try {
     const { role, userId } = req.auth;
@@ -3915,6 +4635,102 @@ app.post("/api/profile/password", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("Error updating password:", error);
     return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ------------------------
+// Professional Profile (About Me) API Endpoint
+// ------------------------
+app.post("/api/profile/about-me", requireAuth, requireRole("ambassador"), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const { professional_headline, professional_summary } = req.body || {};
+
+    // Validation
+    if (!professional_headline || !professional_summary) {
+      return res.status(400).json({ 
+        error: "Professional headline and summary are required" 
+      });
+    }
+
+    // Validate minimum word count for summary (250 words)
+    const wordCount = professional_summary.trim().split(/\s+/).filter(word => word.length > 0).length;
+    if (wordCount < 250) {
+      return res.status(400).json({ 
+        error: "Professional summary must be at least 250 words" 
+      });
+    }
+
+    // Get ambassador record
+    const { data: ambassador, error: fetchError } = await supabase
+      .from("ambassadors")
+      .select("ambassador_id")
+      .eq("user_id", userId)
+      .single();
+
+    if (fetchError || !ambassador) {
+      console.error("Ambassador not found for user:", userId);
+      return res.status(404).json({ error: "Ambassador profile not found" });
+    }
+
+    // Update ambassador profile with professional info
+    const { data: updated, error: updateError } = await supabase
+      .from("ambassadors")
+      .update({
+        professional_headline: professional_headline.trim(),
+        professional_summary: professional_summary.trim(),
+        updated_at: new Date().toISOString()
+      })
+      .eq("ambassador_id", ambassador.ambassador_id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error("Error updating professional profile:", updateError);
+      return res.status(500).json({ error: "Failed to save professional profile" });
+    }
+
+    console.log(`✅ Professional profile saved for ambassador: ${ambassador.ambassador_id}`);
+
+    return res.json({
+      success: true,
+      message: "Professional profile saved successfully",
+      redirect: "/ambassador-dashboard.html"
+    });
+  } catch (error) {
+    console.error("Error saving professional profile:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Protected route for about-me.html - redirects if profile already complete
+app.get("/about-me.html", requireAuth, requireRole("ambassador"), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    
+    // Check if professional profile is already complete
+    const { data: ambassador, error } = await supabase
+      .from("ambassadors")
+      .select("professional_headline, professional_summary")
+      .eq("user_id", userId)
+      .single();
+
+    if (error) {
+      console.error("Error checking profile:", error);
+      return res.sendFile(path.join(__dirname, "public", "about-me.html"));
+    }
+
+    // If profile is already complete, redirect to dashboard
+    if (ambassador?.professional_headline && ambassador?.professional_summary) {
+      console.log("✅ Profile already complete, redirecting to dashboard");
+      return res.redirect("/ambassador-dashboard.html");
+    }
+
+    // Profile not complete, serve the about-me page
+    res.sendFile(path.join(__dirname, "public", "about-me.html"));
+  } catch (error) {
+    console.error("Error serving about-me page:", error);
+    return res.redirect("/signin");
   }
 });
 
@@ -4897,6 +5713,82 @@ app.post(
   }
 );
 
+// UPDATE Partner
+app.put(
+  "/admin/api/partners/:id",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const { contact_person, organization_name, email, access_code, status } = req.body;
+      const partner = await getUserById(req.params.id, "partner");
+
+      if (!partner) {
+        return res.status(404).json({ error: "Partner not found" });
+      }
+
+      const updates = {};
+
+      // Check if email is being changed and if it's already taken
+      if (email && email.toLowerCase() !== partner.email.toLowerCase()) {
+        const existingUser = await getUserByEmail(email.toLowerCase(), "partner");
+        if (existingUser && existingUser.id !== req.params.id) {
+          return res.status(400).json({ error: "Email already registered" });
+        }
+        updates.email = email.toLowerCase();
+      }
+
+      // Check if access code is being changed
+      if (access_code && access_code !== partner.access_code) {
+        updates.access_code = access_code.toUpperCase();
+      }
+
+      if (contact_person) updates.contact_person = contact_person;
+      if (organization_name) updates.organization_name = organization_name;
+      if (status) updates.status = status;
+
+      const updatedPartner = await updateUser(req.params.id, updates, "partner");
+
+      return res.json({
+        success: true,
+        partner: {
+          id: updatedPartner.id,
+          contact_person: updatedPartner.contact_person,
+          organization_name: updatedPartner.organization_name,
+          email: updatedPartner.email,
+          access_code: updatedPartner.access_code,
+          status: updatedPartner.status,
+        },
+      });
+    } catch (error) {
+      console.error("Error updating partner:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// DELETE Partner
+app.delete(
+  "/admin/api/partners/:id",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const partner = await getUserById(req.params.id, "partner");
+      if (!partner) {
+        return res.status(404).json({ error: "Partner not found" });
+      }
+
+      await deleteUser(req.params.id, "partner");
+
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting partner:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
 // ============================================
 // ADMIN: Generate Unique Access Codes
 // ============================================
@@ -5125,6 +6017,10 @@ app.get(
             }`.trim()
           : "Unknown Author";
 
+        // Calculate review history stats
+        const reviewHistory = article.review_history || [];
+        const pendingFeedback = reviewHistory.filter((r) => !r.addressed).length;
+
         return {
           id: article.article_id,
           article_id: article.article_id,
@@ -5137,6 +6033,11 @@ app.get(
             ? new Date(article.created_at).toLocaleDateString()
             : "-",
           ambassadorName: authorName,
+          review_history: reviewHistory, // ✅ Include full review history
+          review_count: reviewHistory.length, // ✅ Total reviews count
+          pending_feedback_count: pendingFeedback, // ✅ Unaddressed feedback count
+          ambassador_consent_to_publish: article.ambassador_consent_to_publish || false, // ✅ Consent status
+          consent_given_at: article.consent_given_at, // ✅ When consent was given
         };
       });
 
@@ -5244,6 +6145,7 @@ app.get(
         updatedAt: article.updated_at,
         views: article.views || 0,
         likes: article.likes || 0,
+        review_history: article.review_history || [], // ✅ Include review history for admin dashboard
       };
 
       console.log("✅ Article sent with ambassador_id:", ambassadorId);
@@ -5332,12 +6234,15 @@ app.patch(
   async (req, res) => {
     try {
       const articleId = req.params.id;
-      const { status, publication_link } = req.body;
+      const { status, publication_link, feedback_message } = req.body;
+      const adminUserId = req.auth.userId;
 
       console.log("📝 Updating article status:", {
         articleId,
         status,
         publication_link,
+        feedback_message,
+        adminUserId,
       });
 
       // Check if article exists
@@ -5351,17 +6256,61 @@ app.patch(
         return res.status(404).json({ error: "Article not found" });
       }
 
+      // Get admin info for review history
+      const admin = await getUserById(adminUserId, "admin");
+      const adminName = admin
+        ? `${admin.first_name || ""} ${admin.last_name || ""}`.trim() ||
+          admin.name ||
+          "Admin"
+        : "Admin";
+      const adminEmail = admin ? admin.email : "unknown";
+
       const updates = {};
       if (status) updates.status = status;
       if (publication_link) updates.publication_link = publication_link;
       updates.updated_at = new Date().toISOString();
 
-      const { data: updatedArticle, error: updateError } = await supabase
+      // Add to review history if there's a feedback message or status change
+      let newReviewEntry = null;
+      if (feedback_message || (status && status !== existingArticle.status)) {
+        const existingHistory = existingArticle.review_history || [];
+        newReviewEntry = {
+          id: `rev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          admin_name: adminName,
+          admin_email: adminEmail,
+          message: feedback_message || `Status changed to ${status}`,
+          old_status: existingArticle.status,
+          new_status: status || existingArticle.status,
+          timestamp: new Date().toISOString(),
+          addressed: false,
+        };
+        updates.review_history = [...existingHistory, newReviewEntry];
+        console.log("📝 Adding review history entry:", newReviewEntry);
+      }
+
+      // Try to update with review_history first
+      let updatedArticle;
+      let updateError;
+      
+      ({ data: updatedArticle, error: updateError } = await supabase
         .from("articles")
         .update(updates)
         .eq("article_id", articleId)
         .select()
-        .single();
+        .single());
+
+      // If review_history column doesn't exist, retry without it
+      if (updateError && updateError.code === 'PGRST204' && updateError.message.includes('review_history')) {
+        console.warn("⚠️ review_history column not found, updating without it. Please add the column to your Supabase articles table.");
+        delete updates.review_history;
+        
+        ({ data: updatedArticle, error: updateError } = await supabase
+          .from("articles")
+          .update(updates)
+          .eq("article_id", articleId)
+          .select()
+          .single());
+      }
 
       if (updateError) {
         console.error("Error updating article:", updateError);
@@ -5372,6 +6321,7 @@ app.patch(
         article_id: updatedArticle.article_id,
         old_status: existingArticle.status,
         new_status: updatedArticle.status,
+        review_history_count: (updatedArticle.review_history || []).length,
         status_match:
           existingArticle.status === updatedArticle.status
             ? "⚠️ SAME"
@@ -5478,7 +6428,9 @@ app.get(
         contentHtml: article.content,
         byline: article.excerpt,
         status: article.status,
-        publication_link: article.publication_link, // ← ADD HERE
+        publication_link: article.publication_link,
+        ambassador_consent_to_publish: article.ambassador_consent_to_publish || false,
+        consent_given_at: article.consent_given_at,
         createdAt: article.created_at,
         updatedAt: article.updated_at,
         views: article.views || 0,
@@ -5709,6 +6661,8 @@ app.get(
         byline: article.excerpt,
         status: article.status,
         publication_link: article.publication_link,
+        ambassador_consent_to_publish: article.ambassador_consent_to_publish || false,
+        consent_given_at: article.consent_given_at,
         createdAt: article.created_at,
         updatedAt: article.updated_at,
         views: article.views || 0,
@@ -5966,6 +6920,32 @@ app.post(
 
       console.log("Article created successfully:", newArticle?.article_id);
 
+      // Notify admins about the new article submission
+      try {
+        const { data: admins } = await supabase.from("admins").select("user_id");
+        if (admins && admins.length > 0) {
+          const ambassadorName = `${user.first_name || ""} ${
+            user.last_name || ""
+          }`.trim() || "An ambassador";
+          for (const admin of admins) {
+            await createNotification(
+              admin.user_id,
+              "admin",
+              "article_submitted",
+              "📝 New Article Submitted",
+              `${ambassadorName} submitted a new article: "${title}"`,
+              `/admin-dashboard.html`,
+              null,
+              null,
+              newArticle.article_id
+            );
+          }
+          console.log("✅ Admin notifications sent for article submission");
+        }
+      } catch (notifError) {
+        console.error("⚠️ Failed to notify admins:", notifError.message);
+      }
+
       return res.json({
         success: true,
         id: newArticle.article_id,
@@ -6051,20 +7031,38 @@ app.post(
         ? admin.first_name || admin.name || "Admin"
         : "Admin";
 
-      // Determine notification content based on type
+      // Determine notification content based on type (now receives direct status values)
       let notificationTitle, notificationLink;
       const notificationType = type || "needs_update";
+      
+      console.log("📋 Notification type received from frontend:", type);
+      console.log("📋 Using notification type:", notificationType);
 
-      if (
-        notificationType === "article_published" ||
-        notificationType === "ready_to_publish"
-      ) {
+      // Handle BOTH old format (article_approved) and new direct format (approved)
+      const normalizedType = notificationType.toLowerCase().replace('article_', '');
+      
+      if (normalizedType === "published" || notificationType === "ready_to_publish") {
         notificationTitle = "🎉 Your Article Has Been Published!";
         notificationLink = `/article-progress.html?articleId=${
           targetArticleId || ""
         }`;
-      } else if (notificationType === "needs_update") {
-        notificationTitle = "📝 Article Feedback";
+      } else if (normalizedType === "approved") {
+        notificationTitle = "✅ Your Article Has Been Approved!";
+        notificationLink = `/ambassador-review.html?articleId=${
+          targetArticleId || ""
+        }`;
+      } else if (normalizedType === "rejected") {
+        notificationTitle = "❌ Article Not Approved";
+        notificationLink = `/ambassador-review.html?articleId=${
+          targetArticleId || ""
+        }`;
+      } else if (normalizedType === "pending") {
+        notificationTitle = "⏳ Article Under Review";
+        notificationLink = `/ambassador-review.html?articleId=${
+          targetArticleId || ""
+        }`;
+      } else if (normalizedType === "needs_update") {
+        notificationTitle = "📝 Article Needs Updates";
         notificationLink = `/ambassador-review.html?articleId=${
           targetArticleId || ""
         }`;
@@ -6106,6 +7104,66 @@ app.post(
         "✅ Notification created successfully:",
         notification.notification_id
       );
+
+      // ✅ Also add this feedback to the article's review_history
+      if (targetArticleId && message) {
+        try {
+          // Fetch the current article to get existing review_history
+          const { data: currentArticle, error: articleFetchError } =
+            await supabase
+              .from("articles")
+              .select("*, status")
+              .eq("article_id", targetArticleId)
+              .single();
+
+          if (!articleFetchError && currentArticle) {
+            const adminEmail = admin ? admin.email : "unknown";
+            const adminFullName = admin
+              ? `${admin.first_name || ""} ${admin.last_name || ""}`.trim() ||
+                admin.name ||
+                "Admin"
+              : "Admin";
+
+            const existingHistory = currentArticle.review_history || [];
+            const newReviewEntry = {
+              id: `rev_${Date.now()}_${Math.random()
+                .toString(36)
+                .substr(2, 9)}`,
+              admin_name: adminFullName,
+              admin_email: adminEmail,
+              message: message,
+              old_status: currentArticle.status,
+              new_status: notificationType === "needs_update" ? "needs_update" : currentArticle.status,
+              timestamp: new Date().toISOString(),
+              addressed: false,
+            };
+
+            const { error: historyUpdateError } = await supabase
+              .from("articles")
+              .update({
+                review_history: [...existingHistory, newReviewEntry],
+                updated_at: new Date().toISOString(),
+              })
+              .eq("article_id", targetArticleId);
+
+            // Gracefully handle if review_history column doesn't exist
+            if (historyUpdateError) {
+              if (historyUpdateError.code === 'PGRST204' && historyUpdateError.message.includes('review_history')) {
+                console.warn("⚠️ review_history column not found. Please add it to your Supabase articles table.");
+              } else {
+                console.error(
+                  "⚠️ Failed to update review history:",
+                  historyUpdateError
+                );
+              }
+            } else {
+              console.log("✅ Review history updated for article:", targetArticleId);
+            }
+          }
+        } catch (historyError) {
+          console.error("⚠️ Error updating review history:", historyError);
+        }
+      }
 
       return res.json({
         success: true,
@@ -6177,6 +7235,29 @@ app.patch(
       // Allow status update to reset to pending when editing
       if (status) updates.status = status;
 
+      // ✅ Mark all previous unaddressed feedback as "addressed" when ambassador resubmits
+      const existingHistory = existingArticle.review_history || [];
+      if (existingHistory.length > 0) {
+        const updatedHistory = existingHistory.map((entry) => {
+          if (!entry.addressed) {
+            console.log(
+              "📝 Marking feedback as addressed:",
+              entry.id,
+              "from:",
+              entry.admin_name
+            );
+            return { ...entry, addressed: true, addressed_at: new Date().toISOString() };
+          }
+          return entry;
+        });
+        updates.review_history = updatedHistory;
+        console.log(
+          "✅ Marked",
+          existingHistory.filter((e) => !e.addressed).length,
+          "feedback entries as addressed"
+        );
+      }
+
       const updatedArticle = await updateArticle(articleId, updates);
 
       return res.json({
@@ -6188,6 +7269,133 @@ app.patch(
     } catch (error) {
       console.error("Error updating article:", error);
       return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// ============================================
+// AMBASSADOR CONSENT TO PUBLISH - NEW ENDPOINT
+// ============================================
+app.post(
+  "/api/ambassador/articles/:id/consent-to-publish",
+  requireAuth,
+  requireRole("ambassador"),
+  async (req, res) => {
+    try {
+      const articleId = req.params.id;
+      const userId = req.auth.userId;
+
+      console.log("📝 Ambassador giving consent to publish article:", articleId);
+
+      // Get ambassador
+      const ambassador = await getUserById(userId, "ambassador");
+      if (!ambassador) {
+        console.error("❌ Ambassador not found for user_id:", userId);
+        return res.status(404).json({ error: "Ambassador not found" });
+      }
+
+      const ambassadorId = ambassador.ambassador_id || ambassador.id;
+
+      // Check if article exists
+      const existingArticle = await getArticleById(articleId);
+      if (!existingArticle) {
+        return res.status(404).json({ error: "Article not found" });
+      }
+
+      // Verify ownership
+      if (existingArticle.ambassador_id !== ambassadorId) {
+        console.error("❌ Article ownership mismatch");
+        return res.status(403).json({ error: "You can only consent to publish your own articles" });
+      }
+
+      // Verify article is approved (only approved articles can receive consent)
+      if (existingArticle.status !== "approved") {
+        console.log("❌ Article status is not approved:", existingArticle.status);
+        return res.status(400).json({ 
+          error: "Only approved articles can receive publishing consent",
+          currentStatus: existingArticle.status
+        });
+      }
+
+      // Update article with consent
+      const updates = {
+        ambassador_consent_to_publish: true,
+        consent_given_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      // Try to update with consent fields
+      let updatedArticle;
+      let updateError;
+      
+      ({ data: updatedArticle, error: updateError } = await supabase
+        .from("articles")
+        .update(updates)
+        .eq("article_id", articleId)
+        .select()
+        .single());
+
+      // If consent column doesn't exist, just log and return success anyway
+      if (updateError && (updateError.code === 'PGRST204' || updateError.message?.includes('ambassador_consent_to_publish'))) {
+        console.warn("⚠️ ambassador_consent_to_publish column not found in articles table. Please add these columns:");
+        console.warn("  - ambassador_consent_to_publish (boolean, default false)");
+        console.warn("  - consent_given_at (timestamp)");
+        
+        // Still return success - the consent is recorded in the notification
+        updatedArticle = existingArticle;
+      } else if (updateError) {
+        console.error("Error updating article with consent:", updateError);
+        throw updateError;
+      }
+
+      // Create a notification for admins about the consent
+      try {
+        const ambassadorName = `${ambassador.first_name || ""} ${ambassador.last_name || ""}`.trim() || ambassador.name || "Ambassador";
+        
+        // Get all admins to notify them
+        const { data: admins } = await supabase
+          .from("users")
+          .select("user_id")
+          .eq("role", "admin");
+
+        if (admins && admins.length > 0) {
+          const notifications = admins.map(admin => ({
+            notification_id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            recipient_id: admin.user_id,
+            article_id: articleId,
+            type: "ambassador_consent",
+            title: "Ambassador Consent to Publish",
+            message: `${ambassadorName} has given consent to publish their article "${existingArticle.title}"`,
+            is_read: false,
+            created_at: new Date().toISOString()
+          }));
+
+          await supabase.from("notifications").insert(notifications);
+          console.log("✅ Notified", admins.length, "admins about consent");
+        }
+      } catch (notifError) {
+        console.warn("⚠️ Failed to create admin notifications:", notifError.message);
+        // Don't fail the request if notifications fail
+      }
+
+      console.log("✅ Ambassador consent to publish recorded for article:", articleId);
+
+      return res.json({
+        success: true,
+        message: "Consent to publish recorded successfully",
+        article: {
+          id: articleId,
+          status: existingArticle.status,
+          ambassador_consent_to_publish: true,
+          consent_given_at: updates.consent_given_at
+        }
+      });
+    } catch (error) {
+      console.error("❌ Error recording consent to publish:", error);
+      return res.status(500).json({ 
+        error: "Failed to record consent to publish",
+        details: error.message 
+      });
     }
   }
 );
@@ -6378,6 +7586,39 @@ app.post(
       }
 
       console.log("✅ Post created successfully:", newPost.post_id);
+
+      // Notify admins about the new post created by a partner
+      try {
+        const { data: admins } = await supabase.from("admins").select("user_id");
+        let partnerName = "A partner";
+        try {
+          const { data: partnerProfile } = await supabase
+            .from("partners")
+            .select("organization_name, contact_person")
+            .eq("partner_id", partner.partner_id)
+            .single();
+          partnerName =
+            partnerProfile?.organization_name ||
+            partnerProfile?.contact_person ||
+            partnerName;
+        } catch (e) {}
+
+        if (admins && admins.length > 0) {
+          for (const admin of admins) {
+            await createNotification(
+              admin.user_id,
+              "admin",
+              "post_created",
+              "💼 New Opportunity Posted",
+              `${partnerName} posted a new opportunity: "${title}"`,
+              `/admin-dashboard.html`
+            );
+          }
+          console.log("✅ Admin notifications sent for new post");
+        }
+      } catch (notifError) {
+        console.error("⚠️ Failed to notify admins:", notifError.message);
+      }
 
       return res.json({
         success: true,
@@ -6589,6 +7830,49 @@ app.post("/api/notifications/clear", requireAuth, (req, res) => {
   return res.json({ success: true });
 });
 
+// Add this to server.js for debugging
+app.get("/api/notifications/debug", requireAuth, async (req, res) => {
+    try {
+        const userId = req.auth.userId;
+        
+        console.log("🔍 DEBUG: Fetching ALL notifications for user:", userId);
+        
+        const { data: notifications, error } = await supabase
+            .from("notifications")
+            .select("*")
+            .eq("recipient_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(50);
+        
+        if (error) throw error;
+        
+        console.log("📊 DEBUG: Found", notifications?.length || 0, "notifications");
+        
+        // Log each notification
+        notifications?.forEach((n, i) => {
+            console.log(`  ${i+1}. ID: ${n.notification_id.substring(0,8)}...`);
+            console.log(`     Type: ${n.type}`);
+            console.log(`     Recipient Type: ${n.recipient_type}`);
+            console.log(`     Read: ${n.read}`);
+            console.log(`     Message: ${n.message_text?.substring(0, 50)}...`);
+            console.log(`     Created: ${n.created_at}`);
+        });
+        
+        return res.json({
+            userId,
+            total: notifications?.length || 0,
+            unreadCount: notifications?.filter(n => !n.read).length || 0,
+            notifications: notifications || [],
+            byRecipientType: notifications?.reduce((acc, n) => {
+                acc[n.recipient_type] = (acc[n.recipient_type] || 0) + 1;
+                return acc;
+            }, {})
+        });
+    } catch (error) {
+        console.error("❌ Debug error:", error);
+        return res.status(500).json({ error: error.message });
+    }
+});
 // ------------------------
 // Dashboard Stats
 // ------------------------
@@ -6782,6 +8066,141 @@ app.post("/api/logout", async (req, res) => {
   }
   clearSessionCookie(res);
   return res.redirect("/signin");
+});
+
+// ============================================
+// MEDIA LIBRARY API ENDPOINTS
+// ============================================
+
+// Get all media for current user
+app.get("/api/media", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    console.log(`📦 Fetching media for user: ${userId}`);
+    
+    // Get media from database (stored in memory for now)
+    const userMedia = mediaLibrary.filter(m => m.user_id === userId);
+    
+    // Sort by created_at descending
+    userMedia.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    
+    return res.json({ 
+      success: true,
+      media: userMedia 
+    });
+  } catch (error) {
+    console.error("❌ Error fetching media:", error);
+    return res.status(500).json({ error: "Failed to fetch media" });
+  }
+});
+
+// Add new media
+app.post("/api/media", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { title, type, url, description } = req.body;
+    
+    // Validate required fields
+    if (!title || !type || !url) {
+      return res.status(400).json({ error: "Missing required fields: title, type, url" });
+    }
+    
+    // Validate URL format
+    try {
+      new URL(url);
+    } catch (e) {
+      return res.status(400).json({ error: "Invalid URL format" });
+    }
+    
+    // Validate type
+    const validTypes = ['canva', 'image', 'video', 'document', 'other'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ error: `Invalid media type. Must be one of: ${validTypes.join(', ')}` });
+    }
+    
+    const mediaItem = {
+      id: uuidv4(),
+      user_id: userId,
+      title: title.trim(),
+      type: type.toLowerCase(),
+      url: url.trim(),
+      description: description ? description.trim() : '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    // Store in memory (in production, save to database)
+    mediaLibrary.push(mediaItem);
+    
+    console.log(`✅ Media added: ${mediaItem.id}`);
+    
+    return res.json({
+      success: true,
+      media: mediaItem
+    });
+  } catch (error) {
+    console.error("❌ Error adding media:", error);
+    return res.status(500).json({ error: "Failed to add media" });
+  }
+});
+
+// Delete media
+app.delete("/api/media/:id", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const mediaId = req.params.id;
+    
+    // Find and remove media
+    const mediaIndex = mediaLibrary.findIndex(m => m.id === mediaId && m.user_id === userId);
+    
+    if (mediaIndex === -1) {
+      return res.status(404).json({ error: "Media not found" });
+    }
+    
+    const deletedMedia = mediaLibrary.splice(mediaIndex, 1)[0];
+    
+    console.log(`✅ Media deleted: ${mediaId}`);
+    
+    return res.json({
+      success: true,
+      message: "Media deleted successfully",
+      media: deletedMedia
+    });
+  } catch (error) {
+    console.error("❌ Error deleting media:", error);
+    return res.status(500).json({ error: "Failed to delete media" });
+  }
+});
+
+// Update media
+app.put("/api/media/:id", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const mediaId = req.params.id;
+    const { title, description } = req.body;
+    
+    // Find media
+    const media = mediaLibrary.find(m => m.id === mediaId && m.user_id === userId);
+    
+    if (!media) {
+      return res.status(404).json({ error: "Media not found" });
+    }
+    
+    // Update fields if provided
+    if (title) media.title = title.trim();
+    if (description !== undefined) media.description = description ? description.trim() : '';
+    media.updated_at = new Date().toISOString();
+    
+    console.log(`✅ Media updated: ${mediaId}`);
+    
+    return res.json({
+      success: true,
+      media: media
+    });
+  } catch (error) {
+    console.error("❌ Error updating media:", error);
+    return res.status(500).json({ error: "Failed to update media" });
+  }
 });
 
 // ------------------------

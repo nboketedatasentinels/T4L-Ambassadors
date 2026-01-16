@@ -195,6 +195,9 @@
           <i class="bx bx-search absolute left-3 top-2.5 text-gray-500"></i>
         </div>
         <div class="flex items-center gap-3">
+          <button id="notificationBell" class="relative p-2 hover:bg-gray-100 rounded-full transition-colors" title="Notifications">
+            <i class="bx bx-bell text-xl text-gray-700"></i>
+          </button>
           <a href="/profile.html" id="meInitials" class="w-9 h-9 bg-gray-900 text-white rounded-full flex items-center justify-center text-sm font-bold cursor-pointer hover:bg-gray-700 transition-colors" title="Profile">AM</a>
           <button id="logoutBtn" class="w-9 h-9 bg-red-600 text-white rounded-full flex items-center justify-center text-sm font-bold cursor-pointer hover:bg-red-700 transition-colors" title="Logout">
             <i class="bx bx-log-out text-lg"></i>
@@ -238,6 +241,18 @@
               <i class="bx bx-line-chart text-lg"></i>
               <span>Track Progress</span>
             </a>
+
+            <!-- Allow Admin to Publish Button - Only visible when article is approved -->
+            <button id="btnConsentToPublish" class="w-full px-4 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 font-semibold text-sm text-center transition-all shadow-md hover:shadow-lg transform hover:scale-[1.02] flex items-center justify-center gap-2" style="display: none;">
+              <i class="bx bx-check-circle text-lg"></i>
+              <span>Allow Admin to Publish</span>
+            </button>
+
+            <!-- Consent Already Given State -->
+            <div id="consentGivenBadge" class="w-full px-4 py-3 rounded-lg bg-green-100 border-2 border-green-500 text-green-700 font-semibold text-sm text-center flex items-center justify-center gap-2" style="display: none;">
+              <i class="bx bx-check-double text-lg"></i>
+              <span>Publishing Consent Given</span>
+            </div>
           </div>
         </div>
 
@@ -530,11 +545,29 @@
         return params.get('articleId');
       }
 
-      function ensureAmbassador() {
+      function ensureAmbassador(silent = false) {
         return fetch('/api/me', { credentials: 'include' })
-          .then(r => { if (!r.ok) throw new Error('auth'); return r.json(); })
-          .then(me => { if (me.role !== 'ambassador') throw new Error('forbidden'); return me; })
-          .catch(() => { window.location.href = '/signin'; throw new Error('redirect'); });
+          .then(r => { 
+            if (!r.ok) {
+              if (silent) return null;
+              throw new Error('auth'); 
+            }
+            return r.json(); 
+          })
+          .then(me => { 
+            if (!me || me.role !== 'ambassador') {
+              if (silent) return null;
+              throw new Error('forbidden'); 
+            }
+            return me; 
+          })
+          .catch((err) => { 
+            // In silent mode, never redirect - just return null
+            if (silent) return null;
+            // Only redirect in non-silent mode
+            window.location.href = '/signin'; 
+            throw new Error('redirect'); 
+          });
       }
 
       // ==========================================
@@ -792,6 +825,99 @@ async function loadArticle() {
         if (trackProgressBtn && article.id) {
           trackProgressBtn.href = `/article-progress.html?articleId=${article.id}`;
         }
+
+        // ✅ CONSENT TO PUBLISH BUTTON - Only show when article is "approved"
+        const btnConsentToPublish = document.getElementById('btnConsentToPublish');
+        const consentGivenBadge = document.getElementById('consentGivenBadge');
+        
+        if (btnConsentToPublish && consentGivenBadge) {
+          const hasGivenConsent = article.ambassador_consent_to_publish === true;
+          
+          if (currentArticleStatus === 'approved') {
+            if (hasGivenConsent) {
+              // Already gave consent - show badge
+              btnConsentToPublish.style.display = 'none';
+              consentGivenBadge.style.display = 'flex';
+            } else {
+              // Article approved but no consent yet - show button
+              btnConsentToPublish.style.display = 'flex';
+              consentGivenBadge.style.display = 'none';
+              
+              // Set up click handler
+              btnConsentToPublish.onclick = async () => {
+                await giveConsentToPublish(article.id || getArticleIdFromUrl());
+              };
+            }
+          } else {
+            // Not approved - hide both
+            btnConsentToPublish.style.display = 'none';
+            consentGivenBadge.style.display = 'none';
+          }
+        }
+      }
+
+      // ✅ NEW: Function to give consent to publish
+      async function giveConsentToPublish(articleId) {
+        if (!articleId) {
+          showError('No article selected');
+          return;
+        }
+
+        const btnConsentToPublish = document.getElementById('btnConsentToPublish');
+        const consentGivenBadge = document.getElementById('consentGivenBadge');
+        
+        // Show loading state
+        if (btnConsentToPublish) {
+          btnConsentToPublish.disabled = true;
+          btnConsentToPublish.innerHTML = `
+            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Processing...</span>
+          `;
+        }
+
+        try {
+          const response = await fetch(`/api/ambassador/articles/${articleId}/consent-to-publish`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to give consent');
+          }
+
+          const data = await response.json();
+          console.log('✅ Consent recorded:', data);
+
+          // Update UI to show consent given
+          if (btnConsentToPublish) {
+            btnConsentToPublish.style.display = 'none';
+          }
+          if (consentGivenBadge) {
+            consentGivenBadge.style.display = 'flex';
+          }
+
+          showToast('✅ Publishing consent given! Admin can now publish your article.');
+
+        } catch (error) {
+          console.error('❌ Error giving consent:', error);
+          showError(error.message || 'Failed to give consent to publish');
+          
+          // Restore button
+          if (btnConsentToPublish) {
+            btnConsentToPublish.disabled = false;
+            btnConsentToPublish.innerHTML = `
+              <i class="bx bx-check-circle text-lg"></i>
+              <span>Allow Admin to Publish</span>
+            `;
+          }
+        }
       }
 
       // ==========================================
@@ -813,13 +939,16 @@ function displayNotifications(notifications) {
         return;
     }
 
-    // ✅ FIX: Filter for article-related notifications
+    // ✅ FIX: Filter for article-related notifications (include ALL status types - both formats)
     const articleNotifications = notifications.filter(notif => {
         const type = (notif.type || '').toLowerCase();
+        // Support both old format (article_approved) and new direct format (approved)
         return type === 'needs_update' || 
                type === 'article_feedback' || 
-               type === 'article_published' ||
-               type === 'article_approved';
+               type === 'article_published' || type === 'published' ||
+               type === 'article_approved' || type === 'approved' ||
+               type === 'article_rejected' || type === 'rejected' ||
+               type === 'article_pending' || type === 'pending';
     });
 
     console.log('📝 Article notifications:', articleNotifications);
@@ -848,27 +977,50 @@ function displayNotifications(notifications) {
         let iconClass = 'bx-message-dots';
         let iconColor = 'text-purple-600';
         
-        const type = (notif.type || '').toLowerCase();
+        // Normalize type to handle both old format (article_approved) and new direct format (approved)
+        const type = (notif.type || '').toLowerCase().replace('article_', '');
+        
         if (type === 'needs_update') {
             borderColor = 'border-orange-600';
             iconClass = 'bx-edit';
             iconColor = 'text-orange-600';
-        } else if (type === 'article_published') {
+        } else if (type === 'published') {
             borderColor = 'border-green-600';
             iconClass = 'bx-check-circle';
             iconColor = 'text-green-600';
-        } else if (type === 'article_approved') {
+        } else if (type === 'approved') {
             borderColor = 'border-blue-600';
             iconClass = 'bx-like';
             iconColor = 'text-blue-600';
+        } else if (type === 'rejected') {
+            borderColor = 'border-red-600';
+            iconClass = 'bx-x-circle';
+            iconColor = 'text-red-600';
+        } else if (type === 'pending') {
+            borderColor = 'border-yellow-600';
+            iconClass = 'bx-time';
+            iconColor = 'text-yellow-600';
         }
+        
+        // Format notification type to human-readable (match admin dropdown labels exactly)
+        // Normalize type first to handle both formats
+        const normalizedType = (notif.type || '').toLowerCase().replace('article_', '');
+        const typeLabels = {
+            'needs_update': 'Needs Update',
+            'approved': 'Approved',
+            'published': 'Published',
+            'rejected': 'Rejected',
+            'pending': 'Pending Review',
+            'feedback': 'Admin Feedback'
+        };
+        const typeLabel = typeLabels[normalizedType] || notif.type || 'Feedback';
         
         return `
             <div class="bg-white rounded-xl p-6 border-l-4 ${borderColor} shadow-sm">
                 <div class="flex items-start justify-between mb-3">
                     <div class="flex items-center gap-2">
                         <i class="bx ${iconClass} text-xl ${iconColor}"></i>
-                        <span class="font-semibold text-gray-900">${escapeHtml(notif.type || 'Feedback')}</span>
+                        <span class="font-semibold text-gray-900">${escapeHtml(typeLabel)}</span>
                     </div>
                     <span class="text-xs text-gray-500">
                         ${date}
@@ -913,7 +1065,8 @@ async function debugNotifications(articleId) {
       // ==========================================
       
       document.addEventListener('DOMContentLoaded', function() {
-        ensureAmbassador()
+        // Use silent mode on page load - NO REDIRECTS
+        ensureAmbassador(true)
           .then(() => loadArticle())
           .catch((err) => {
             const container = document.getElementById('article-container');

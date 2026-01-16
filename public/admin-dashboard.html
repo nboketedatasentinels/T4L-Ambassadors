@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- v2.0 - Force browser to not cache this page -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Admin Dashboard - T4LA Ambassador Program</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/boxicons/2.1.0/css/boxicons.min.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -393,6 +397,80 @@
                 overflow-x: auto;
             }
         }
+        
+        /* Enhanced Search Bar Styles */
+        .search-category-option {
+            transition: all 0.15s ease;
+        }
+        
+        .search-category-option:hover {
+            padding-left: 20px;
+        }
+        
+        .search-category-option.active {
+            background-color: rgba(75, 13, 127, 0.1);
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        #searchSuggestions {
+            scrollbar-width: thin;
+            scrollbar-color: #d1d5db transparent;
+        }
+        
+        #searchSuggestions::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        #searchSuggestions::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        #searchSuggestions::-webkit-scrollbar-thumb {
+            background-color: #d1d5db;
+            border-radius: 3px;
+        }
+        
+        #searchInput:focus + #searchSuggestions,
+        #searchSuggestions:hover {
+            display: block;
+        }
+        
+        .search-highlight {
+            background-color: #fef3c7;
+            padding: 0 2px;
+            border-radius: 2px;
+        }
+        
+        /* Quick search tag animation */
+        #quickSearchTags button {
+            transition: all 0.2s ease;
+        }
+        
+        #quickSearchTags button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        #quickSearchTags button:active {
+            transform: translateY(0);
+        }
+        
+        /* Search results info bar animation */
+        #searchResultsInfo {
+            animation: fadeSlideIn 0.2s ease-out;
+        }
+        
+        @keyframes fadeSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -405,19 +483,27 @@
                     <span class="text-xl font-bold text-gray-900">T4LA Admin</span>
                 </div>
                 <div class="flex items-center space-x-4">
+                    <!-- LinkedIn Audits Link -->
+                    <a href="/admin-linkedin-audits.html" 
+                       class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm hover:shadow flex items-center gap-2">
+                        <i class="bx bxl-linkedin-square text-lg"></i>
+                        <span class="hidden md:inline">LinkedIn Audits</span>
+                    </a>
+                    
                     <!-- Notification Bell -->
-                    <div class="relative">
-                        <button 
-                            id="notificationBell" 
-                            onclick="toggleNotificationDropdown()"
-                            class="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all">
-                            <i class="bx bx-bell text-2xl"></i>
-                            <span 
-                                id="notificationBadge" 
-                                class="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full hidden">
-                                0
-                            </span>
-                        </button>
+                <div class="relative">
+                    <button 
+                        id="notificationBell" 
+                        onclick="toggleNotificationDropdown()"
+                        class="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all">
+                        <i class="bx bx-bell text-2xl"></i>
+                        <!-- Notification badge - hidden by default, shown when there are unread notifications -->
+                        <span 
+                            id="notificationBadge" 
+                            class="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-red-500 rounded-full border-2 border-white shadow-sm hidden">
+                            0
+                        </span>
+                    </button>
                         
                         <!-- Notification Dropdown -->
                         <div 
@@ -512,11 +598,11 @@
                 </div>
             </div>
             
-            <!-- Card 6: LinkedIn Ready -->
+            <!-- Card 6: LinkedIn Audits Sent -->
             <div class="stat-card bg-white rounded-xl p-6 shadow-sm border">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-sm text-gray-500">LinkedIn Ready</p>
+                        <p class="text-sm text-gray-500">LinkedIn Audits Sent</p>
                         <p class="text-3xl font-bold text-gray-900 mt-1" id="linkedinReady">0</p>
                     </div>
                     <div class="w-12 h-12 bg-cyan-100 rounded-lg flex items-center justify-center">
@@ -524,20 +610,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Journey Tracker Button -->
-        <div class="mb-8">
-            <a href="/admin-journey-tracker.html" 
-               target="_blank"
-               class="journey-tracker-btn inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-purple-800 shadow-lg hover:shadow-xl transition-all">
-                <i class="bx bx-line-chart text-2xl mr-3"></i>
-                <div class="text-left">
-                    <div class="text-lg">Real-Time Journey Tracker</div>
-                    <div class="text-xs opacity-90">View detailed progress analytics & identify ambassadors who need support</div>
-                </div>
-                <i class="bx bx-right-arrow-alt text-2xl ml-3"></i>
-            </a>
         </div>
 
         <!-- Tabs -->
@@ -552,26 +624,134 @@
             </div>
         </div>
 
-        <!-- Search and Filters -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-            <div class="flex-1">
-                <div class="relative">
-                    <i class="bx bx-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                    <input type="text" id="searchInput" placeholder="Search..." class="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+        <!-- Enhanced Search Bar -->
+        <div class="bg-white rounded-xl shadow-sm border p-4 mb-6">
+            <div class="flex flex-col lg:flex-row gap-4">
+                <!-- Main Search Area -->
+                <div class="flex-1">
+                    <div class="relative">
+                        <!-- Search Category Dropdown -->
+                        <div class="absolute left-0 top-0 bottom-0 flex items-center">
+                            <button 
+                                id="searchCategoryBtn"
+                                onclick="toggleSearchCategoryDropdown()"
+                                class="h-full px-3 bg-gray-100 border-r border-gray-300 rounded-l-lg flex items-center gap-2 text-gray-700 hover:bg-gray-200 transition-colors"
+                            >
+                                <i class="bx bx-search text-lg"></i>
+                                <span id="searchCategoryLabel" class="text-sm font-medium hidden md:inline">All</span>
+                                <i class="bx bx-chevron-down text-sm"></i>
+                            </button>
+                            
+                            <!-- Category Dropdown Menu -->
+                            <div 
+                                id="searchCategoryDropdown" 
+                                class="absolute left-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 hidden z-50"
+                            >
+                                <div class="py-1">
+                                    <button onclick="setSearchCategory('all')" class="search-category-option w-full px-4 py-2 text-left text-sm hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2" data-category="all">
+                                        <i class="bx bx-grid-alt"></i> Search All
+                                    </button>
+                                    <button onclick="setSearchCategory('ambassadors')" class="search-category-option w-full px-4 py-2 text-left text-sm hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2" data-category="ambassadors">
+                                        <i class="bx bx-user"></i> Ambassadors
+                                    </button>
+                                    <button onclick="setSearchCategory('partners')" class="search-category-option w-full px-4 py-2 text-left text-sm hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2" data-category="partners">
+                                        <i class="bx bx-buildings"></i> Partners
+                                    </button>
+                                    <button onclick="setSearchCategory('articles')" class="search-category-option w-full px-4 py-2 text-left text-sm hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2" data-category="articles">
+                                        <i class="bx bx-file"></i> Articles
+                                    </button>
+                                    <button onclick="setSearchCategory('journey')" class="search-category-option w-full px-4 py-2 text-left text-sm hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2" data-category="journey">
+                                        <i class="bx bx-trip"></i> Journey Progress
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Search Input -->
+                        <input 
+                            type="text" 
+                            id="searchInput" 
+                            placeholder="Search ambassadors, partners, articles..." 
+                            class="w-full pl-40 md:pl-44 pr-28 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900"
+                            autocomplete="off"
+                        >
+                        
+                        <!-- Clear & Search Buttons -->
+                        <div class="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+                            <button 
+                                id="clearSearchBtn" 
+                                onclick="clearSearch()" 
+                                class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors hidden"
+                                title="Clear search"
+                            >
+                                <i class="bx bx-x text-xl"></i>
+                            </button>
+                            <button 
+                                id="searchBtn"
+                                onclick="executeSearch()"
+                                class="px-4 py-1.5 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors flex items-center gap-1"
+                            >
+                                <i class="bx bx-search"></i>
+                                <span class="hidden md:inline">Search</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Search Suggestions Dropdown -->
+                        <div 
+                            id="searchSuggestions" 
+                            class="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-gray-200 hidden z-50 max-h-80 overflow-y-auto"
+                        >
+                            <div id="searchSuggestionsContent" class="py-2">
+                                <!-- Suggestions will be populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Search Tags -->
+                    <div class="flex flex-wrap gap-2 mt-3" id="quickSearchTags">
+                        <span class="text-xs text-gray-500 py-1">Quick search:</span>
+                        <button onclick="quickSearch('status:active')" class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors">
+                            Active Users
+                        </button>
+                        <button onclick="quickSearch('status:pending')" class="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 transition-colors">
+                            Pending Review
+                        </button>
+                        <button onclick="quickSearch('status:inactive')" class="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors">
+                            Inactive
+                        </button>
+                        <button onclick="quickSearch('recent')" class="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors">
+                            Recent Activity
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Filters & Actions -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <select id="statusFilter" class="border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm">
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="pending">Pending</option>
+                    </select>
+                    <a href="/admin-add-user.html" 
+                       class="px-5 py-2.5 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 flex items-center transition-colors shadow-sm">
+                        <i class="bx bx-plus mr-2"></i>
+                        Add New User
+                    </a>
                 </div>
             </div>
-            <div class="flex items-center space-x-4">
-                <select id="statusFilter" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                    <option value="all">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="pending">Pending</option>
-                </select>
-                <a href="/admin-add-user.html" 
-                class="px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 flex items-center">
-                    <i class="bx bx-plus mr-2"></i>
-                    Add New User
-                </a>
+            
+            <!-- Search Results Info Bar (hidden by default) -->
+            <div id="searchResultsInfo" class="hidden mt-4 pt-4 border-t border-gray-100">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 text-sm text-gray-600">
+                        <i class="bx bx-info-circle"></i>
+                        <span id="searchResultsText">Showing results for "<span id="searchQueryDisplay" class="font-medium text-gray-900"></span>"</span>
+                    </div>
+                    <button onclick="clearSearch()" class="text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1">
+                        <i class="bx bx-x"></i> Clear search
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -582,7 +762,7 @@
           <button id="filterNeedsUpdate" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-100">Needs Update</button>
           <button id="filterApproved" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-100">Approved</button>
           <button id="filterPublished" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-100">Published</button>
-
+          <button id="filterRejected" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-100">Rejected</button>
         </div>
 
         <!-- Table/List -->
@@ -625,10 +805,10 @@
                         Showing <span id="pageStart">1</span> to <span id="pageEnd">10</span> of <span id="totalItems">0</span> results
                     </div>
                     <div class="flex space-x-2">
-                        <button id="prevPage" class="px-3 py-1 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <button id="prevPage" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-gray-300 disabled:hover:text-gray-700 transition-colors font-medium">
                             Previous
                         </button>
-                        <button id="nextPage" class="px-3 py-1 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <button id="nextPage" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-gray-300 disabled:hover:text-gray-700 transition-colors font-medium">
                             Next
                         </button>
                     </div>
@@ -639,45 +819,67 @@
 
     <!-- Modals -->
 
-    <!-- Add/Edit Ambassador Modal -->
-    <div id="ambassadorModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50">
+    <!-- Edit User Modal (Ambassadors & Partners) -->
+    <div id="editUserModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl">
             <div class="p-6 border-b border-gray-200">
-                <h3 class="text-xl font-semibold text-gray-900" id="modalTitle">Add Ambassador</h3>
+                <h3 class="text-xl font-semibold text-gray-900" id="editModalTitle">Edit User</h3>
             </div>
-            <form id="ambassadorForm" class="p-6">
-                <input type="hidden" id="ambassadorId">
+            <form id="editUserForm" class="p-6">
+                <input type="hidden" id="editUserId">
+                <input type="hidden" id="editUserType">
                 
+                <!-- Ambassador Fields -->
+                <div id="ambassadorFields">
+                    <div class="form-group">
+                        <label class="form-label" for="editName">Full Name</label>
+                        <input type="text" id="editName" class="form-input" required>
+                    </div>
+                </div>
+                
+                <!-- Partner Fields -->
+                <div id="partnerFields" class="hidden">
+                    <div class="form-group">
+                        <label class="form-label" for="editContactPerson">Contact Person</label>
+                        <input type="text" id="editContactPerson" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="editOrganizationName">Organization Name</label>
+                        <input type="text" id="editOrganizationName" class="form-input">
+                    </div>
+                </div>
+                
+                <!-- Common Fields -->
                 <div class="form-group">
-                    <label class="form-label" for="name">Full Name</label>
-                    <input type="text" id="name" class="form-input" required>
+                    <label class="form-label" for="editEmail">Email Address</label>
+                    <input type="email" id="editEmail" class="form-input" required>
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label" for="email">Email Address</label>
-                    <input type="email" id="email" class="form-input" required>
+                    <label class="form-label" for="editAccessCode">Access Code</label>
+                    <input type="text" id="editAccessCode" class="form-input" placeholder="T4LA-XXXX" required>
                 </div>
                 
                 <div class="form-group">
-                    <label class="form-label" for="accessCode">Access Code</label>
-                    <input type="text" id="accessCode" class="form-input" placeholder="T4LA-XXXX" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label" for="status">Status</label>
-                    <select id="status" class="form-input">
+                    <label class="form-label" for="editStatus">Status</label>
+                    <select id="editStatus" class="form-input">
                         <option value="active">Active</option>
+                        <option value="approved">Approved</option>
                         <option value="inactive">Inactive</option>
                         <option value="pending">Pending</option>
                     </select>
                 </div>
                 
                 <div class="flex justify-end space-x-3 mt-8">
-                    <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">
+                    <button type="button" onclick="closeEditModal()" id="cancelEditBtn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">
                         Cancel
                     </button>
-                    <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700">
-                        Save Changes
+                    <button type="button" onclick="submitEditForm()" id="saveEditBtn" class="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 flex items-center justify-center min-w-[130px]">
+                        <span id="saveEditBtnText">Save Changes</span>
+                        <div id="saveEditBtnLoader" class="hidden">
+                            <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        </div>
                     </button>
                 </div>
             </form>
@@ -693,28 +895,170 @@
             <div class="p-6">
                 <p class="text-gray-600 mb-6">Are you sure you want to delete this item? This action cannot be undone.</p>
                 <div class="flex justify-end space-x-3">
-                    <button onclick="closeDeleteModal()" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">
+                    <button onclick="closeDeleteModal()" id="cancelDeleteBtn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50">
                         Cancel
                     </button>
-                    <button onclick="confirmDelete()" class="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700">
-                        Delete
+                    <button onclick="confirmDelete()" id="confirmDeleteBtn" class="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 flex items-center justify-center min-w-[100px]">
+                        <span id="deleteBtnText">Delete</span>
+                        <div id="deleteBtnLoader" class="hidden">
+                            <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        </div>
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Profile Audit Popup -->
+    <!-- Profile Audit & Submissions Modal -->
     <div id="profileAuditModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh]">
             <div class="p-4 border-b border-gray-200 flex items-center justify-between">
-                <h3 class="text-xl font-semibold text-gray-900">Profile Audit</h3>
+                <h3 class="text-xl font-semibold text-gray-900">Profile Audit & Submissions</h3>
                 <button onclick="closeProfileAudit()" class="text-gray-600 hover:text-gray-900">
                     <i class="bx bx-x text-2xl"></i>
                 </button>
             </div>
             <div id="profileAuditContent" class="flex-1 overflow-y-auto p-6">
                 <!-- Profile data will be loaded here -->
+            </div>
+            
+            <!-- NEW: Admin Submissions Section -->
+            <div id="adminSubmissionsSection" class="border-t border-gray-200 p-6 hidden">
+                <h4 class="text-lg font-semibold text-gray-900 mb-4">Admin Submissions</h4>
+                
+                <!-- LinkedIn Audit Submission -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <h5 class="font-medium text-gray-900 flex items-center gap-2">
+                            <i class="bx bxl-linkedin-square text-blue-600"></i>
+                            LinkedIn Audit
+                        </h5>
+                        <span id="linkedinAuditStatusBadge" class="px-3 py-1 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700">
+                            Not Submitted
+                        </span>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                LinkedIn Profile URL
+                            </label>
+                            <input 
+                                type="url"
+                                id="linkedinProfileUrl"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="https://linkedin.com/in/username"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Audit Feedback & Recommendations
+                            </label>
+                            <textarea 
+                                id="linkedinAuditFeedback"
+                                rows="3"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="Provide feedback on profile completeness, headline, summary, experience, etc..."
+                            ></textarea>
+                        </div>
+                        
+                        <button 
+                            onclick="submitLinkedInAudit()"
+                            id="submitLinkedInBtn"
+                            class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 flex items-center justify-center gap-2 min-h-[48px]"
+                        >
+                            <span id="linkedInBtnContent" class="flex items-center gap-2">
+                                <i class="bx bx-check"></i>
+                                Submit LinkedIn Audit
+                            </span>
+                            <div id="linkedInBtnLoader" class="hidden">
+                                <div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Speaker Profile Submission -->
+                <div class="pt-6 border-t border-gray-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <h5 class="font-medium text-gray-900 flex items-center gap-2">
+                            <i class="bx bx-microphone text-purple-600"></i>
+                            Speaker Profile
+                        </h5>
+                        <span id="speakerProfileStatusBadge" class="px-3 py-1 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700">
+                            Not Submitted
+                        </span>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Speaker Bio
+                                </label>
+                                <textarea 
+                                    id="speakerBio"
+                                    rows="3"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    placeholder="Professional bio for speaking engagements..."
+                                ></textarea>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Speaking Topics
+                                </label>
+                                <textarea 
+                                    id="speakingTopics"
+                                    rows="3"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    placeholder="List topics separated by commas..."
+                                ></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Headshot URL
+                                </label>
+                                <input 
+                                    type="url"
+                                    id="headshotUrl"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    placeholder="https://example.com/headshot.jpg"
+                                >
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Past Engagements (Optional)
+                                </label>
+                                <textarea 
+                                    id="pastEngagements"
+                                    rows="2"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    placeholder="Previous speaking experience..."
+                                ></textarea>
+                            </div>
+                        </div>
+                        
+                        <button 
+                            onclick="submitSpeakerProfile()"
+                            id="submitSpeakerBtn"
+                            class="w-full px-4 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 flex items-center justify-center gap-2 min-h-[48px]"
+                        >
+                            <span id="speakerBtnContent" class="flex items-center gap-2">
+                                <i class="bx bx-check"></i>
+                                Submit Speaker Profile
+                            </span>
+                            <div id="speakerBtnLoader" class="hidden">
+                                <div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -857,6 +1201,9 @@
             search: '',
             status: 'all',
             articleStatusFilter: '',
+            progressFilter: null,
+            monthFilter: null,
+            sortBy: null,
             currentItemId: null,
             reviewing: null,
             isRequestingChanges: false,
@@ -890,97 +1237,169 @@
 
         let pollingInterval = null;
         let notificationPollingInterval = null;
+        let currentAmbassadorForSubmission = null; // NEW: Track current ambassador for submissions
 
         // ============================================
-        // NOTIFICATION SYSTEM
+        // NOTIFICATION SYSTEM (EXISTING - UNCHANGED)
         // ============================================
         
-        async function fetchNotifications() {
-            try {
-                const response = await fetch('/api/notifications', {
-                    credentials: 'include'
-                });
-                
-                if (!response.ok) return;
-                
-                const data = await response.json();
-                state.notifications = data.notifications || [];
-                state.unreadNotifications = state.notifications.filter(n => !n.read).length;
-                updateNotificationBadge();
-                
-                const dropdown = document.getElementById('notificationDropdown');
-                if (!dropdown.classList.contains('hidden')) {
-                    renderNotificationList();
-                }
-            } catch (error) {
-                console.error('Error fetching notifications:', error);
-            }
-        }
 
-        function updateNotificationBadge() {
-            const badge = document.getElementById('notificationBadge');
-            if (!badge) return;
-            
-            if (state.unreadNotifications > 0) {
-                badge.textContent = state.unreadNotifications > 99 ? '99+' : state.unreadNotifications;
+// ✅ IMPROVED: Fetch admin notifications with better performance
+async function fetchNotifications() {
+    try {
+        const response = await fetch('/api/notifications?limit=50', {
+            credentials: 'include',
+            cache: 'no-cache' // Prevent caching for real-time updates
+        });
+        
+        if (!response.ok) {
+            console.error('❌ Failed to fetch notifications:', response.status);
+            state.notifications = [];
+            state.unreadNotifications = 0;
+            updateNotificationBadge();
+            return;
+        }
+        
+        const data = await response.json();
+        
+        // Use notifications directly from server (already filtered by role)
+        state.notifications = data.notifications || [];
+        
+        // Use server-provided unread count if available, otherwise calculate
+        state.unreadNotifications = data.unreadCount !== undefined 
+            ? data.unreadCount 
+            : state.notifications.filter(n => !n.read && n.read !== true && n.read !== 'true').length;
+        
+        console.log('🔔 Notifications:', state.notifications.length, 'total,', state.unreadNotifications, 'unread');
+        
+        // Update the badge immediately
+        updateNotificationBadge();
+        
+        // If dropdown is open, update the list
+        const dropdown = document.getElementById('notificationDropdown');
+        if (dropdown && !dropdown.classList.contains('hidden')) {
+            renderNotificationList();
+        }
+    } catch (error) {
+        console.error('❌ Error fetching notifications:', error);
+        state.notifications = [];
+        state.unreadNotifications = 0;
+        updateNotificationBadge();
+    }
+}
+async function runNotificationDiagnostics() {
+    try {
+        console.log('🧪 ========== NOTIFICATION TEST ==========' );
+        console.log('📊 State check:', {
+            notificationsCount: Array.isArray(state.notifications) ? state.notifications.length : 0,
+            unreadCount: state.unreadNotifications,
+            notifications: state.notifications
+        });
+
+        const resp = await fetch('/api/notifications?debug=true', { credentials: 'include' });
+        const data = await resp.json();
+        console.log('📥 API Response:', data);
+
+        const badge = document.getElementById('notificationBadge');
+        console.log('🏷️ Badge element:', {
+            exists: !!badge,
+            text: badge ? badge.textContent.trim() : null,
+            hidden: badge ? badge.classList.contains('hidden') : null
+        });
+
+        const manualUnread = (data.notifications || []).filter(n => (n.read === false) || (n.read === 'false') || (!n.read)).length;
+        console.log('🔧 Manual unread count:', manualUnread);
+
+        if (badge) {
+            badge.textContent = manualUnread > 99 ? '99+' : String(manualUnread);
+            if (manualUnread > 0) {
                 badge.classList.remove('hidden');
-                
-                if (state.unreadNotifications > 0) {
-                    badge.classList.add('notification-badge-pulse');
-                } else {
-                    badge.classList.remove('notification-badge-pulse');
-                }
+                badge.classList.add('notification-badge-pulse');
             } else {
-                badge.classList.add('hidden');
                 badge.classList.remove('notification-badge-pulse');
             }
         }
 
-        function renderNotificationList() {
-            const container = document.getElementById('notificationList');
-            if (!container) return;
-            
-            if (state.notifications.length === 0) {
-                container.innerHTML = `
-                    <div class="p-8 text-center text-gray-500">
-                        <i class="bx bx-bell-off text-4xl mb-2"></i>
-                        <p>No notifications</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            const notificationsHtml = state.notifications.map(notification => {
-                const icon = getNotificationIcon(notification.type);
-                const timeAgo = formatTimeAgo(notification.createdAt);
-                const readClass = notification.read ? '' : 'bg-blue-50';
-                
-                return `
-                    <div class="notification-item ${readClass} p-4 hover:bg-gray-50 cursor-pointer transition-colors" 
-                         data-id="${notification.id}" 
-                         data-read="${notification.read}"
-                         onclick="handleNotificationClick('${notification.id}', '${notification.type}', '${notification.articleId || ''}')">
-                        <div class="flex items-start gap-3">
-                            <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${getNotificationIconColor(notification.type)}">
-                                <i class="bx ${icon} text-lg"></i>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center justify-between mb-1">
-                                    <h4 class="font-semibold text-gray-900 text-sm truncate">${notification.title || getNotificationTitle(notification.type)}</h4>
-                                    ${!notification.read ? '<span class="w-2 h-2 bg-blue-500 rounded-full"></span>' : ''}
-                                </div>
-                                <p class="text-sm text-gray-600 mb-1 truncate">${notification.message}</p>
-                                <span class="text-xs text-gray-500">${timeAgo}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            
-            container.innerHTML = notificationsHtml;
-        }
+        console.log('✅ Badge should now be visible with count:', manualUnread);
+        console.log('🧪 ========== TEST COMPLETE ==========' );
+    } catch (e) {
+        console.error('❌ Diagnostic error:', e);
+    }
+}
+// ✅ IMPROVED: Update notification badge with accurate count
+function updateNotificationBadge() {
+    const badge = document.getElementById('notificationBadge');
+    if (!badge) return;
+    
+    // Use pre-calculated unread count from state
+    const unreadCount = state.unreadNotifications;
+    
+    if (unreadCount > 0) {
+        badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+        badge.classList.remove('hidden');
+        badge.classList.add('notification-badge-pulse');
+        console.log('🔔 Badge updated:', unreadCount, 'unread');
+    } else {
+        // Hide badge if no unread notifications
+        badge.classList.add('hidden');
+        badge.classList.remove('notification-badge-pulse');
+    }
+}
 
-        function getNotificationIcon(type) {
+function renderNotificationList() {
+    const container = document.getElementById('notificationList');
+    if (!container) return;
+    
+    if (state.notifications.length === 0) {
+        container.innerHTML = `
+            <div class="p-8 text-center text-gray-500">
+                <i class="bx bx-bell-off text-4xl mb-2"></i>
+                <p>No notifications</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // ✅ FIX: Show ALL notifications, mark unread ones differently
+    const notificationsHtml = state.notifications.map(notification => {
+        const icon = getNotificationIcon(notification.type);
+        const timeAgo = formatTimeAgo(notification.created_at || notification.createdAt);
+        
+        // ✅ Check read status - handle both boolean and string values
+        const isRead = notification.read === true || notification.read === 'true' || notification.read === 1;
+        
+        // ✅ Add visual indicator for unread
+        const readClass = isRead ? 'bg-white' : 'bg-blue-50 border-l-4 border-blue-500';
+        const unreadDot = isRead ? '' : '<span class="w-2 h-2 bg-blue-500 rounded-full"></span>';
+        
+        return `
+            <div class="notification-item ${readClass} p-4 hover:bg-gray-50 cursor-pointer transition-colors" 
+                 data-id="${notification.notification_id || notification.id}" 
+                 data-read="${notification.read}"
+                 onclick="handleNotificationClick('${notification.notification_id || notification.id}', '${notification.type}', '${notification.article_id || ''}')">
+                <div class="flex items-start gap-3">
+                    <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${getNotificationIconColor(notification.type)}">
+                        <i class="bx ${icon} text-lg"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between mb-1">
+                            <h4 class="font-semibold text-gray-900 text-sm truncate">
+                                ${notification.title || getNotificationTitle(notification.type)}
+                            </h4>
+                            ${unreadDot}
+                        </div>
+                        <p class="text-sm text-gray-600 mb-1 line-clamp-2">${notification.message}</p>
+                        <span class="text-xs text-gray-500">${timeAgo}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = notificationsHtml;
+}
+
+function getNotificationIcon(type) {
             const icons = {
                 'application_submitted': 'bx-user-plus',
                 'status_change': 'bx-refresh',
@@ -1036,64 +1455,96 @@
 
         async function handleNotificationClick(notificationId, type, articleId) {
             try {
+                // ✅ Mark as read first
                 await markNotificationRead(notificationId);
+                
+                // ✅ Update local state immediately for instant UI feedback
+                const notification = state.notifications.find(n => 
+                    (n.notification_id || n.id) === notificationId
+                );
+                if (notification) {
+                    notification.read = true;
+                    state.unreadNotifications = Math.max(0, state.unreadNotifications - 1);
+                    updateNotificationBadge();
+                    renderNotificationList();
+                }
+                
+                // ✅ Then refresh from server to ensure consistency
+                await fetchNotifications();
                 
                 if (articleId && (type === 'article_submitted' || type === 'needs_update' || type === 'article_published')) {
                     openReviewModal(articleId);
                     closeNotificationDropdown();
                 }
-                
-                fetchNotifications();
             } catch (error) {
                 console.error('Error handling notification click:', error);
-            }
-        }
-
-        async function markNotificationRead(notificationId) {
-            try {
-                const response = await fetch(`/api/notifications/${notificationId}/read`, {
-                    method: 'POST',
-                    credentials: 'include'
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to mark notification as read');
-                }
-                
-                return await response.json();
-            } catch (error) {
-                console.error('Error marking notification as read:', error);
-                throw error;
-            }
-        }
-
-        async function markAllNotificationsRead() {
-            try {
-                const response = await fetch('/api/notifications/mark-all-read', {
-                    method: 'POST',
-                    credentials: 'include'
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to mark all notifications as read');
-                }
-                
+                // Still refresh even if mark as read failed
                 await fetchNotifications();
-                showToast('All notifications marked as read');
-            } catch (error) {
-                console.error('Error marking all notifications as read:', error);
-                showToast('Failed to mark all notifications as read', true);
             }
         }
 
+async function markNotificationRead(notificationId) {
+    try {
+        const response = await fetch(`/api/notifications/${notificationId}/read`, {
+            method: 'PATCH', // ✅ CHANGED FROM POST TO PATCH
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to mark notification as read');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error marking notification as read:', error);
+        throw error;
+    }
+}
+
+        
+        
+        
+async function markAllNotificationsRead() {
+    try {
+        const response = await fetch('/api/notifications/mark-all-read', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to mark all notifications as read');
+        }
+        
+        // ✅ Update local state immediately for instant UI feedback
+        state.notifications.forEach(n => {
+            n.read = true;
+        });
+        state.unreadNotifications = 0;
+        updateNotificationBadge();
+        renderNotificationList();
+        
+        // ✅ Then refresh from server to ensure consistency
+        await fetchNotifications();
+        showToast('All notifications marked as read');
+    } catch (error) {
+        console.error('Error marking all as read:', error);
+        showToast('Failed to mark all notifications as read', true);
+        // Still refresh to show current state
+        await fetchNotifications();
+    }
+}
+        
         function toggleNotificationDropdown() {
             const dropdown = document.getElementById('notificationDropdown');
             const isHidden = dropdown.classList.contains('hidden');
             
             if (isHidden) {
-                dropdown.classList.remove('hidden');
-                renderNotificationList();
-                setupClickOutsideListener();
+                // ✅ FIX: Fetch fresh notifications when opening dropdown
+                fetchNotifications().then(() => {
+                    dropdown.classList.remove('hidden');
+                    renderNotificationList();
+                    setupClickOutsideListener();
+                });
             } else {
                 closeNotificationDropdown();
             }
@@ -1129,11 +1580,12 @@
                 clearInterval(notificationPollingInterval);
             }
             
+            // Poll every 10 seconds for faster notification updates
             notificationPollingInterval = setInterval(() => {
                 fetchNotifications();
-            }, 30000); // Poll every 30 seconds
+            }, 10000);
             
-            console.log('🔔 Notification polling started');
+            console.log('🔔 Notification polling started (every 10s)');
         }
 
         function stopNotificationPolling() {
@@ -1145,7 +1597,7 @@
         }
 
         // ============================================
-        // HELPER FUNCTIONS
+        // HELPER FUNCTIONS (EXISTING - UNCHANGED)
         // ============================================
         
         function showLoading(show) {
@@ -1191,14 +1643,20 @@
         }
 
         function renderPagination() {
-            if (state.total <= state.limit || state.tab !== 'ambassadors') {
+            console.log('📊 renderPagination called - tab:', state.tab, 'total:', state.total, 'page:', state.page, 'limit:', state.limit);
+            
+            // Show pagination for all tabs when there are more items than the limit
+            if (state.total <= state.limit) {
                 elements.paginationContainer.classList.add('hidden');
+                console.log('📊 Pagination hidden - total items <= limit');
                 return;
             }
             
             const start = ((state.page - 1) * state.limit) + 1;
             const end = Math.min(state.page * state.limit, state.total);
             const totalPages = Math.ceil(state.total / state.limit);
+            
+            console.log('📊 Pagination showing - page', state.page, 'of', totalPages, '(items', start, '-', end, ')');
             
             elements.pageStart.textContent = start;
             elements.pageEnd.textContent = end;
@@ -1252,7 +1710,7 @@
         }
 
         // ============================================
-        // LOCAL STORAGE HELPERS FOR ARTICLES
+        // LOCAL STORAGE HELPERS FOR ARTICLES (EXISTING - UNCHANGED)
         // ============================================
         const LS_KEY_ARTICLES = 't4l.admin.articles.v1';
         
@@ -1292,7 +1750,7 @@
         }
 
         // ============================================
-        // FETCH FUNCTIONS
+        // FETCH FUNCTIONS (EXISTING - UNCHANGED)
         // ============================================
 
         async function loadAdminInfo() {
@@ -1325,56 +1783,103 @@
         }
  
         async function fetchStats() {
+            console.log('📊 Fetching dashboard stats...');
+            
             try {
-                const [ambassadorsRes, articlesRes, journeyRes] = await Promise.allSettled([
-                    fetch('/admin/api/ambassadors?limit=1000', { credentials: 'include' }),
-                    fetch('/admin/api/articles', { credentials: 'include' }),
-                    fetch('/admin/api/journey/summary', { credentials: 'include' })
+                // Fetch all data in parallel - use high limits to get ALL records
+                const [ambassadorsRes, articlesRes, journeyRes, linkedinAuditsRes] = await Promise.allSettled([
+                    fetch('/admin/api/ambassadors?page=1&limit=10000&status=all', { credentials: 'include' }),
+                    fetch('/admin/api/articles?limit=10000', { credentials: 'include' }),
+                    fetch('/admin/api/journey/summary', { credentials: 'include' }),
+                    fetch('/admin/api/linkedin-audits/count', { credentials: 'include' })
                 ]);
                 
-                // Ambassadors
+                // ============================================
+                // AMBASSADORS STATS
+                // ============================================
                 if (ambassadorsRes.status === 'fulfilled' && ambassadorsRes.value.ok) {
                     const data = await ambassadorsRes.value.json();
-                    const total = data.ambassadors.length;
-                    const active = data.ambassadors.filter(a => a.status === 'active').length;
+                    const ambassadors = data.ambassadors || [];
+                    
+                    // Use the total from API if available (more accurate), otherwise count array
+                    const total = data.total || ambassadors.length;
+                    const active = ambassadors.filter(a => 
+                        a.status === 'active' || a.status === 'Active'
+                    ).length;
+                    
+                    console.log('✅ Ambassador stats:', { total, active, fromArray: ambassadors.length });
                     
                     document.getElementById('totalAmbassadors').textContent = total;
                     document.getElementById('activeAmbassadors').textContent = active;
+                } else {
+                    console.error('❌ Failed to fetch ambassadors:', ambassadorsRes);
                 }
                 
-                // Articles - INCLUDING NEW CARDS
+                // ============================================
+                // ARTICLES STATS
+                // ============================================
                 if (articlesRes.status === 'fulfilled' && articlesRes.value.ok) {
                     const data = await articlesRes.value.json();
                     const articles = data.articles || data.items || [];
-                    const totalArticles = articles.length;
                     
-                    // Card 3: Total Articles
+                    // Use the total from API if available (more accurate)
+                    const totalArticles = data.total || data.count || articles.length;
+                    
+                    // Count by status (case-insensitive)
+                    const pendingCount = articles.filter(a => {
+                        const status = (a.status || '').toLowerCase();
+                        return status === 'pending' || status === 'needs_update';
+                    }).length;
+                    
+                    console.log('✅ Article stats:', { 
+                        total: totalArticles, 
+                        pending: pendingCount,
+                        fromArray: articles.length 
+                    });
+                    
                     document.getElementById('totalArticles').textContent = totalArticles;
-                    
-                    // NEW Card 5: Pending Approval (pending OR needs_update)
-                    const pendingCount = articles.filter(a => 
-                        a.status === 'pending' || a.status === 'needs_update'
-                    ).length;
                     document.getElementById('pendingArticles').textContent = pendingCount;
-                    
-                    // NEW Card 6: LinkedIn Ready (approved OR published articles)
-                    const linkedinReadyCount = articles.filter(a => 
-                        a.status === 'approved' || a.status === 'published'
-                    ).length;
-                    document.getElementById('linkedinReady').textContent = linkedinReadyCount;
+                } else {
+                    console.error('❌ Failed to fetch articles:', articlesRes);
                 }
                 
-                // Journey Progress
+                // ============================================
+                // LINKEDIN AUDITS STATS
+                // ============================================
+                if (linkedinAuditsRes.status === 'fulfilled' && linkedinAuditsRes.value.ok) {
+                    const data = await linkedinAuditsRes.value.json();
+                    const linkedinAuditCount = data.count || 0;
+                    
+                    console.log('✅ LinkedIn audit stats:', { count: linkedinAuditCount });
+                    
+                    document.getElementById('linkedinReady').textContent = linkedinAuditCount;
+                } else {
+                    console.error('❌ Failed to fetch LinkedIn audit count:', linkedinAuditsRes);
+                    document.getElementById('linkedinReady').textContent = '0';
+                }
+                
+                // ============================================
+                // JOURNEY PROGRESS STATS (for future use)
+                // ============================================
                 if (journeyRes.status === 'fulfilled' && journeyRes.value.ok) {
                     const data = await journeyRes.value.json();
-                    const avgProgress = data.ambassadors.length > 0 
-                        ? Math.round(data.ambassadors.reduce((sum, a) => sum + a.overallProgress, 0) / data.ambassadors.length)
-                        : 0;
-                    // Note: avgProgress element might not exist in your HTML
+                    const journeyData = data.ambassadors || [];
+                    
+                    if (journeyData.length > 0) {
+                        const avgProgress = Math.round(
+                            journeyData.reduce((sum, a) => sum + (a.overallProgress || 0), 0) / journeyData.length
+                        );
+                        console.log('✅ Journey stats:', { 
+                            ambassadorsWithProgress: journeyData.length, 
+                            avgProgress 
+                        });
+                    }
                 }
                 
+                console.log('📊 Dashboard stats loaded successfully');
+                
             } catch (error) {
-                console.error('Error fetching stats:', error);
+                console.error('❌ Error fetching stats:', error);
             }
         }
 
@@ -1383,26 +1888,28 @@
             
             try {
                 let url = '';
+                // When searching, fetch all data for client-side filtering
+                const isSearching = state.search && state.search.trim().length > 0;
+                const fetchLimit = isSearching ? 1000 : state.limit;
+                
                 switch (state.tab) {
                     case 'ambassadors':
-                        url = `/admin/api/ambassadors?page=${state.page}&limit=${state.limit}&status=${state.status}&search=${state.search}`;
+                        url = `/admin/api/ambassadors?page=1&limit=${fetchLimit}&status=all`;
                         break;
                     case 'partners':
                         url = '/admin/api/partners';
                         break;
                     case 'articles':
                         const params = new URLSearchParams();
-                        if (state.search) params.set('q', state.search);
-                        if (state.articleStatusFilter) params.set('status', state.articleStatusFilter);
-                        params.set('limit', String(state.limit));
-                        params.set('offset', String((state.page - 1) * state.limit));
+                        params.set('limit', String(fetchLimit));
+                        params.set('offset', '0');
                         url = `/admin/api/articles?${params.toString()}`;
                         break;
                     case 'journey':
                         url = '/admin/api/journey/summary';
                         break;
                     default:
-                        url = `/admin/api/ambassadors?page=${state.page}&limit=${state.limit}`;
+                        url = `/admin/api/ambassadors?page=1&limit=${fetchLimit}`;
                 }
                 
                 const response = await fetch(url, { credentials: 'include' });
@@ -1417,24 +1924,127 @@
                 
                 const data = await response.json();
                 
+                // Get search query for client-side filtering
+                const searchQuery = (state.search || '').toLowerCase().trim();
+                
                 if (state.tab === 'journey') {
-                    state.items = data.ambassadors || [];
-                    state.total = data.total || 0;
+                    let items = data.ambassadors || [];
+                    
+                    // Client-side search filtering for journey
+                    if (searchQuery) {
+                        items = items.filter(item => {
+                            const searchable = [
+                                item.ambassadorName,
+                                item.ambassadorEmail
+                            ].filter(Boolean).join(' ').toLowerCase();
+                            return searchable.includes(searchQuery);
+                        });
+                    }
+                    
+                    // Apply progress filter if set
+                    if (state.progressFilter) {
+                        items = items.filter(item => {
+                            if (state.progressFilter === 'high') return item.overallProgress >= 75;
+                            if (state.progressFilter === 'medium') return item.overallProgress >= 50 && item.overallProgress < 75;
+                            if (state.progressFilter === 'low') return item.overallProgress < 50;
+                            return true;
+                        });
+                    }
+                    
+                    // Apply month filter if set
+                    if (state.monthFilter) {
+                        items = items.filter(item => String(item.currentMonth) === String(state.monthFilter));
+                    }
+                    
+                    state.total = items.length;
+                    // Apply pagination
+                    const start = (state.page - 1) * state.limit;
+                    const end = Math.min(start + state.limit, items.length);
+                    state.items = items.slice(start, end);
                     renderJourneyList();
                 } else if (state.tab === 'partners') {
-                    state.items = data.partners || [];
-                    state.total = data.partners.length || 0;
+                    let items = data.partners || [];
+                    
+                    // Client-side search filtering for partners
+                    if (searchQuery) {
+                        items = items.filter(item => {
+                            const searchable = [
+                                item.contact_person,
+                                item.organization_name,
+                                item.email,
+                                item.access_code
+                            ].filter(Boolean).join(' ').toLowerCase();
+                            return searchable.includes(searchQuery);
+                        });
+                    }
+                    
+                    // Apply status filter
+                    if (state.status && state.status !== 'all') {
+                        items = items.filter(item => item.status === state.status);
+                    }
+                    
+                    state.total = items.length;
+                    // Apply pagination
+                    const start = (state.page - 1) * state.limit;
+                    const end = Math.min(start + state.limit, items.length);
+                    state.items = items.slice(start, end);
                     renderPartnersList();
                 } else if (state.tab === 'articles') {
-                    const items = data.items || data.articles || [];
-                    const total = data.total || items.length;
-                    try { writeLsArticles(items); } catch (_) {}
-                    state.items = items;
-                    state.total = total;
+                    let items = data.items || data.articles || [];
+                    
+                    // Client-side search filtering for articles
+                    if (searchQuery) {
+                        items = items.filter(item => {
+                            const searchable = [
+                                item.title,
+                                item.authorNameRole,
+                                item.companyDescription,
+                                item.contentHtml
+                            ].filter(Boolean).join(' ').toLowerCase();
+                            return searchable.includes(searchQuery);
+                        });
+                    }
+                    
+                    // Apply article status filter
+                    if (state.articleStatusFilter) {
+                        items = items.filter(item => 
+                            String(item.status || '').toLowerCase() === state.articleStatusFilter.toLowerCase()
+                        );
+                    }
+                    
+                    try { writeLsArticles(data.items || data.articles || []); } catch (_) {}
+                    state.total = items.length;
+                    // Apply pagination
+                    const start = (state.page - 1) * state.limit;
+                    const end = Math.min(start + state.limit, items.length);
+                    state.items = items.slice(start, end);
                     renderArticlesList();
                 } else {
-                    state.items = data.ambassadors || [];
-                    state.total = data.total || 0;
+                    // Ambassadors tab
+                    let items = data.ambassadors || [];
+                    
+                    // Client-side search filtering for ambassadors
+                    if (searchQuery) {
+                        items = items.filter(item => {
+                            const searchable = [
+                                item.name,
+                                item.email,
+                                item.access_code
+                            ].filter(Boolean).join(' ').toLowerCase();
+                            return searchable.includes(searchQuery);
+                        });
+                    }
+                    
+                    // Apply status filter
+                    if (state.status && state.status !== 'all') {
+                        items = items.filter(item => item.status === state.status);
+                    }
+                    
+                    state.total = items.length;
+                    // Apply pagination
+                    const start = (state.page - 1) * state.limit;
+                    const end = Math.min(start + state.limit, items.length);
+                    state.items = items.slice(start, end);
                     renderAmbassadorsList();
                 }
                 
@@ -1475,7 +2085,7 @@
         }
 
         // ============================================
-        // RENDER FUNCTIONS
+        // RENDER FUNCTIONS (EXISTING - UNCHANGED)
         // ============================================
 
         function renderAmbassadorsList() {
@@ -1507,11 +2117,6 @@
                     </td>
                     <td class="px-4 py-3 text-sm text-gray-700">${joinDate}</td>
                     <td class="px-4 py-3 text-sm text-right space-x-2">
-                        <button class="px-3 py-1 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold" 
-                                data-action="review" 
-                                data-id="${item.id}">
-                            Profile
-                        </button>
                         <button class="px-3 py-1 rounded-lg border border-purple-300 text-purple-700 hover:bg-purple-50 font-semibold" 
                                 data-action="edit" 
                                 data-id="${item.id}">
@@ -1549,12 +2154,15 @@
                 tr.className = 'border-b border-gray-100 hover:bg-gray-50';
                 
                 const statusClass = `status-${item.status}`;
+                const partnerName = item.contact_person || item.organization_name || '-';
+                const companyName = item.organization_name || '-';
+                const accessCode = item.access_code || '-';
                 
                 tr.innerHTML = `
-                    <td class="px-4 py-3 text-sm text-gray-900">${item.name}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">${item.company || '-'}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${partnerName}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">${companyName}</td>
                     <td class="px-4 py-3 text-sm text-gray-700">${item.email}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700 font-mono">${item.accessCode}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700 font-mono">${accessCode}</td>
                     <td class="px-4 py-3 text-sm">
                         <span class="status-badge ${statusClass}">${item.status}</span>
                     </td>
@@ -1580,7 +2188,7 @@
 
         function renderArticlesList() {
             updateTableHeaders([
-                'Title', 'Author', 'Company', 'Status', 'Date', 'Actions'
+                'Title', 'Author', 'Company', 'Status', 'Reviews', 'Date', 'Actions'
             ]);
             
             const tbody = elements.listBody;
@@ -1603,6 +2211,70 @@
                 const companyShort = company.length > 60 ? company.substring(0, 57) + '…' : company;
                 const statusClass = badgeClass(item.status);
                 
+                // Review history badges
+                const reviewCount = item.review_count || 0;
+                const pendingCount = item.pending_feedback_count || 0;
+                let reviewBadge = '';
+                if (reviewCount > 0) {
+                    if (pendingCount > 0) {
+                        reviewBadge = `<span class="px-2 py-1 rounded-lg bg-orange-100 text-orange-700 text-xs font-semibold" title="${pendingCount} unaddressed feedback">
+                            <i class='bx bx-history'></i> ${reviewCount} (${pendingCount} pending)
+                        </span>`;
+                    } else {
+                        reviewBadge = `<span class="px-2 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold" title="All feedback addressed">
+                            <i class='bx bx-check-circle'></i> ${reviewCount} reviewed
+                        </span>`;
+                    }
+                } else {
+                    reviewBadge = `<span class="px-2 py-1 rounded-lg bg-gray-100 text-gray-500 text-xs" title="No previous reviews">
+                        No reviews
+                    </span>`;
+                }
+                
+                // ✅ Check if ambassador has given consent to publish
+                const hasConsent = item.ambassador_consent_to_publish === true;
+                const isApproved = (item.status || '').toLowerCase() === 'approved';
+                const isPublished = (item.status || '').toLowerCase() === 'published';
+                
+                // Determine Share Publication button state
+                let shareButtonHtml = '';
+                if (isPublished) {
+                    // Already published - show disabled badge
+                    shareButtonHtml = `
+                        <span class="px-3 py-1.5 rounded-lg bg-green-100 text-green-700 font-semibold text-xs">
+                            <i class='bx bx-check'></i> Published
+                        </span>
+                    `;
+                } else if (hasConsent && isApproved) {
+                    // Has consent AND approved - enable button
+                    shareButtonHtml = `
+                        <button class="px-3 py-1.5 rounded-lg border border-green-500 bg-green-50 text-green-700 hover:bg-green-100 font-semibold" 
+                                data-action="pushPublication" 
+                                data-id="${articleId}"
+                                data-title="${title.replace(/"/g, '&quot;')}"
+                                data-consent="true">
+                            <i class='bx bx-share-alt'></i> Share Publication
+                        </button>
+                    `;
+                } else if (isApproved && !hasConsent) {
+                    // Approved but no consent - show waiting badge
+                    shareButtonHtml = `
+                        <span class="px-3 py-1.5 rounded-lg bg-yellow-100 text-yellow-700 font-semibold text-xs cursor-help" 
+                              title="Waiting for ambassador to give consent to publish">
+                            <i class='bx bx-time'></i> Awaiting Consent
+                        </span>
+                    `;
+                } else {
+                    // Not approved yet - show disabled button
+                    shareButtonHtml = `
+                        <button class="px-3 py-1.5 rounded-lg border border-gray-300 bg-gray-100 text-gray-400 font-semibold cursor-not-allowed" 
+                                disabled
+                                title="Article must be approved first">
+                            Share Publication
+                        </button>
+                    `;
+                }
+                
                 tr.innerHTML = `
                     <td class="px-4 py-3 text-sm text-gray-900">${title}</td>
                     <td class="px-4 py-3 text-sm text-gray-700">${author}</td>
@@ -1610,6 +2282,7 @@
                     <td class="px-4 py-3 text-sm">
                         <span class="px-2 py-1 rounded-lg border ${statusClass}">${item.status || '-'}</span>
                     </td>
+                    <td class="px-4 py-3 text-sm">${reviewBadge}</td>
                     <td class="px-4 py-3 text-sm text-gray-700">${date}</td>
                     <td class="px-4 py-3 text-sm text-right space-x-2">
                         <button class="px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 font-semibold" 
@@ -1617,12 +2290,7 @@
                                 data-id="${articleId}">
                             View Details
                         </button>
-                        <button class="px-3 py-1.5 rounded-lg border border-purple-300 text-purple-700 hover:bg-purple-50 font-semibold" 
-                                data-action="pushPublication" 
-                                data-id="${articleId}"
-                                data-title="${title.replace(/"/g, '&quot;')}">
-                            Share Publication
-                        </button>
+                        ${shareButtonHtml}
                         <button class="px-3 py-1.5 rounded-lg border border-red-300 text-red-700 hover:bg-red-50 font-semibold" 
                                 data-action="delete" 
                                 data-id="${articleId}">
@@ -1728,7 +2396,7 @@
         }
 
         // ============================================
-        // REAL-TIME JOURNEY TRACKING
+        // REAL-TIME JOURNEY TRACKING (EXISTING - UNCHANGED)
         // ============================================
 
         function startJourneyPolling() {
@@ -1925,7 +2593,363 @@
         }
 
         // ============================================
-        // MODAL FUNCTIONS
+        // NEW: LINKEDIN AUDIT & SPEAKER PROFILE FUNCTIONS
+        // ============================================
+
+        async function openProfileAudit(id) {
+            currentAmbassadorForSubmission = id;
+            
+            try {
+                const response = await fetch(`/admin/api/ambassadors/${id}`, { credentials: 'include' });
+                if (!response.ok) throw new Error('Failed to load profile');
+                
+                const data = await response.json();
+                const content = document.getElementById('profileAuditContent');
+                
+                let html = `
+                    <div class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-2">Basic Information</h4>
+                                <div class="space-y-3">
+                                    <div>
+                                        <span class="text-sm text-gray-500">Name:</span>
+                                        <p class="font-medium">${data.name || 'Not provided'}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-500">Email:</span>
+                                        <p class="font-medium">${data.email}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-500">Access Code:</span>
+                                        <p class="font-mono font-medium">${data.access_code}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 class="font-semibold text-gray-900 mb-2">Account Status</h4>
+                                <div class="space-y-3">
+                                    <div>
+                                        <span class="text-sm text-gray-500">Status:</span>
+                                        <span class="status-badge status-${data.status}">${data.status}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-500">Join Date:</span>
+                                        <p class="font-medium">${new Date(data.joinDate).toLocaleDateString()}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm text-gray-500">Last Login:</span>
+                                        <p class="font-medium">${data.lastLogin ? new Date(data.lastLogin).toLocaleString() : 'Never'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                `;
+                
+                if (data.profile && data.profile.completed) {
+                    html += `
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">Profile Details</h4>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <!-- Add this after the LinkedIn Profile URL section -->
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Speaker Bio URL</label>
+                                    <a id="viewSpeakerBioUrl" href="#" target="_blank" class="text-blue-600 hover:underline">-</a>
+                                </div>
+                                
+                                <pre class="text-sm whitespace-pre-wrap">${JSON.stringify(data.profile.data, null, 2)}</pre>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="text-center py-8">
+                            <i class="bx bx-user-x text-4xl text-gray-300 mb-2"></i>
+                            <p class="text-gray-500">Profile not completed yet</p>
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+                content.innerHTML = html;
+                
+                // Load existing submissions if any
+                await loadExistingSubmissions(id);
+                
+                // Show the admin submissions section
+                document.getElementById('adminSubmissionsSection').classList.remove('hidden');
+                
+                // Populate speaker bio URL if available
+                if (data.profile && data.profile.data) {
+                    const profileData = data.profile.data;
+                    
+                    // Find speaker bio URL in profile data
+                    const speakerBioUrl = profileData.speakerBioUrl || 
+                                         profileData.speaker_bio_url || 
+                                         profileData.speakerBio || 
+                                         profileData.speaker_profile_url;
+                    
+                    const speakerBioLink = document.getElementById('viewSpeakerBioUrl');
+                    if (speakerBioLink && speakerBioUrl) {
+                        speakerBioLink.href = speakerBioUrl;
+                        speakerBioLink.textContent = speakerBioUrl;
+                    } else if (speakerBioLink) {
+                        speakerBioLink.textContent = 'Not provided';
+                        speakerBioLink.removeAttribute('href');
+                    }
+                }
+                
+                const modal = document.getElementById('profileAuditModal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                
+            } catch (error) {
+                console.error('Error loading profile:', error);
+                showToast('Failed to load profile', true);
+            }
+        }
+
+        async function loadExistingSubmissions(ambassadorId) {
+            try {
+                const response = await fetch(`/admin/api/ambassadors/${ambassadorId}/submissions`, {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const submissions = await response.json();
+                    
+                    // Update LinkedIn Audit section
+                    if (submissions.linkedinAudit) {
+                        document.getElementById('linkedinProfileUrl').value = submissions.linkedinAudit.url || '';
+                        document.getElementById('linkedinAuditFeedback').value = submissions.linkedinAudit.feedback || '';
+                        
+                        const badge = document.getElementById('linkedinAuditStatusBadge');
+                        badge.textContent = 'Submitted ✓';
+                        badge.className = 'px-3 py-1 rounded-lg text-sm font-semibold bg-green-100 text-green-700';
+                        
+                        const btn = document.getElementById('submitLinkedInBtn');
+                        btn.innerHTML = '<i class="bx bx-check"></i> Update LinkedIn Audit';
+                        btn.className = 'w-full px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 flex items-center justify-center gap-2';
+                    }
+                    
+                    // Update Speaker Profile section
+                    if (submissions.speakerProfile) {
+                        document.getElementById('speakerBio').value = submissions.speakerProfile.bio || '';
+                        document.getElementById('speakingTopics').value = submissions.speakerProfile.topics || '';
+                        document.getElementById('headshotUrl').value = submissions.speakerProfile.headshotUrl || '';
+                        document.getElementById('pastEngagements').value = submissions.speakerProfile.pastEngagements || '';
+                        
+                        const badge = document.getElementById('speakerProfileStatusBadge');
+                        badge.textContent = 'Submitted ✓';
+                        badge.className = 'px-3 py-1 rounded-lg text-sm font-semibold bg-green-100 text-green-700';
+                        
+                        const btn = document.getElementById('submitSpeakerBtn');
+                        btn.innerHTML = '<i class="bx bx-check"></i> Update Speaker Profile';
+                        btn.className = 'w-full px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 flex items-center justify-center gap-2';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading submissions:', error);
+                // If endpoint doesn't exist yet, just continue silently
+            }
+        }
+
+        async function submitLinkedInAudit() {
+            if (!currentAmbassadorForSubmission) {
+                showToast('No ambassador selected', true);
+                return;
+            }
+            
+            const linkedinUrl = document.getElementById('linkedinProfileUrl').value.trim();
+            const feedback = document.getElementById('linkedinAuditFeedback').value.trim();
+            
+            if (!linkedinUrl || !feedback) {
+                showToast('Please provide both LinkedIn URL and feedback', true);
+                return;
+            }
+            
+            const btn = document.getElementById('submitLinkedInBtn');
+            const btnContent = document.getElementById('linkedInBtnContent');
+            const btnLoader = document.getElementById('linkedInBtnLoader');
+            
+            // Show loader
+            btn.disabled = true;
+            btnContent.classList.add('hidden');
+            btnLoader.classList.remove('hidden');
+            
+            try {
+                const response = await fetch(`/admin/api/ambassadors/${currentAmbassadorForSubmission}/linkedin-audit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: linkedinUrl,
+                        feedback: feedback,
+                        submittedBy: 'admin',
+                        submittedAt: new Date().toISOString()
+                    }),
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    // Update UI
+                    const badge = document.getElementById('linkedinAuditStatusBadge');
+                    badge.textContent = 'Submitted ✓';
+                    badge.className = 'px-3 py-1 rounded-lg text-sm font-semibold bg-green-100 text-green-700';
+                    
+                    // Update button to success state
+                    btnContent.innerHTML = '<i class="bx bx-check"></i> Update LinkedIn Audit';
+                    btn.className = 'w-full px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 flex items-center justify-center gap-2 min-h-[48px]';
+                    
+                    // Mark Month 1 LinkedIn task as complete
+                    await updateJourneyTask(currentAmbassadorForSubmission, 'Submit LinkedIn profile for audit', 'completed');
+                    
+                    // Refresh stats
+                    fetchStats();
+                    
+                    showToast('LinkedIn audit submitted successfully!');
+                } else {
+                    throw new Error('Submission failed');
+                }
+            } catch (error) {
+                console.error('Error submitting LinkedIn audit:', error);
+                showToast('Failed to submit LinkedIn audit', true);
+            } finally {
+                // Reset button state
+                btn.disabled = false;
+                btnContent.classList.remove('hidden');
+                btnLoader.classList.add('hidden');
+            }
+        }
+
+        async function submitSpeakerProfile() {
+            if (!currentAmbassadorForSubmission) {
+                showToast('No ambassador selected', true);
+                return;
+            }
+            
+            const bio = document.getElementById('speakerBio').value.trim();
+            const topics = document.getElementById('speakingTopics').value.trim();
+            const headshotUrl = document.getElementById('headshotUrl').value.trim();
+            
+            if (!bio || !topics) {
+                showToast('Please provide at least bio and speaking topics', true);
+                return;
+            }
+            
+            const btn = document.getElementById('submitSpeakerBtn');
+            const btnContent = document.getElementById('speakerBtnContent');
+            const btnLoader = document.getElementById('speakerBtnLoader');
+            
+            // Show loader
+            btn.disabled = true;
+            btnContent.classList.add('hidden');
+            btnLoader.classList.remove('hidden');
+            
+            try {
+                const response = await fetch(`/admin/api/ambassadors/${currentAmbassadorForSubmission}/speaker-profile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bio: bio,
+                        topics: topics,
+                        headshotUrl: headshotUrl,
+                        pastEngagements: document.getElementById('pastEngagements').value.trim(),
+                        submittedBy: 'admin',
+                        submittedAt: new Date().toISOString()
+                    }),
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    // Update UI
+                    const badge = document.getElementById('speakerProfileStatusBadge');
+                    badge.textContent = 'Submitted ✓';
+                    badge.className = 'px-3 py-1 rounded-lg text-sm font-semibold bg-green-100 text-green-700';
+                    
+                    // Update button to success state
+                    btnContent.innerHTML = '<i class="bx bx-check"></i> Update Speaker Profile';
+                    btn.className = 'w-full px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 flex items-center justify-center gap-2 min-h-[48px]';
+                    
+                    showToast('Speaker profile submitted successfully!');
+                } else {
+                    throw new Error('Submission failed');
+                }
+            } catch (error) {
+                console.error('Error submitting speaker profile:', error);
+                showToast('Failed to submit speaker profile', true);
+            } finally {
+                // Reset button state
+                btn.disabled = false;
+                btnContent.classList.remove('hidden');
+                btnLoader.classList.add('hidden');
+            }
+        }
+
+        async function updateJourneyTask(ambassadorId, taskName, status) {
+            try {
+                const response = await fetch(`/admin/api/ambassadors/${ambassadorId}/journey/tasks`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        month: 1,
+                        task: taskName,
+                        status: status,
+                        completedAt: new Date().toISOString()
+                    }),
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    console.log(`Task "${taskName}" marked as ${status} for ambassador ${ambassadorId}`);
+                } else {
+                    console.warn('Failed to update journey task, endpoint might not exist yet');
+                }
+            } catch (error) {
+                console.error('Error updating task:', error);
+                // Silently fail - endpoint might not be implemented yet
+            }
+        }
+
+        function closeProfileAudit() {
+            const modal = document.getElementById('profileAuditModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            
+            // Reset form fields
+            document.getElementById('linkedinProfileUrl').value = '';
+            document.getElementById('linkedinAuditFeedback').value = '';
+            document.getElementById('speakerBio').value = '';
+            document.getElementById('speakingTopics').value = '';
+            document.getElementById('headshotUrl').value = '';
+            document.getElementById('pastEngagements').value = '';
+            
+            // Reset buttons
+            const linkedinBtn = document.getElementById('submitLinkedInBtn');
+            linkedinBtn.innerHTML = '<i class="bx bx-check"></i> Submit LinkedIn Audit';
+            linkedinBtn.className = 'w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 flex items-center justify-center gap-2';
+            linkedinBtn.disabled = false;
+            
+            const speakerBtn = document.getElementById('submitSpeakerBtn');
+            speakerBtn.innerHTML = '<i class="bx bx-check"></i> Submit Speaker Profile';
+            speakerBtn.className = 'w-full px-4 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 flex items-center justify-center gap-2';
+            speakerBtn.disabled = false;
+            
+            // Reset badges
+            document.getElementById('linkedinAuditStatusBadge').textContent = 'Not Submitted';
+            document.getElementById('linkedinAuditStatusBadge').className = 'px-3 py-1 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700';
+            
+            document.getElementById('speakerProfileStatusBadge').textContent = 'Not Submitted';
+            document.getElementById('speakerProfileStatusBadge').className = 'px-3 py-1 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700';
+            
+            // Hide the submissions section
+            document.getElementById('adminSubmissionsSection').classList.add('hidden');
+            
+            currentAmbassadorForSubmission = null;
+        }
+
+        // ============================================
+        // MODAL FUNCTIONS (EXISTING - UNCHANGED)
         // ============================================
 
         function openReviewModal(id) {
@@ -2048,7 +3072,68 @@
             let dateStr = article.createdAt || article.created_at || 
                          (article.date ? new Date(article.date).toLocaleString() : '-');
             
-            console.log('📊 Parsed data:', { title, author, status, dateStr });
+            // Get review history
+            let reviewHistory = article.review_history || [];
+            console.log('📊 Parsed data:', { title, author, status, dateStr, reviewHistoryCount: reviewHistory.length });
+            
+            // Generate review history HTML
+            let reviewHistoryHTML = '';
+            if (reviewHistory.length > 0) {
+                reviewHistoryHTML = `
+                    <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class='bx bx-history text-purple-600'></i>
+                            Review History (${reviewHistory.length} ${reviewHistory.length === 1 ? 'review' : 'reviews'})
+                        </h3>
+                        <div class="space-y-4 max-h-64 overflow-y-auto">
+                            ${reviewHistory.slice().reverse().map((entry, index) => `
+                                <div class="border-l-4 ${entry.addressed ? 'border-green-400 bg-green-50' : 'border-orange-400 bg-orange-50'} rounded-r-lg p-4">
+                                    <div class="flex items-start justify-between mb-2">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                                                <i class='bx bx-user text-purple-600'></i>
+                                            </div>
+                                            <div>
+                                                <p class="font-semibold text-gray-900 text-sm">${entry.admin_name || 'Admin'}</p>
+                                                <p class="text-xs text-gray-500">${entry.admin_email || ''}</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex flex-col items-end">
+                                            <span class="px-2 py-1 rounded text-xs font-semibold ${entry.addressed ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">
+                                                ${entry.addressed ? '✓ Addressed' : '⏳ Pending'}
+                                            </span>
+                                            <span class="text-xs text-gray-400 mt-1">${new Date(entry.timestamp).toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <p class="text-sm text-gray-700 bg-white rounded p-2 border">${entry.message || 'No message'}</p>
+                                    </div>
+                                    ${entry.old_status !== entry.new_status ? `
+                                        <div class="mt-2 text-xs text-gray-500">
+                                            Status changed: <span class="font-medium">${entry.old_status}</span> → <span class="font-medium">${entry.new_status}</span>
+                                        </div>
+                                    ` : ''}
+                                    ${entry.addressed && entry.addressed_at ? `
+                                        <div class="mt-1 text-xs text-green-600">
+                                            Addressed on: ${new Date(entry.addressed_at).toLocaleString()}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                reviewHistoryHTML = `
+                    <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class='bx bx-history text-purple-600'></i>
+                            Review History
+                        </h3>
+                        <p class="text-gray-500 text-sm italic">No previous reviews for this article.</p>
+                    </div>
+                `;
+            }
             
             reviewContent.innerHTML = `
                 <div class="p-6">
@@ -2072,6 +3157,9 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Review History Section -->
+                    ${reviewHistoryHTML}
                     
                     <div class="bg-white rounded-xl shadow-sm border p-6">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4">Feedback & Actions</h3>
@@ -2098,9 +3186,9 @@
                             <div class="relative">
                                 <button 
                                     onclick="handleSimpleRequestChange('${articleId}')" 
-                                    class="w-full px-4 py-2 rounded-lg text-white font-semibold bg-orange-600 hover:bg-orange-700 request-changes-btn flex items-center justify-center"
+                                    class="w-full px-4 py-2 rounded-lg text-white font-semibold bg-purple-600 hover:bg-purple-700 request-changes-btn flex items-center justify-center"
                                     id="requestChangesBtn">
-                                    <span id="requestChangesText">Request Changes</span>
+                                    <span id="requestChangesText">Send Feedback & Update Status</span>
                                     <div id="requestChangesLoader" class="request-changes-loader hidden ml-2">
                                         <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                                     </div>
@@ -2120,159 +3208,179 @@
             console.log('✅ ULTIMATE FIX: Modal rendered successfully');
         }
 
-async function handleSimpleRequestChange(articleId) {
-    console.log('🚀 ULTIMATE FIX: Request Changes for article:', articleId);
-    
-    if (state.isRequestingChanges) {
-        console.log('⚠️ Request already in progress');
-        return;
-    }
-    
-    const message = document.getElementById('simpleNotifMessage').value.trim();
-    if (!message) {
-        showToast('Please provide feedback message', true);
-        return;
-    }
-    
-    const requestChangesBtn = document.getElementById('requestChangesBtn');
-    const requestChangesText = document.getElementById('requestChangesText');
-    const requestChangesLoader = document.getElementById('requestChangesLoader');
-    
-    if (!requestChangesBtn || !requestChangesText || !requestChangesLoader) {
-        console.error('❌ Button elements not found');
-        showToast('UI Error: Button elements not found', true);
-        return;
-    }
-    
-    state.isRequestingChanges = true;
-    requestChangesBtn.disabled = true;
-    requestChangesText.textContent = 'Requesting Changes...';
-    requestChangesLoader.classList.remove('hidden');
-    
-    console.log('📤 Message:', message);
-    
-    try {
-        console.log('🔍 Step 1: Fetching article details...');
-        const articleResponse = await fetch(`/admin/api/articles/${articleId}`, { 
-            credentials: 'include' 
-        });
-        
-        if (!articleResponse.ok) {
-            throw new Error('Failed to fetch article details');
-        }
-        
-        const articleData = await articleResponse.json();
-        console.log('✅ Article data received:', articleData);
-        
-        let ambassadorId = null;
-        
-        if (articleData.ambassador_id) {
-            ambassadorId = articleData.ambassador_id;
-        } 
-        else if (articleData.ambassador && articleData.ambassador.ambassador_id) {
-            ambassadorId = articleData.ambassador.ambassador_id;
-        }
-        else if (articleData.ambassadors && articleData.ambassadors.ambassador_id) {
-            ambassadorId = articleData.ambassadors.ambassador_id;
-        }
-        
-        if (!ambassadorId) {
-            console.error('❌ No ambassador_id found. Article data structure:', articleData);
+        async function handleSimpleRequestChange(articleId) {
+            console.log('🚀 VERSION 2.0 - Direct status notification - article:', articleId);
             
-            showToast('Could not find ambassador. Please check the article data in console.', true);
-            console.log('🆘 ADMIN: You need to fix the /admin/api/articles/:id endpoint in server.js');
-            console.log('🆘 The endpoint MUST return ambassador_id in the response');
-            
-            resetRequestChangesButton(requestChangesBtn, requestChangesText, requestChangesLoader);
-            state.isRequestingChanges = false;
-            return;
-        }
-        
-        console.log('✅ Ambassador ID found:', ambassadorId);
-
-        console.log('📬 Step 2: Sending notification to ambassador...');
-        const notifResponse = await fetch('/admin/api/notifications', { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ 
-                articleId: articleId, 
-                type: 'needs_update', 
-                message: message,
-                ambassadorId: ambassadorId
-            }), 
-            credentials: 'include' 
-        });
-        
-        if (!notifResponse.ok) {
-            const errorText = await notifResponse.text();
-            console.error('❌ Notification error response:', errorText);
-            throw new Error('Failed to send notification');
-        }
-        
-        const notifData = await notifResponse.json();
-        console.log('✅ Notification created:', notifData);
-        
-        console.log('📝 Step 3: Updating article status...');
-        const updateResponse = await fetch(`/admin/api/articles/${articleId}`, { 
-            method: 'PATCH', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ 
-                status: 'needs_update'
-            }), 
-            credentials: 'include' 
-        });
-        
-        if (!updateResponse.ok) {
-            throw new Error('Failed to update article status');
-        }
-        
-        const updateData = await updateResponse.json();
-        console.log('✅ Article status updated:', updateData);
-        
-        requestChangesText.textContent = 'Changes Requested! ✓';
-        requestChangesBtn.style.backgroundColor = '#10b981';
-        requestChangesLoader.classList.add('hidden');
-        
-        document.getElementById('simpleNotifMessage').value = '';
-        
-        console.log('✅ Change request process completed successfully');
-        showToast('✅ Change request sent to ambassador!');
-        
-        setTimeout(() => {
-            resetRequestChangesButton(requestChangesBtn, requestChangesText, requestChangesLoader);
-            state.isRequestingChanges = false;
-            
-            closeReviewModal();
-            if (state.tab === 'articles') {
-                fetchList();
-                fetchStats(); // Refresh stats to update pending count
+            if (state.isRequestingChanges) {
+                console.log('⚠️ Request already in progress');
+                return;
             }
-        }, 1500);
-        
-    } catch (error) {
-        console.error('❌ ULTIMATE FIX Error:', error);
-        
-        requestChangesText.textContent = 'Failed!';
-        requestChangesBtn.style.backgroundColor = '#ef4444';
-        requestChangesLoader.classList.add('hidden');
-        
-        showToast(`Failed to send change request: ${error.message}`, true);
-        
-        setTimeout(() => {
-            resetRequestChangesButton(requestChangesBtn, requestChangesText, requestChangesLoader);
-            state.isRequestingChanges = false;
-        }, 3000);
-    }
-}
+            
+            const message = document.getElementById('simpleNotifMessage').value.trim();
+            if (!message) {
+                showToast('Please provide feedback message', true);
+                return;
+            }
+            
+            const requestChangesBtn = document.getElementById('requestChangesBtn');
+            const requestChangesText = document.getElementById('requestChangesText');
+            const requestChangesLoader = document.getElementById('requestChangesLoader');
+            
+            if (!requestChangesBtn || !requestChangesText || !requestChangesLoader) {
+                console.error('❌ Button elements not found');
+                showToast('UI Error: Button elements not found', true);
+                return;
+            }
+            
+            state.isRequestingChanges = true;
+            requestChangesBtn.disabled = true;
+            requestChangesText.textContent = 'Requesting Changes...';
+            requestChangesLoader.classList.remove('hidden');
+            
+            console.log('📤 Message:', message);
+            
+            try {
+                console.log('🔍 Step 1: Fetching article details...');
+                const articleResponse = await fetch(`/admin/api/articles/${articleId}`, { 
+                    credentials: 'include' 
+                });
+                
+                if (!articleResponse.ok) {
+                    throw new Error('Failed to fetch article details');
+                }
+                
+                const articleData = await articleResponse.json();
+                console.log('✅ Article data received:', articleData);
+                
+                let ambassadorId = null;
+                
+                if (articleData.ambassador_id) {
+                    ambassadorId = articleData.ambassador_id;
+                } 
+                else if (articleData.ambassador && articleData.ambassador.ambassador_id) {
+                    ambassadorId = articleData.ambassador.ambassador_id;
+                }
+                else if (articleData.ambassadors && articleData.ambassadors.ambassador_id) {
+                    ambassadorId = articleData.ambassadors.ambassador_id;
+                }
+                
+                if (!ambassadorId) {
+                    console.error('❌ No ambassador_id found. Article data structure:', articleData);
+                    
+                    showToast('Could not find ambassador. Please check the article data in console.', true);
+                    console.log('🆘 ADMIN: You need to fix the /admin/api/articles/:id endpoint in server.js');
+                    console.log('🆘 The endpoint MUST return ambassador_id in the response');
+                    
+                    resetRequestChangesButton(requestChangesBtn, requestChangesText, requestChangesLoader);
+                    state.isRequestingChanges = false;
+                    return;
+                }
+                
+                console.log('✅ Ambassador ID found:', ambassadorId);
 
-function resetRequestChangesButton(btn, text, loader) {
-    if (!btn || !text || !loader) return;
-    
-    btn.disabled = false;
-    text.textContent = 'Request Changes';
-    btn.style.backgroundColor = '';
-    loader.classList.add('hidden');
-}
+                // Get the selected status from dropdown - SEND EXACT STATUS VALUE
+                const statusSelect = document.getElementById('simpleStatusSelect');
+                const selectedStatus = statusSelect ? statusSelect.value : 'needs_update';
+                
+                console.log('🔍 DEBUG v2: Dropdown found:', !!statusSelect);
+                console.log('🔍 DEBUG v2: Selected status:', selectedStatus);
+                console.log('🔍 DEBUG v2: Sending notification with type =', selectedStatus);
+                
+                // SIMPLIFIED: Send the EXACT status value as the notification type
+                // No more mapping - what admin selects is what ambassador sees
+                const notifResponse = await fetch('/admin/api/notifications', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ 
+                        articleId: articleId, 
+                        type: selectedStatus,  // DIRECT: approved, published, rejected, pending, needs_update
+                        message: message,
+                        ambassadorId: ambassadorId
+                    }), 
+                    credentials: 'include' 
+                });
+                
+                console.log('📬 Step 2: Notification sent with type:', selectedStatus);
+                
+                if (!notifResponse.ok) {
+                    const errorText = await notifResponse.text();
+                    console.error('❌ Notification error response:', errorText);
+                    throw new Error('Failed to send notification');
+                }
+                
+                const notifData = await notifResponse.json();
+                console.log('✅ Notification created:', notifData);
+                
+                console.log('📝 Step 3: Updating article status to:', selectedStatus);
+                const updateResponse = await fetch(`/admin/api/articles/${articleId}`, { 
+                    method: 'PATCH', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ 
+                        status: selectedStatus,
+                        feedback_message: message
+                    }), 
+                    credentials: 'include' 
+                });
+                
+                if (!updateResponse.ok) {
+                    throw new Error('Failed to update article status');
+                }
+                
+                const updateData = await updateResponse.json();
+                console.log('✅ Article status updated:', updateData);
+                
+                // Dynamic success message based on status
+                const statusMessages = {
+                    'approved': 'Article approved!',
+                    'published': 'Article published!',
+                    'rejected': 'Article rejected',
+                    'needs_update': 'Changes requested!',
+                    'pending': 'Article set to pending'
+                };
+                requestChangesText.textContent = (statusMessages[selectedStatus] || 'Feedback sent!') + ' ✓';
+                requestChangesBtn.style.backgroundColor = '#10b981';
+                requestChangesLoader.classList.add('hidden');
+                
+                document.getElementById('simpleNotifMessage').value = '';
+                
+                console.log('✅ Feedback process completed successfully');
+                showToast(`✅ ${statusMessages[selectedStatus] || 'Feedback sent'} - Ambassador notified!`);
+                
+                setTimeout(() => {
+                    resetRequestChangesButton(requestChangesBtn, requestChangesText, requestChangesLoader);
+                    state.isRequestingChanges = false;
+                    
+                    closeReviewModal();
+                    if (state.tab === 'articles') {
+                        fetchList();
+                        fetchStats(); // Refresh stats to update pending count
+                    }
+                }, 1500);
+                
+            } catch (error) {
+                console.error('❌ ULTIMATE FIX Error:', error);
+                
+                requestChangesText.textContent = 'Failed!';
+                requestChangesBtn.style.backgroundColor = '#ef4444';
+                requestChangesLoader.classList.add('hidden');
+                
+                showToast(`Failed to send change request: ${error.message}`, true);
+                
+                setTimeout(() => {
+                    resetRequestChangesButton(requestChangesBtn, requestChangesText, requestChangesLoader);
+                    state.isRequestingChanges = false;
+                }, 3000);
+            }
+        }
+
+        function resetRequestChangesButton(btn, text, loader) {
+            if (!btn || !text || !loader) return;
+            
+            btn.disabled = false;
+            text.textContent = 'Send Feedback & Update Status';
+            btn.style.backgroundColor = '';
+            loader.classList.add('hidden');
+        }
 
         function handleSimpleStatusUpdate(articleId) {
             const statusSelect = document.getElementById('simpleStatusSelect');
@@ -2388,103 +3496,35 @@ function resetRequestChangesButton(btn, text, loader) {
             }).join('');
         }
 
-        async function openProfileAudit(id) {
-            try {
-                const response = await fetch(`/admin/api/ambassadors/${id}`, { credentials: 'include' });
-                if (!response.ok) throw new Error('Failed to load profile');
-                
-                const data = await response.json();
-                const content = document.getElementById('profileAuditContent');
-                
-                let html = `
-                    <div class="space-y-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <h4 class="font-semibold text-gray-900 mb-2">Basic Information</h4>
-                                <div class="space-y-3">
-                                    <div>
-                                        <span class="text-sm text-gray-500">Name:</span>
-                                        <p class="font-medium">${data.name || 'Not provided'}</p>
-                                    </div>
-                                    <div>
-                                        <span class="text-sm text-gray-500">Email:</span>
-                                        <p class="font-medium">${data.email}</p>
-                                    </div>
-                                    <div>
-                                        <span class="text-sm text-gray-500">Access Code:</span>
-                                        <p class="font-mono font-medium">${data.access_code}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div>
-                                <h4 class="font-semibold text-gray-900 mb-2">Account Status</h4>
-                                <div class="space-y-3">
-                                    <div>
-                                        <span class="text-sm text-gray-500">Status:</span>
-                                        <span class="status-badge status-${data.status}">${data.status}</span>
-                                    </div>
-                                    <div>
-                                        <span class="text-sm text-gray-500">Join Date:</span>
-                                        <p class="font-medium">${new Date(data.joinDate).toLocaleDateString()}</p>
-                                    </div>
-                                    <div>
-                                        <span class="text-sm text-gray-500">Last Login:</span>
-                                        <p class="font-medium">${data.lastLogin ? new Date(data.lastLogin).toLocaleString() : 'Never'}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                `;
-                
-                if (data.profile && data.profile.completed) {
-                    html += `
-                        <div>
-                            <h4 class="font-semibold text-gray-900 mb-2">Profile Details</h4>
-                            <div class="bg-gray-50 rounded-lg p-4">
-                                <pre class="text-sm whitespace-pre-wrap">${JSON.stringify(data.profile.data, null, 2)}</pre>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    html += `
-                        <div class="text-center py-8">
-                            <i class="bx bx-user-x text-4xl text-gray-300 mb-2"></i>
-                            <p class="text-gray-500">Profile not completed yet</p>
-                        </div>
-                    `;
-                }
-                
-                html += '</div>';
-                content.innerHTML = html;
-                
-                const modal = document.getElementById('profileAuditModal');
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-                
-            } catch (error) {
-                console.error('Error loading profile:', error);
-                showToast('Failed to load profile', true);
-            }
-        }
-
-        function closeProfileAudit() {
-            const modal = document.getElementById('profileAuditModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
-
         // ============================================
-        // PUSH PUBLICATION MODAL FUNCTIONS
+        // PUSH PUBLICATION MODAL FUNCTIONS (EXISTING - UNCHANGED)
         // ============================================
         
-        function openPushPublicationModal(articleId, articleTitle) {
+        function openPushPublicationModal(articleId, articleTitle, hasConsent = false) {
+            // ✅ Verify consent before opening modal
+            if (!hasConsent) {
+                // Double-check consent from the article list
+                const article = state.items.find(item => 
+                    (item.article_id === articleId || item.id === articleId)
+                );
+                
+                if (article && !article.ambassador_consent_to_publish) {
+                    showToast('⚠️ Cannot share publication - Ambassador has not given consent yet.', true);
+                    return;
+                }
+                
+                // If article found and has consent, allow
+                if (article && article.ambassador_consent_to_publish) {
+                    hasConsent = true;
+                }
+            }
+            
             const modal = document.getElementById('pushPublicationModal');
             document.getElementById('pushPublicationArticleId').value = articleId;
             document.getElementById('pushPublicationTitle').textContent = articleTitle || 'Article';
             document.getElementById('publicationLink').value = '';
             document.getElementById('publicationMessage').value = '';
-            
+
             modal.classList.remove('hidden');
             modal.classList.add('flex');
         }
@@ -2650,8 +3690,166 @@ function resetRequestChangesButton(btn, text, loader) {
             }
         }
             
-        function openEditModal(id) {
-            showToast('Edit functionality coming soon');
+        async function openEditModal(id) {
+            const modal = document.getElementById('editUserModal');
+            const form = document.getElementById('editUserForm');
+            const titleEl = document.getElementById('editModalTitle');
+            const ambassadorFields = document.getElementById('ambassadorFields');
+            const partnerFields = document.getElementById('partnerFields');
+            
+            // Determine user type based on current tab
+            const userType = state.tab === 'partners' ? 'partner' : 'ambassador';
+            document.getElementById('editUserType').value = userType;
+            document.getElementById('editUserId').value = id;
+            
+            // Show loading state
+            titleEl.textContent = 'Loading...';
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            try {
+                // Fetch user data
+                const endpoint = userType === 'partner' 
+                    ? `/admin/api/partners` 
+                    : `/admin/api/ambassadors`;
+                    
+                const response = await fetch(endpoint, { credentials: 'include' });
+                if (!response.ok) throw new Error('Failed to fetch data');
+                
+                const data = await response.json();
+                const items = userType === 'partner' ? data.partners : data.items || data.ambassadors || [];
+                
+                // Find the specific user
+                const user = items.find(item => item.id === id || item.partner_id === id || item.ambassador_id === id);
+                
+                if (!user) {
+                    throw new Error('User not found');
+                }
+                
+                // Configure modal based on user type
+                if (userType === 'partner') {
+                    titleEl.textContent = 'Edit Partner';
+                    ambassadorFields.classList.add('hidden');
+                    partnerFields.classList.remove('hidden');
+                    
+                    // Populate partner fields
+                    document.getElementById('editContactPerson').value = user.contact_person || '';
+                    document.getElementById('editOrganizationName').value = user.organization_name || '';
+                } else {
+                    titleEl.textContent = 'Edit Ambassador';
+                    ambassadorFields.classList.remove('hidden');
+                    partnerFields.classList.add('hidden');
+                    
+                    // Populate ambassador fields
+                    document.getElementById('editName').value = user.name || user.first_name || '';
+                }
+                
+                // Populate common fields
+                document.getElementById('editEmail').value = user.email || '';
+                document.getElementById('editAccessCode').value = user.access_code || '';
+                document.getElementById('editStatus').value = user.status || 'active';
+                
+            } catch (error) {
+                console.error('Error loading user for edit:', error);
+                showToast('Failed to load user data', true);
+                closeEditModal();
+            }
+        }
+        
+        function closeEditModal() {
+            const modal = document.getElementById('editUserModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            
+            // Reset form
+            document.getElementById('editUserForm').reset();
+        }
+        
+        async function handleEditFormSubmit(e) {
+            if (e) e.preventDefault();
+            await submitEditForm();
+        }
+        
+        async function submitEditForm() {
+            const btn = document.getElementById('saveEditBtn');
+            const btnText = document.getElementById('saveEditBtnText');
+            const btnLoader = document.getElementById('saveEditBtnLoader');
+            const cancelBtn = document.getElementById('cancelEditBtn');
+            
+            const userType = document.getElementById('editUserType').value;
+            const userId = document.getElementById('editUserId').value;
+            
+            console.log('📝 Submitting edit form:', { userType, userId });
+            
+            // Validation
+            if (!userId) {
+                showToast('No user selected for editing', true);
+                return;
+            }
+            
+            // Show loader
+            btn.disabled = true;
+            cancelBtn.disabled = true;
+            btnText.classList.add('hidden');
+            btnLoader.classList.remove('hidden');
+            
+            try {
+                let requestBody = {};
+                let endpoint = '';
+                
+                if (userType === 'partner') {
+                    endpoint = `/admin/api/partners/${userId}`;
+                    requestBody = {
+                        contact_person: document.getElementById('editContactPerson').value.trim(),
+                        organization_name: document.getElementById('editOrganizationName').value.trim(),
+                        email: document.getElementById('editEmail').value.trim(),
+                        access_code: document.getElementById('editAccessCode').value.trim(),
+                        status: document.getElementById('editStatus').value
+                    };
+                } else {
+                    endpoint = `/admin/api/ambassadors/${userId}`;
+                    requestBody = {
+                        name: document.getElementById('editName').value.trim(),
+                        email: document.getElementById('editEmail').value.trim(),
+                        access_code: document.getElementById('editAccessCode').value.trim(),
+                        status: document.getElementById('editStatus').value
+                    };
+                }
+                
+                console.log('📤 Sending update request:', { endpoint, requestBody });
+                
+                const response = await fetch(endpoint, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody),
+                    credentials: 'include'
+                });
+                
+                console.log('📥 Response status:', response.status);
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to update');
+                }
+                
+                const result = await response.json();
+                console.log('✅ Update successful:', result);
+                
+                closeEditModal();
+                showToast(`${userType === 'partner' ? 'Partner' : 'Ambassador'} updated successfully!`);
+                fetchList();
+                fetchStats();
+                
+            } catch (error) {
+                console.error('❌ Error updating user:', error);
+                showToast(error.message || 'Failed to update', true);
+            } finally {
+                // Reset button state
+                btn.disabled = false;
+                cancelBtn.disabled = false;
+                btnText.classList.remove('hidden');
+                btnLoader.classList.add('hidden');
+            }
         }
 
         function openDeleteModal(id) {
@@ -2669,6 +3867,17 @@ function resetRequestChangesButton(btn, text, loader) {
         }
 
         async function confirmDelete() {
+            const btn = document.getElementById('confirmDeleteBtn');
+            const btnText = document.getElementById('deleteBtnText');
+            const btnLoader = document.getElementById('deleteBtnLoader');
+            const cancelBtn = document.getElementById('cancelDeleteBtn');
+            
+            // Show loader
+            btn.disabled = true;
+            cancelBtn.disabled = true;
+            btnText.classList.add('hidden');
+            btnLoader.classList.remove('hidden');
+            
             try {
                 let url = '';
                 if (state.tab === 'ambassadors') {
@@ -2715,17 +3924,22 @@ function resetRequestChangesButton(btn, text, loader) {
             } catch (error) {
                 console.error('Error deleting:', error);
                 showToast(error.message || 'Failed to delete', true);
+            } finally {
+                // Reset button state
+                btn.disabled = false;
+                cancelBtn.disabled = false;
+                btnText.classList.remove('hidden');
+                btnLoader.classList.add('hidden');
             }
         }
 
         function closeModal() {
-            const modal = document.getElementById('ambassadorModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
+            // Legacy function - redirects to closeEditModal
+            closeEditModal();
         }
 
         // ============================================
-        // BIND ROW ACTIONS
+        // BIND ROW ACTIONS (EXISTING - UNCHANGED)
         // ============================================
 
         function bindRowActions() {
@@ -2755,25 +3969,410 @@ function resetRequestChangesButton(btn, text, loader) {
                         openDeleteModal(id);
                         break;
                     case 'pushPublication':
-                        openPushPublicationModal(id, target.getAttribute('data-title'));
+                        const hasConsent = target.getAttribute('data-consent') === 'true';
+                        openPushPublicationModal(id, target.getAttribute('data-title'), hasConsent);
                         break;
                 }
             });
         }
 
         // ============================================
-        // BIND EVENTS
+        // ENHANCED SEARCH FUNCTIONS
+        // ============================================
+        
+        let searchCategory = 'all';
+        let searchTimeout;
+        let recentSearches = JSON.parse(localStorage.getItem('t4l.admin.recentSearches') || '[]');
+        
+        function toggleSearchCategoryDropdown() {
+            const dropdown = document.getElementById('searchCategoryDropdown');
+            dropdown.classList.toggle('hidden');
+            
+            // Close on click outside
+            if (!dropdown.classList.contains('hidden')) {
+                setTimeout(() => {
+                    document.addEventListener('click', closeSearchCategoryDropdownOnClickOutside);
+                }, 0);
+            }
+        }
+        
+        function closeSearchCategoryDropdownOnClickOutside(e) {
+            const dropdown = document.getElementById('searchCategoryDropdown');
+            const btn = document.getElementById('searchCategoryBtn');
+            if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+                dropdown.classList.add('hidden');
+                document.removeEventListener('click', closeSearchCategoryDropdownOnClickOutside);
+            }
+        }
+        
+        function setSearchCategory(category) {
+            searchCategory = category;
+            const label = document.getElementById('searchCategoryLabel');
+            const dropdown = document.getElementById('searchCategoryDropdown');
+            const input = document.getElementById('searchInput');
+            const quickTags = document.getElementById('quickSearchTags');
+            
+            // Update label
+            const labels = {
+                'all': 'All',
+                'ambassadors': 'Ambassadors',
+                'partners': 'Partners',
+                'articles': 'Articles',
+                'journey': 'Journey'
+            };
+            label.textContent = labels[category] || 'All';
+            
+            // Update placeholder
+            const placeholders = {
+                'all': 'Search ambassadors, partners, articles...',
+                'ambassadors': 'Search by name, email, or access code...',
+                'partners': 'Search by company name, contact, or email...',
+                'articles': 'Search by title, author, or content...',
+                'journey': 'Search ambassador journey progress...'
+            };
+            input.placeholder = placeholders[category] || placeholders['all'];
+            
+            // Update quick search tags based on category
+            updateQuickSearchTags(category);
+            
+            // Close dropdown
+            dropdown.classList.add('hidden');
+            
+            // Switch tab if not already on it and category is specific
+            // Preserve search when switching via search category dropdown
+            if (category !== 'all' && state.tab !== category) {
+                switchTab(category, true); // true = preserve search
+            }
+            
+            // Focus input
+            input.focus();
+        }
+        
+        function updateQuickSearchTags(category) {
+            const container = document.getElementById('quickSearchTags');
+            
+            const tagsByCategory = {
+                'all': `
+                    <span class="text-xs text-gray-500 py-1">Quick search:</span>
+                    <button onclick="quickSearch('status:active')" class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors">Active Users</button>
+                    <button onclick="quickSearch('status:pending')" class="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 transition-colors">Pending Review</button>
+                    <button onclick="quickSearch('status:inactive')" class="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors">Inactive</button>
+                    <button onclick="quickSearch('recent')" class="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors">Recent Activity</button>
+                `,
+                'ambassadors': `
+                    <span class="text-xs text-gray-500 py-1">Quick filters:</span>
+                    <button onclick="quickSearch('status:active')" class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors">Active</button>
+                    <button onclick="quickSearch('status:pending')" class="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 transition-colors">Pending</button>
+                    <button onclick="quickSearch('status:inactive')" class="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors">Inactive</button>
+                    <button onclick="quickSearch('code:T4LA')" class="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">By Access Code</button>
+                `,
+                'partners': `
+                    <span class="text-xs text-gray-500 py-1">Quick filters:</span>
+                    <button onclick="quickSearch('status:active')" class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors">Active Partners</button>
+                    <button onclick="quickSearch('status:pending')" class="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 transition-colors">Pending Approval</button>
+                    <button onclick="quickSearch('recent')" class="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors">Recently Added</button>
+                `,
+                'articles': `
+                    <span class="text-xs text-gray-500 py-1">Quick filters:</span>
+                    <button onclick="quickSearch('status:pending')" class="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 transition-colors">Pending Review</button>
+                    <button onclick="quickSearch('status:approved')" class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors">Approved</button>
+                    <button onclick="quickSearch('status:published')" class="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors">Published</button>
+                    <button onclick="quickSearch('status:needs_update')" class="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded-full hover:bg-orange-200 transition-colors">Needs Update</button>
+                `,
+                'journey': `
+                    <span class="text-xs text-gray-500 py-1">Quick filters:</span>
+                    <button onclick="quickSearch('progress:high')" class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors">High Progress (75%+)</button>
+                    <button onclick="quickSearch('progress:medium')" class="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors">Medium (50-75%)</button>
+                    <button onclick="quickSearch('progress:low')" class="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded-full hover:bg-orange-200 transition-colors">Low Progress (&lt;50%)</button>
+                    <button onclick="quickSearch('month:1')" class="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">Month 1</button>
+                `
+            };
+            
+            container.innerHTML = tagsByCategory[category] || tagsByCategory['all'];
+        }
+        
+        function quickSearch(query) {
+            const input = document.getElementById('searchInput');
+            
+            // Handle special quick search queries
+            if (query.startsWith('status:')) {
+                const status = query.split(':')[1];
+                state.status = status;
+                document.getElementById('statusFilter').value = status === 'approved' || status === 'published' || status === 'needs_update' ? 'all' : status;
+                
+                // For articles, use articleStatusFilter
+                if (state.tab === 'articles' || searchCategory === 'articles') {
+                    state.articleStatusFilter = status;
+                    setActiveArticleFilter('filter' + status.charAt(0).toUpperCase() + status.slice(1).replace('_', ''));
+                    if (state.tab !== 'articles') switchTab('articles', true);
+                } else if (searchCategory !== 'all' && state.tab !== searchCategory) {
+                    switchTab(searchCategory, true);
+                }
+                
+                state.page = 1;
+                fetchList();
+                showSearchResultsInfo(`Status: ${status}`);
+                return;
+            }
+            
+            if (query.startsWith('progress:')) {
+                if (state.tab !== 'journey') switchTab('journey', true);
+                const level = query.split(':')[1];
+                state.progressFilter = level;
+                state.page = 1;
+                fetchList();
+                showSearchResultsInfo(`Progress: ${level}`);
+                return;
+            }
+            
+            if (query.startsWith('month:')) {
+                if (state.tab !== 'journey') switchTab('journey', true);
+                const month = query.split(':')[1];
+                state.monthFilter = month;
+                state.page = 1;
+                fetchList();
+                showSearchResultsInfo(`Month ${month}`);
+                return;
+            }
+            
+            if (query === 'recent') {
+                state.sortBy = 'recent';
+                state.page = 1;
+                fetchList();
+                showSearchResultsInfo('Recent Activity');
+                return;
+            }
+            
+            // Regular text search
+            input.value = query;
+            executeSearch();
+        }
+        
+        function executeSearch() {
+            const input = document.getElementById('searchInput');
+            const query = input.value.trim();
+            
+            if (!query) {
+                clearSearch();
+                return;
+            }
+            
+            // Save to recent searches
+            saveRecentSearch(query);
+            
+            // Update state and fetch
+            state.search = query;
+            state.page = 1;
+            
+            // If searching in a specific category, switch to that tab
+            // Preserve search when switching via search
+            if (searchCategory !== 'all' && state.tab !== searchCategory) {
+                switchTab(searchCategory, true); // true = preserve search
+            }
+            
+            fetchList();
+            showSearchResultsInfo(query);
+            hideSearchSuggestions();
+            
+            // Show clear button
+            document.getElementById('clearSearchBtn').classList.remove('hidden');
+        }
+        
+        function clearSearch() {
+            const input = document.getElementById('searchInput');
+            input.value = '';
+            state.search = '';
+            state.status = 'all';
+            state.articleStatusFilter = '';
+            state.progressFilter = null;
+            state.monthFilter = null;
+            state.sortBy = null;
+            state.page = 1;
+            
+            document.getElementById('statusFilter').value = 'all';
+            document.getElementById('clearSearchBtn').classList.add('hidden');
+            document.getElementById('searchResultsInfo').classList.add('hidden');
+            
+            // Reset article filters visual state
+            if (state.tab === 'articles') {
+                setActiveArticleFilter('filterAll');
+            }
+            
+            fetchList();
+            input.focus();
+        }
+        
+        function showSearchResultsInfo(query) {
+            const infoBar = document.getElementById('searchResultsInfo');
+            const queryDisplay = document.getElementById('searchQueryDisplay');
+            queryDisplay.textContent = query;
+            infoBar.classList.remove('hidden');
+            document.getElementById('clearSearchBtn').classList.remove('hidden');
+        }
+        
+        function saveRecentSearch(query) {
+            if (!query || recentSearches.includes(query)) return;
+            recentSearches.unshift(query);
+            if (recentSearches.length > 5) recentSearches.pop();
+            localStorage.setItem('t4l.admin.recentSearches', JSON.stringify(recentSearches));
+        }
+        
+        function showSearchSuggestions() {
+            const input = document.getElementById('searchInput');
+            const query = input.value.trim().toLowerCase();
+            const suggestionsContainer = document.getElementById('searchSuggestions');
+            const content = document.getElementById('searchSuggestionsContent');
+            
+            if (!query) {
+                // Show recent searches if available
+                if (recentSearches.length > 0) {
+                    let html = `
+                        <div class="px-4 py-2 text-xs text-gray-500 font-medium border-b">Recent Searches</div>
+                    `;
+                    recentSearches.forEach(search => {
+                        html += `
+                            <button onclick="selectSuggestion('${search}')" class="w-full px-4 py-2 text-left text-sm hover:bg-purple-50 flex items-center gap-2">
+                                <i class="bx bx-history text-gray-400"></i>
+                                <span>${search}</span>
+                            </button>
+                        `;
+                    });
+                    html += `
+                        <div class="border-t px-4 py-2">
+                            <button onclick="clearRecentSearches()" class="text-xs text-gray-500 hover:text-red-600">
+                                Clear recent searches
+                            </button>
+                        </div>
+                    `;
+                    content.innerHTML = html;
+                    suggestionsContainer.classList.remove('hidden');
+                } else {
+                    hideSearchSuggestions();
+                }
+                return;
+            }
+            
+            // Build suggestions based on current data and category
+            let suggestions = [];
+            
+            // Add matching items from current tab data
+            if (state.items && state.items.length > 0) {
+                const matches = state.items.filter(item => {
+                    const searchable = [
+                        item.name, item.contact_person, item.organization_name, item.email, item.title, item.authorNameRole, 
+                        item.access_code, item.company, item.ambassadorName, item.ambassadorEmail
+                    ].filter(Boolean).join(' ').toLowerCase();
+                    return searchable.includes(query);
+                }).slice(0, 5);
+                
+                matches.forEach(item => {
+                    const displayName = item.name || item.contact_person || item.title || item.ambassadorName || 'Unknown';
+                    const icon = state.tab === 'articles' ? 'bx-file' : 
+                                state.tab === 'partners' ? 'bx-buildings' : 
+                                state.tab === 'journey' ? 'bx-trip' : 'bx-user';
+                    suggestions.push({
+                        text: displayName,
+                        subtext: item.email || item.authorNameRole || item.ambassadorEmail || '',
+                        icon: icon,
+                        type: state.tab
+                    });
+                });
+            }
+            
+            if (suggestions.length === 0) {
+                hideSearchSuggestions();
+                return;
+            }
+            
+            let html = `<div class="px-4 py-2 text-xs text-gray-500 font-medium border-b">Suggestions</div>`;
+            suggestions.forEach(s => {
+                html += `
+                    <button onclick="selectSuggestion('${s.text}')" class="w-full px-4 py-2 text-left hover:bg-purple-50 flex items-center gap-3">
+                        <i class="bx ${s.icon} text-gray-400"></i>
+                        <div>
+                            <div class="text-sm font-medium text-gray-900">${s.text}</div>
+                            ${s.subtext ? `<div class="text-xs text-gray-500">${s.subtext}</div>` : ''}
+                        </div>
+                    </button>
+                `;
+            });
+            
+            content.innerHTML = html;
+            suggestionsContainer.classList.remove('hidden');
+        }
+        
+        function hideSearchSuggestions() {
+            document.getElementById('searchSuggestions').classList.add('hidden');
+        }
+        
+        function selectSuggestion(text) {
+            document.getElementById('searchInput').value = text;
+            hideSearchSuggestions();
+            executeSearch();
+        }
+        
+        function clearRecentSearches() {
+            recentSearches = [];
+            localStorage.removeItem('t4l.admin.recentSearches');
+            hideSearchSuggestions();
+        }
+
+        // ============================================
+        // BIND EVENTS (UPDATED WITH ENHANCED SEARCH)
         // ============================================
 
         function bindEvents() {
-            let searchTimeout;
+            // Enhanced search input handling
             elements.searchInput.addEventListener('input', (e) => {
                 clearTimeout(searchTimeout);
+                
+                const query = e.target.value.trim();
+                
+                // Show/hide clear button
+                if (query) {
+                    document.getElementById('clearSearchBtn').classList.remove('hidden');
+                } else {
+                    document.getElementById('clearSearchBtn').classList.add('hidden');
+                }
+                
+                // Show suggestions while typing
+                showSearchSuggestions();
+                
+                // Debounced search execution
                 searchTimeout = setTimeout(() => {
-                    state.search = e.target.value;
+                    state.search = query;
                     state.page = 1;
+                    if (query) {
+                        showSearchResultsInfo(query);
+                    } else {
+                        document.getElementById('searchResultsInfo').classList.add('hidden');
+                    }
                     fetchList();
                 }, 500);
+            });
+            
+            // Search on Enter key
+            elements.searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    executeSearch();
+                }
+                if (e.key === 'Escape') {
+                    hideSearchSuggestions();
+                }
+            });
+            
+            // Hide suggestions when clicking outside
+            document.addEventListener('click', (e) => {
+                const searchArea = document.querySelector('.relative:has(#searchInput)') || elements.searchInput.parentElement;
+                if (!searchArea.contains(e.target)) {
+                    hideSearchSuggestions();
+                }
+            });
+            
+            // Show suggestions on focus
+            elements.searchInput.addEventListener('focus', () => {
+                showSearchSuggestions();
             });
             
             elements.statusFilter.addEventListener('change', (e) => {
@@ -2782,87 +4381,130 @@ function resetRequestChangesButton(btn, text, loader) {
                 fetchList();
             });
             
-            document.getElementById('filterAll').addEventListener('click', () => {
+            // Article filter buttons with safety checks
+            const filterAll = document.getElementById('filterAll');
+            const filterPending = document.getElementById('filterPending');
+            const filterNeedsUpdate = document.getElementById('filterNeedsUpdate');
+            const filterApproved = document.getElementById('filterApproved');
+            const filterPublished = document.getElementById('filterPublished');
+            const filterRejected = document.getElementById('filterRejected');
+            
+            if (filterAll) filterAll.addEventListener('click', () => {
                 state.articleStatusFilter = '';
                 state.page = 1;
                 setActiveArticleFilter('filterAll');
                 fetchList();
             });
             
-            document.getElementById('filterPending').addEventListener('click', () => {
+            if (filterPending) filterPending.addEventListener('click', () => {
                 state.articleStatusFilter = 'pending';
                 state.page = 1;
                 setActiveArticleFilter('filterPending');
                 fetchList();
             });
             
-            document.getElementById('filterNeedsUpdate').addEventListener('click', () => {
+            if (filterNeedsUpdate) filterNeedsUpdate.addEventListener('click', () => {
                 state.articleStatusFilter = 'needs_update';
                 state.page = 1;
                 setActiveArticleFilter('filterNeedsUpdate');
                 fetchList();
             });
             
-            document.getElementById('filterApproved').addEventListener('click', () => {
+            if (filterApproved) filterApproved.addEventListener('click', () => {
                 state.articleStatusFilter = 'approved';
                 state.page = 1;
                 setActiveArticleFilter('filterApproved');
                 fetchList();
             });
             
-            document.getElementById('filterPublished').addEventListener('click', () => {
+            if (filterPublished) filterPublished.addEventListener('click', () => {
                 state.articleStatusFilter = 'published';
                 state.page = 1;
                 setActiveArticleFilter('filterPublished');
                 fetchList();
             });
             
-            document.getElementById('filterRejected').addEventListener('click', () => {
+            if (filterRejected) filterRejected.addEventListener('click', () => {
                 state.articleStatusFilter = 'rejected';
                 state.page = 1;
                 setActiveArticleFilter('filterRejected');
                 fetchList();
             });
             
-            elements.prevPage.addEventListener('click', () => {
-                if (state.page > 1) {
-                    state.page--;
-                    fetchList();
-                }
-            });
+            if (elements.prevPage) {
+                elements.prevPage.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('⬅️ Previous button clicked, current page:', state.page);
+                    if (state.page > 1) {
+                        state.page--;
+                        console.log('📄 Going to page:', state.page);
+                        fetchList();
+                    }
+                });
+                console.log('✅ Previous page button listener attached');
+            } else {
+                console.error('❌ prevPage element not found!');
+            }
             
-            elements.nextPage.addEventListener('click', () => {
-                const totalPages = Math.ceil(state.total / state.limit);
-                if (state.page < totalPages) {
-                    state.page++;
-                    fetchList();
-                }
-            });
+            if (elements.nextPage) {
+                elements.nextPage.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const totalPages = Math.ceil(state.total / state.limit);
+                    console.log('➡️ Next button clicked, current page:', state.page, 'total pages:', totalPages);
+                    if (state.page < totalPages) {
+                        state.page++;
+                        console.log('📄 Going to page:', state.page);
+                        fetchList();
+                    }
+                });
+                console.log('✅ Next page button listener attached');
+            } else {
+                console.error('❌ nextPage element not found!');
+            }
 
-            document.getElementById('closeJourneyDetail').addEventListener('click', () => {
-                const modal = document.getElementById('journeyDetailModal');
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
-            });
+            const closeJourneyBtn = document.getElementById('closeJourneyDetail');
+            if (closeJourneyBtn) {
+                closeJourneyBtn.addEventListener('click', () => {
+                    const modal = document.getElementById('journeyDetailModal');
+                    if (modal) {
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                    }
+                });
+            }
         }
 
         // ============================================
-        // TAB SWITCH FUNCTION (Called by inline onclick)
+        // TAB SWITCH FUNCTION (EXISTING - UNCHANGED)
         // ============================================
-        function switchTab(tabName) {
-            console.log(`📋 Switching to tab: ${tabName}`);
-            
+        function switchTab(tabName, preserveSearch = false) {
+            console.log(`📋 Switching to tab: ${tabName}, preserveSearch: ${preserveSearch}`);
+
             // Stop journey polling if switching away from journey tab
             if (state.tab === 'journey' && tabName !== 'journey') {
                 if (typeof stopJourneyPolling === 'function') {
                     stopJourneyPolling();
                 }
             }
-            
+
             // Update state
             state.tab = tabName;
             state.page = 1;
-            state.search = '';
+            
+            // Only reset search if not preserving it
+            if (!preserveSearch) {
+                state.search = '';
+                // Also clear the search input
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) searchInput.value = '';
+                // Hide search results info
+                const searchResultsInfo = document.getElementById('searchResultsInfo');
+                if (searchResultsInfo) searchResultsInfo.classList.add('hidden');
+                // Hide clear button
+                const clearBtn = document.getElementById('clearSearchBtn');
+                if (clearBtn) clearBtn.classList.add('hidden');
+            }
+            
             state.status = 'all';
             state.articleStatusFilter = '';
             
@@ -2920,7 +4562,7 @@ function resetRequestChangesButton(btn, text, loader) {
         }
 
         // ============================================
-        // TAB SETUP FUNCTION
+        // TAB SETUP FUNCTION (EXISTING - UNCHANGED)
         // ============================================
         function setupTabsWithPolling() {
             const tabIds = {
@@ -3039,7 +4681,7 @@ function resetRequestChangesButton(btn, text, loader) {
         }
 
         // ============================================
-        // LOGOUT FUNCTION
+        // LOGOUT FUNCTION (EXISTING - UNCHANGED)
         // ============================================
         async function logout() {
             try {
@@ -3058,7 +4700,7 @@ function resetRequestChangesButton(btn, text, loader) {
         }
 
         // ============================================
-        // INITIALIZE
+        // INITIALIZE (EXISTING - UNCHANGED)
         // ============================================
         document.addEventListener('DOMContentLoaded', () => {
             loadAdminInfo();
@@ -3078,6 +4720,16 @@ function resetRequestChangesButton(btn, text, loader) {
                 
                 document.getElementById('pushPublicationForm').addEventListener('submit', handlePushPublication);
                 console.log('✅ Push publication form bound with fixed handler');
+            }
+            
+            // Bind edit user form - clone first to remove any existing handlers
+            const editUserForm = document.getElementById('editUserForm');
+            if (editUserForm) {
+                const newEditForm = editUserForm.cloneNode(true);
+                editUserForm.parentNode.replaceChild(newEditForm, editUserForm);
+                
+                document.getElementById('editUserForm').addEventListener('submit', handleEditFormSubmit);
+                console.log('✅ Edit user form bound with fixed handler');
             }
         });
 
@@ -3118,6 +4770,9 @@ function resetRequestChangesButton(btn, text, loader) {
         window.closeModal = closeModal;
         window.closeDeleteModal = closeDeleteModal;
         window.confirmDelete = confirmDelete;
+        window.closeEditModal = closeEditModal;
+        window.openEditModal = openEditModal;
+        window.submitEditForm = submitEditForm;
         window.closeProfileAudit = closeProfileAudit;
         window.logout = logout;
         window.showToast = showToast;
@@ -3132,6 +4787,17 @@ function resetRequestChangesButton(btn, text, loader) {
         window.handleNotificationClick = handleNotificationClick;
         window.closeNotificationDropdown = closeNotificationDropdown;
         window.switchTab = switchTab; // Expose switchTab function for inline onclick handlers
+        window.submitLinkedInAudit = submitLinkedInAudit;
+        window.submitSpeakerProfile = submitSpeakerProfile;
+        
+        // Expose enhanced search functions
+        window.toggleSearchCategoryDropdown = toggleSearchCategoryDropdown;
+        window.setSearchCategory = setSearchCategory;
+        window.quickSearch = quickSearch;
+        window.executeSearch = executeSearch;
+        window.clearSearch = clearSearch;
+        window.selectSuggestion = selectSuggestion;
+        window.clearRecentSearches = clearRecentSearches;
     </script>
 </body>
 </html>

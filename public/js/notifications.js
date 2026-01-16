@@ -14,11 +14,32 @@
   // ============================================
   // INITIALIZE NOTIFICATION SYSTEM
   // ============================================
-  function initNotifications() {
+  let currentUserRole = null;
+
+  async function initNotifications() {
     if (isInitialized) return;
     isInitialized = true;
 
     console.log('🔔 Initializing global notification system...');
+
+    try {
+      const res = await fetch('/api/me', { credentials: 'include' });
+      if (!res.ok) return;
+      const me = await res.json();
+      // Support both admin and ambassador roles
+      if (!me || !['admin', 'ambassador'].includes(me.role)) {
+        const bellIcons = document.querySelectorAll('.bx-bell');
+        bellIcons.forEach(bell => {
+          const el = bell.closest('button, div, a, i') || bell;
+          if (el) el.style.display = 'none';
+        });
+        return;
+      }
+      currentUserRole = me.role;
+      console.log('🔔 Notification system for role:', currentUserRole);
+    } catch (e) {
+      return;
+    }
 
     // Create the notification panel HTML
     createNotificationPanel();
@@ -35,7 +56,7 @@
     // Close panel when clicking outside
     document.addEventListener('click', handleOutsideClick);
 
-    console.log('✅ Notification system initialized');
+    console.log('✅ Notification system initialized for', currentUserRole);
   }
 
   // ============================================
@@ -365,6 +386,18 @@
       .notification-icon.type-ready_to_publish,
       .notification-icon.type-article_published {
         background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      }
+
+      .notification-icon.type-ambassador_consent {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      }
+
+      .notification-icon.type-article_rejected {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      }
+      
+      .notification-icon.type-article_pending {
+        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
       }
       
       .notification-icon.type-default {
@@ -700,6 +733,9 @@
   // GET NOTIFICATION ICON CLASS
   // ============================================
   function getNotificationIconClass(type) {
+    // Normalize type to handle both old format (article_approved) and new direct format (approved)
+    const normalizedType = (type || '').toLowerCase().replace('article_', '');
+    
     const typeClasses = {
       'application_submitted': 'type-application_submitted',
       'application_status_change': 'type-application_status_change',
@@ -708,15 +744,23 @@
       'service_request_status': 'type-service_request_status',
       'needs_update': 'type-needs_update',
       'ready_to_publish': 'type-ready_to_publish',
-      'article_published': 'type-article_published'
+      'published': 'type-article_published',
+      'approved': 'type-ready_to_publish',
+      'rejected': 'type-article_rejected',
+      'pending': 'type-article_pending',
+      'submitted': 'type-application_submitted',
+      'ambassador_consent': 'type-ambassador_consent'
     };
-    return typeClasses[type] || 'type-default';
+    return typeClasses[normalizedType] || typeClasses[type] || 'type-default';
   }
 
   // ============================================
   // GET NOTIFICATION ICON
   // ============================================
   function getNotificationIcon(type) {
+    // Normalize type to handle both old format (article_approved) and new direct format (approved)
+    const normalizedType = (type || '').toLowerCase().replace('article_', '');
+    
     const icons = {
       'application_submitted': 'bx-send',
       'application_status_change': 'bx-check-circle',
@@ -725,9 +769,14 @@
       'service_request_status': 'bx-briefcase-alt-2',
       'needs_update': 'bx-edit',
       'ready_to_publish': 'bx-rocket',
-      'article_published': 'bx-party'
+      'published': 'bx-party',
+      'approved': 'bx-check-circle',
+      'rejected': 'bx-x-circle',
+      'pending': 'bx-time-five',
+      'submitted': 'bx-file',
+      'ambassador_consent': 'bx-check-shield'
     };
-    return icons[type] || 'bx-bell';
+    return icons[normalizedType] || icons[type] || 'bx-bell';
   }
 
   // ============================================
@@ -804,8 +853,8 @@
   // ============================================
   async function markAllAsRead() {
     try {
-      const response = await fetch('/api/notifications/read-all', {
-        method: 'PATCH',
+      const response = await fetch('/api/notifications/mark-all-read', {
+        method: 'POST',
         credentials: 'include'
       });
       
