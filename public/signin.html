@@ -158,8 +158,10 @@
       togglePasswordBtn.addEventListener('click', function() {
         const isPassword = passwordInput.type === 'password';
         passwordInput.type = isPassword ? 'text' : 'password';
-        eyeIcon.classList.toggle('hidden', !isPassword);
-        eyeSlashIcon.classList.toggle('hidden', isPassword);
+        // When showing password (text), hide eye icon and show eye-slash icon
+        // When hiding password (password), show eye icon and hide eye-slash icon
+        eyeIcon.classList.toggle('hidden', isPassword);
+        eyeSlashIcon.classList.toggle('hidden', !isPassword);
       });
 
       // Check for remembered credentials on page load

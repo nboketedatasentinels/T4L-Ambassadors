@@ -76,6 +76,7 @@
           <div>
             <label class="text-sm font-semibold text-gray-800 block mb-2">Access Code</label>
             <input 
+              id="partner-access-code"
               type="text" 
               name="access_code"
               placeholder="T4L8-X9QP" 
@@ -113,7 +114,7 @@
           <!-- Remember me + Forgot Password -->
           <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm">
             <label class="flex items-center space-x-2 cursor-pointer group">
-              <input type="checkbox" name="rememberMe" class="w-4 h-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500 cursor-pointer" />
+              <input id="partnerRememberMe" type="checkbox" name="rememberMe" class="w-4 h-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500 cursor-pointer" />
               <span class="text-gray-700 group-hover:text-gray-900">Remember me</span>
             </label>
             <a href="#" class="text-yellow-600 hover:text-yellow-700 font-semibold transition">Forgot Password?</a>
@@ -172,107 +173,110 @@
 </html>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('signinForm');
+    const submitBtn = document.getElementById('signinButton');
+    const passwordInput = document.getElementById('partner-password');
+    const togglePasswordBtn = document.getElementById('togglePassword');
+    const eyeIcon = document.getElementById('eyeIcon');
+    const eyeSlashIcon = document.getElementById('eyeSlashIcon');
+    const rememberMeCheckbox = document.getElementById('partnerRememberMe');
+    const emailInput = document.getElementById('partner-email');
+    const accessCodeInput = document.getElementById('partner-access-code');
+
+    // Toggle password visibility
+    if (togglePasswordBtn) {
+      togglePasswordBtn.addEventListener('click', function() {
+        const isPassword = passwordInput.type === 'password';
+        passwordInput.type = isPassword ? 'text' : 'password';
+        // When showing password (text), hide eye icon and show eye-slash icon
+        // When hiding password (password), show eye icon and hide eye-slash icon
+        eyeIcon.classList.toggle('hidden', isPassword);
+        eyeSlashIcon.classList.toggle('hidden', !isPassword);
+      });
+    }
+
+    // Check for remembered credentials on page load
+    const rememberedEmail = localStorage.getItem('rememberedPartnerEmail');
+    const rememberedAccessCode = localStorage.getItem('rememberedPartnerAccessCode');
+    if (rememberedEmail && rememberedAccessCode) {
+      emailInput.value = rememberedEmail;
+      accessCodeInput.value = rememberedAccessCode;
+      rememberMeCheckbox.checked = true;
+    }
+
+    // Check for auto-populate flag in URL (from registration)
     try {
-      // Check for auto-populate flag in URL
       const urlParams = new URLSearchParams(window.location.search);
       const shouldAutoPopulate = urlParams.get('autoPopulate') === 'true';
       
       if (shouldAutoPopulate) {
-        // Retrieve stored credentials from localStorage
         const storedData = localStorage.getItem('autoPopulatePartnerEmail');
         
         if (storedData) {
           try {
             const data = JSON.parse(storedData);
-            const email = data.email;
-            const access_code = data.access_code;
-            const savedPassword = data.password;
-            const timestamp = data.timestamp;
-            
-            // Validate timestamp (expire after 10 minutes for security)
             const now = Date.now();
             const maxAge = 10 * 60 * 1000; // 10 minutes
             
-            if (timestamp && (now - timestamp) < maxAge) {
-              // Auto-fill fields
-              const emailInput = document.getElementById('partner-email');
-              const access_codeInput = document.querySelector('input[name="access_code"]');
-              const passwordInput = document.getElementById('partner-password');
-              
-              if (emailInput && email) {
-                emailInput.value = email;
-                emailInput.classList.add('ring-2', 'ring-yellow-400', 'border-yellow-400');
-                setTimeout(() => {
-                  emailInput.classList.remove('ring-2', 'ring-yellow-400', 'border-yellow-400');
-                }, 2000);
-              }
-              if (access_codeInput && access_code) {
-                access_codeInput.value = access_code;
-              }
-              if (passwordInput && savedPassword) {
-                passwordInput.value = savedPassword;
-              }
+            if (data.timestamp && (now - data.timestamp) < maxAge) {
+              if (data.email) emailInput.value = data.email;
+              if (data.access_code) accessCodeInput.value = data.access_code;
+              if (data.password) passwordInput.value = data.password;
               
               // Show auto-fill indicator
               const indicator = document.getElementById('partnerAutoFillIndicator');
               if (indicator) {
                 indicator.classList.remove('hidden');
-                setTimeout(() => {
-                  indicator.classList.add('hidden');
-                }, 5000);
+                setTimeout(() => indicator.classList.add('hidden'), 5000);
               }
-              
-              // Focus on password field
-              if (passwordInput) {
-                setTimeout(() => {
-                  passwordInput.focus();
-                }, 100);
-              }
-            } else {
-              // Timestamp expired or invalid, clear stale data
-              localStorage.removeItem('autoPopulatePartnerEmail');
             }
-          } catch (parseError) {
-            // Invalid JSON, clear corrupted data
-            localStorage.removeItem('autoPopulatePartnerEmail');
+          } catch (e) {
+            console.error('Failed to parse auto-populate data:', e);
           }
         }
-        
-        // Always clear stored credentials after attempting to use them (for security)
-        localStorage.removeItem('autoPopulatePartnerEmail');
-      } else {
-        // Clear any stale data if user navigates to sign-in without autoPopulate flag
+        // Clear after use
         localStorage.removeItem('autoPopulatePartnerEmail');
       }
     } catch (error) {
-      // Graceful fallback - silently handle errors
-      try {
-        localStorage.removeItem('autoPopulatePartnerEmail');
-      } catch (_) {}
+      console.error('Auto-populate error:', error);
     }
 
-    // Add this script to handle form submission
-    document.getElementById('signinForm').addEventListener('submit', async function(e) {
+    // Handle form submission
+    form.addEventListener('submit', async function(e) {
       e.preventDefault();
       
-      const form = e.target;
-      const submitBtn = document.getElementById('signinButton');
       const originalText = submitBtn.textContent;
+      const email = emailInput.value.trim();
+      const access_code = accessCodeInput.value.trim();
+      const password = passwordInput.value;
+      const rememberMe = rememberMeCheckbox.checked;
+
+      // Handle remember me - save or remove credentials
+      if (rememberMe) {
+        localStorage.setItem('rememberedPartnerEmail', email);
+        localStorage.setItem('rememberedPartnerAccessCode', access_code);
+      } else {
+        localStorage.removeItem('rememberedPartnerEmail');
+        localStorage.removeItem('rememberedPartnerAccessCode');
+      }
       
       // Show loading state
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<span class="loading">Signing in...</span>';
       
       try {
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-        
-        const response = await fetch(form.action, {
+        const response = await fetch('/partner-signin', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(data)
+          credentials: 'include',
+          body: JSON.stringify({
+            email,
+            access_code,
+            password,
+            rememberMe
+          })
         });
         
         const result = await response.json();
