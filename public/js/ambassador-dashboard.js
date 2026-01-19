@@ -78,6 +78,38 @@ function validateAndFixVideoUrl(url) {
   return url;
 }
 
+// Global variable to store journey data (single source of truth)
+let CURRENT_JOURNEY_DATA = null;
+
+// ✅ Fetch journey data ONCE and store it
+async function fetchJourneyData() {
+  try {
+    console.log('🔄 Fetching journey data from API...');
+    const response = await fetch('/api/journey');
+    
+    if (!response.ok) {
+      throw new Error('Failed to load journey data');
+    }
+    
+    CURRENT_JOURNEY_DATA = await response.json();
+    console.log('✅ Journey data loaded:', {
+      currentMonth: CURRENT_JOURNEY_DATA.currentMonth,
+      completedTasks: Object.keys(CURRENT_JOURNEY_DATA.completedTasks || {}).length
+    });
+    
+    return CURRENT_JOURNEY_DATA;
+  } catch (error) {
+    console.error('❌ Error fetching journey data:', error);
+    // Fallback to month 1 if API fails
+    CURRENT_JOURNEY_DATA = {
+      currentMonth: 1,
+      completedTasks: {},
+      startDate: new Date().toISOString()
+    };
+    return CURRENT_JOURNEY_DATA;
+  }
+}
+
 // Video functions
 function showVideoError(message = null) {
   const videoContainer = document.getElementById('videoContainer');
@@ -169,70 +201,138 @@ function playVideo() {
 
 async function loadCurrentMonthVideo() {
   try {
-    const response = await fetch('/api/journey');
-    if (!response.ok) throw new Error('Failed to load journey data');
+    console.log('🎥 ========== VIDEO LOADING START ==========');
+    
+    // ✅ STEP 1: Get FRESH journey data from API (NOT localStorage)
+    console.log('📡 Fetching fresh journey data from /api/journey...');
+    const response = await fetch('/api/journey', {
+      credentials: 'include',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API returned ${response.status}`);
+    }
     
     const journeyData = await response.json();
-    let currentMonth = Math.max(1, Math.min(12, journeyData.currentMonth || 1));
+    const currentMonth = journeyData.currentMonth || 1;
     
-    let currentVideo = VIDEO_CONFIG.find(v => v.month === currentMonth);
-    if (!currentVideo) throw new Error(`Video configuration missing for month ${currentMonth}`);
+    console.log('✅ API Response:', {
+      currentMonth: currentMonth,
+      totalCompletedTasks: Object.keys(journeyData.completedTasks || {}).length
+    });
     
+    // ✅ STEP 2: Find the correct video for this month
+    console.log(`🔍 Looking for video for Month ${currentMonth}...`);
+    const currentVideo = VIDEO_CONFIG.find(v => v.month === currentMonth);
+    
+    if (!currentVideo) {
+      console.error(`❌ No video found for Month ${currentMonth}`);
+      console.log('Available months:', VIDEO_CONFIG.map(v => v.month));
+      showVideoError(`Video not found for Month ${currentMonth}`);
+      return;
+    }
+    
+    console.log('✅ Found video:', {
+      month: currentVideo.month,
+      title: currentVideo.title
+    });
+    
+    // ✅ STEP 3: Validate URL
     const validatedUrl = validateAndFixVideoUrl(currentVideo.url);
-    if (!validatedUrl) throw new Error(`Invalid video URL for month ${currentMonth}`);
-    
-    currentVideo = { ...currentVideo, url: validatedUrl };
-    window.currentVideo = currentVideo;
-    
-    const currentMonthInfo = MONTH_DATA.find(m => m.month === currentMonth);
-    const nextMonthInfo = MONTH_DATA.find(m => m.month === currentMonth + 1);
-    
-    // Update UI elements
-    const heroDescription = document.getElementById('heroDescription');
-    if (heroDescription && currentMonthInfo) {
-      heroDescription.innerHTML = `
-        You're in Month ${currentMonth} <span class="font-semibold">${currentMonthInfo.title} Stage</span><br />
-        ${currentMonthInfo.milestone}
-      `;
+    if (!validatedUrl) {
+      throw new Error('Invalid video URL');
     }
     
-    const nextMilestoneText = document.getElementById('nextMilestoneText');
-    if (nextMilestoneText) {
-      nextMilestoneText.textContent = nextMonthInfo 
-        ? `Month ${nextMonthInfo.month}: ${nextMonthInfo.title}`
-        : currentMonth === 12 ? "🎉 Journey Complete! Time to Renew" : "Loading...";
-    }
+    // ✅ STEP 4: Store globally
+    window.currentVideo = { ...currentVideo, url: validatedUrl };
     
-    const daysInProgramText = document.getElementById('daysInProgramText');
-    if (daysInProgramText) {
-      const tasksForMonth = journeyData.tasks || {};
-      const tasksInCurrentMonth = Object.keys(tasksForMonth).filter(key => {
-        const [monthNum] = key.split('-');
-        return parseInt(monthNum) === currentMonth;
-      }).length;
-      const currentMonthTotalTasks = journeyData.monthTasks?.[currentMonth] || 5;
-      const currentMonthProgress = currentMonthTotalTasks > 0 
-        ? Math.round((tasksInCurrentMonth / currentMonthTotalTasks) * 100) 
-        : 0;
-      daysInProgramText.textContent = `${currentMonthProgress}% of month tasks completed`;
-    }
+    // ✅ STEP 5: Update ALL text elements IMMEDIATELY
+    console.log('📝 Updating UI elements...');
     
+    // Video title
     const videoTitle = document.getElementById('videoTitle');
-    if (videoTitle) videoTitle.textContent = `Month ${currentMonth}: ${currentVideo.title}`;
-    
-    const videoDescription = document.getElementById('videoDescription');
-    if (videoDescription) videoDescription.textContent = currentVideo.description;
-    
-    const videoMeta = document.getElementById('videoMeta');
-    if (videoMeta) videoMeta.textContent = `${currentVideo.duration} • Month ${currentMonth}`;
-    
-    const videoContainer = document.getElementById('videoContainer');
-    if (videoContainer) {
-      setTimeout(() => playVideo(), 500);
+    if (videoTitle) {
+      videoTitle.textContent = `Month ${currentMonth}: ${currentVideo.title}`;
+      console.log('✓ videoTitle updated');
     }
+    
+    // Video description
+    const videoDescription = document.getElementById('videoDescription');
+    if (videoDescription) {
+      videoDescription.textContent = currentVideo.description;
+      console.log('✓ videoDescription updated');
+    }
+    
+    // Video meta
+    const videoMeta = document.getElementById('videoMeta');
+    if (videoMeta) {
+      videoMeta.textContent = `${currentVideo.duration} • Month ${currentMonth}`;
+      console.log('✓ videoMeta updated');
+    }
+    
+    // ✅ STEP 6: Build and load iframe
+    console.log('🎬 Loading video iframe...');
+    const videoContainer = document.getElementById('videoContainer');
+    
+    if (!videoContainer) {
+      console.error('❌ videoContainer element not found!');
+      return;
+    }
+    
+    // Build embed URL with autoplay
+    let embedUrl = validatedUrl;
+    if (embedUrl.includes('canva.com')) {
+      const urlParts = embedUrl.split('?');
+      const baseUrl = urlParts[0];
+      const params = new URLSearchParams(urlParts[1] || '');
+      if (!params.has('embed')) params.append('embed', '');
+      params.set('autoplay', '1');
+      params.delete('muted');
+      embedUrl = baseUrl + '?' + params.toString();
+    }
+    
+    // Insert video iframe
+    videoContainer.innerHTML = `
+      <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl video-preview" style="padding-top: 56.25%; background: #000;">
+        <iframe 
+          id="canvaVideoFrame"
+          class="absolute top-0 left-0 w-full h-full border-0"
+          src="${embedUrl}"
+          allow="autoplay *; fullscreen; accelerometer; gyroscope; picture-in-picture; clipboard-write; encrypted-media"
+          allowfullscreen
+          frameborder="0"
+          title="Month ${currentMonth}: ${currentVideo.title}"
+          loading="eager"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation allow-autoplay">
+        </iframe>
+      </div>
+    `;
+    
+    console.log('✅ Video iframe inserted successfully');
+    
+    // ✅ STEP 7: Final verification
+    const finalTitle = document.getElementById('videoTitle')?.textContent;
+    const expectedTitle = `Month ${currentMonth}: ${currentVideo.title}`;
+    
+    if (finalTitle === expectedTitle) {
+      console.log('✅✅✅ SUCCESS! Video matches journey month:', currentMonth);
+    } else {
+      console.error('❌ Mismatch detected!');
+      console.error('Expected:', expectedTitle);
+      console.error('Got:', finalTitle);
+    }
+    
+    console.log('========== VIDEO LOADING COMPLETE ==========\n');
+    
   } catch (error) {
-    console.error('Error loading video:', error);
-    showVideoError(error.message || 'Failed to load video data.');
+    console.error('❌ ========== VIDEO LOADING FAILED ==========');
+    console.error('Error:', error.message);
+    console.error('Stack:', error.stack);
+    showVideoError(error.message || 'Failed to load video');
   }
 }
 
@@ -298,12 +398,15 @@ async function loadPartnerCalls() {
   }
 }
 
-// Optimized dashboard stats loading with batching
+// Optimized dashboard stats loading with batching - Now uses API as single source of truth
 async function loadDashboardStats() {
   try {
-    const journeyStorageKey = 'journey_tasks_default';
-    const savedTasks = localStorage.getItem(journeyStorageKey);
-    const completedTasks = savedTasks ? JSON.parse(savedTasks) : {};
+    // Use already-loaded journey data or fetch it
+    const journeyData = CURRENT_JOURNEY_DATA || await fetchJourneyData();
+    const currentMonth = journeyData.currentMonth || 1;
+    const completedTasks = journeyData.completedTasks || {};
+    
+    console.log('✅ Dashboard using Month', currentMonth, 'from journey data');
     
     // Calculate overall progress
     const overallProgress = MONTH_DATA.length > 0 ? MONTH_DATA.reduce((acc, m) => {
@@ -315,14 +418,6 @@ async function loadDashboardStats() {
     }, 0) / MONTH_DATA.length * 100 : 0;
     
     const roundedProgress = Math.round(overallProgress);
-    
-    // Find current month
-    let currentMonth = 1;
-    Object.keys(completedTasks).forEach(key => {
-      const [monthNum] = key.split('-');
-      const month = parseInt(monthNum);
-      if (!isNaN(month) && month > currentMonth) currentMonth = month;
-    });
     
     const currentMonthData = MONTH_DATA.find(m => m.month === currentMonth);
     let currentMonthCompleted = 0;
@@ -345,14 +440,6 @@ async function loadDashboardStats() {
     const upcomingTasksCount = document.getElementById('upcomingTasksCount');
     if (completedTasksCount) completedTasksCount.textContent = currentMonthCompleted;
     if (upcomingTasksCount) upcomingTasksCount.textContent = `${upcomingTasks} remaining`;
-    
-    const heroDescription = document.getElementById('heroDescription');
-    if (heroDescription && currentMonthData) {
-      heroDescription.innerHTML = `
-        You're in Month ${currentMonth} <span class="font-semibold">${currentMonthData.title} Stage</span><br />
-        ${currentMonthData.milestone}
-      `;
-    }
     
     const nextMilestoneText = document.getElementById('nextMilestoneText');
     if (nextMilestoneText) {
@@ -429,6 +516,57 @@ async function loadDashboardStats() {
   }
 }
 
+// ✅ Initialize dashboard with synchronized data
+async function initializeDashboard() {
+  try {
+    console.log('🚀 ========== DASHBOARD INITIALIZATION START ==========');
+    
+    // ✅ STEP 1: Fetch journey data FIRST
+    console.log('📡 Step 1: Fetching journey data...');
+    const journeyResponse = await fetch('/api/journey', {
+      credentials: 'include',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+    
+    if (!journeyResponse.ok) {
+      throw new Error('Failed to fetch journey data');
+    }
+    
+    const journeyData = await journeyResponse.json();
+    console.log('✅ Journey data received:', {
+      currentMonth: journeyData.currentMonth,
+      completedTasks: Object.keys(journeyData.completedTasks || {}).length
+    });
+    
+    // ✅ Store globally for other functions to use
+    window.CURRENT_JOURNEY_DATA = journeyData;
+    CURRENT_JOURNEY_DATA = journeyData;
+    
+    // ✅ STEP 2: Load video using the journey data
+    console.log('🎥 Step 2: Loading video for Month', journeyData.currentMonth);
+    await loadCurrentMonthVideo();
+    
+    // ✅ STEP 3: Load dashboard stats
+    console.log('📊 Step 3: Loading dashboard stats...');
+    await loadDashboardStats();
+    
+    // ✅ STEP 4: Load partner calls
+    console.log('💼 Step 4: Loading partner calls...');
+    loadPartnerCalls();
+    
+    console.log('✅✅✅ DASHBOARD INITIALIZATION COMPLETE ✅✅✅\n');
+    
+  } catch (error) {
+    console.error('❌ ========== DASHBOARD INITIALIZATION FAILED ==========');
+    console.error('Error:', error.message);
+    console.error('Stack:', error.stack);
+    showVideoError('Failed to initialize dashboard');
+  }
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
   // Mobile sidebar toggle
@@ -468,10 +606,31 @@ document.addEventListener('DOMContentLoaded', function() {
         // No user data - that's okay, just continue
         return;
       }
-      
+
       const welcomeHeading = document.getElementById('welcomeHeading');
       if (welcomeHeading && data.name) {
-        welcomeHeading.textContent = `Welcome back, ${data.name}!`;
+        try {
+          // Use a per-user key so we only treat the very first login as "Welcome"
+          const storageKey = data.id
+            ? `hasLoggedInBefore_${data.id}`
+            : 'hasLoggedInBefore_default';
+
+          const hasLoggedInBefore =
+            typeof window !== 'undefined' &&
+            window.localStorage &&
+            window.localStorage.getItem(storageKey) === 'true';
+
+          if (hasLoggedInBefore) {
+            welcomeHeading.textContent = `Welcome back, ${data.name}!`;
+          } else {
+            welcomeHeading.textContent = `Welcome, ${data.name}!`;
+            // Mark that this user has now logged in at least once
+            window.localStorage.setItem(storageKey, 'true');
+          }
+        } catch (e) {
+          // Fallback if localStorage is unavailable
+          welcomeHeading.textContent = `Welcome back, ${data.name}!`;
+        }
       }
       
       const avatarElement = document.getElementById('userAvatar');
@@ -499,22 +658,339 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Load data
-  loadCurrentMonthVideo();
-  loadPartnerCalls();
-  loadDashboardStats();
+  // ✅ CRITICAL: Initialize dashboard with synchronized data
+  initializeDashboard();
   
-  // Optimized polling - reduced from 2s to 10s
-  let lastKnownTasks = localStorage.getItem('journey_tasks_default');
-  setInterval(() => {
-    const currentTasks = localStorage.getItem('journey_tasks_default');
-    if (currentTasks !== lastKnownTasks) {
-      lastKnownTasks = currentTasks;
-      loadDashboardStats();
-    }
-  }, 10000); // Changed from 2000ms to 10000ms
+  // ❌ REMOVED: Polling interval that was causing video to reset
+  // If you need to refresh data, use the forceRefreshVideo() function instead
 });
+
+// ============================================
+// Additional Helper: Force Refresh Function
+// ============================================
+
+// Add this function to manually refresh if needed
+async function forceRefreshVideo() {
+  console.log('🔄 Manual video refresh triggered...');
+  
+  try {
+    // Clear any cached data
+    if (window.CURRENT_JOURNEY_DATA) {
+      delete window.CURRENT_JOURNEY_DATA;
+    }
+    if (CURRENT_JOURNEY_DATA) {
+      CURRENT_JOURNEY_DATA = null;
+    }
+    
+    // Reload video
+    await loadCurrentMonthVideo();
+    
+    console.log('✅ Manual refresh complete!');
+  } catch (error) {
+    console.error('❌ Manual refresh failed:', error);
+  }
+}
 
 // Expose functions globally for onclick handlers
 window.loadCurrentMonthVideo = loadCurrentMonthVideo;
 window.loadPartnerCalls = loadPartnerCalls;
+window.forceRefreshVideo = forceRefreshVideo;
+
+console.log('✅ Fixed dashboard script loaded with synchronized video loading');
+console.log('💡 If video is wrong, open console and run: forceRefreshVideo()');
+
+// ============================================
+// DIAGNOSTIC SCRIPT - Debug journey month mismatch
+// This will help us see what's actually happening
+// ============================================
+
+async function debugJourneyMonth() {
+  console.log('🔍 ========== JOURNEY MONTH DEBUG ==========');
+  
+  try {
+    // 1. Check what's in localStorage
+    const localStorageTasks = localStorage.getItem('journey_tasks_default');
+    const localStorageMonth = localStorage.getItem('journey_current_month_default');
+    
+    console.log('📦 LocalStorage Data:');
+    console.log('  - Tasks:', localStorageTasks ? 'EXISTS' : 'NONE');
+    console.log('  - Month:', localStorageMonth || 'NONE');
+    
+    if (localStorageTasks) {
+      const tasks = JSON.parse(localStorageTasks);
+      console.log('  - Task Count:', Object.keys(tasks).length);
+      console.log('  - Sample tasks:', Object.keys(tasks).slice(0, 5));
+    }
+    
+    // 2. Check what the API returns
+    console.log('\n🌐 API Data:');
+    const response = await fetch('/api/journey');
+    const journeyData = await response.json();
+    
+    console.log('  - Status:', response.ok ? '✅ OK' : '❌ FAILED');
+    console.log('  - Current Month:', journeyData.currentMonth);
+    console.log('  - Completed Tasks:', Object.keys(journeyData.completedTasks || {}).length);
+    console.log('  - Start Date:', journeyData.startDate);
+    
+    // 3. Check current video
+    console.log('\n🎥 Video State:');
+    console.log('  - window.currentVideo:', window.currentVideo?.month || 'NOT SET');
+    console.log('  - Video title:', window.currentVideo?.title || 'NOT SET');
+    
+    // 4. Check VIDEO_CONFIG
+    console.log('\n📋 Video Config:');
+    console.log('  - Total videos:', VIDEO_CONFIG.length);
+    console.log('  - Month 1 exists:', !!VIDEO_CONFIG.find(v => v.month === 1));
+    console.log('  - Month 3 exists:', !!VIDEO_CONFIG.find(v => v.month === 3));
+    
+    // 5. CRITICAL CHECK: What video SHOULD be playing?
+    const expectedVideo = VIDEO_CONFIG.find(v => v.month === journeyData.currentMonth);
+    console.log('\n✅ EXPECTED VIDEO:');
+    console.log('  - Month:', journeyData.currentMonth);
+    console.log('  - Title:', expectedVideo?.title || 'NOT FOUND');
+    console.log('  - URL exists:', !!expectedVideo?.url);
+    
+    // 6. What video IS playing?
+    const videoTitle = document.getElementById('videoTitle')?.textContent;
+    console.log('\n🎬 ACTUAL VIDEO ON PAGE:');
+    console.log('  - Title element shows:', videoTitle);
+    
+    // 7. Final comparison
+    console.log('\n🔍 COMPARISON:');
+    console.log('  - API says month:', journeyData.currentMonth);
+    console.log('  - Expected video:', expectedVideo?.title);
+    console.log('  - Page shows:', videoTitle);
+    console.log('  - MATCH?', videoTitle?.includes(`Month ${journeyData.currentMonth}`) ? '✅ YES' : '❌ NO');
+    
+    console.log('\n========== DEBUG COMPLETE ==========');
+    
+    // Return diagnosis
+    return {
+      localStorage: {
+        month: localStorageMonth,
+        hasTasks: !!localStorageTasks
+      },
+      api: {
+        month: journeyData.currentMonth,
+        taskCount: Object.keys(journeyData.completedTasks || {}).length
+      },
+      video: {
+        expected: expectedVideo?.title,
+        actual: videoTitle
+      },
+      diagnosis: videoTitle?.includes(`Month ${journeyData.currentMonth}`) 
+        ? '✅ Video matches journey month' 
+        : '❌ Video DOES NOT match journey month'
+    };
+    
+  } catch (error) {
+    console.error('❌ Debug failed:', error);
+    return { error: error.message };
+  }
+}
+
+// ============================================
+// TEMPORARY FIX (while we debug)
+// Force refresh video based on API data
+// ============================================
+async function forceVideoRefresh() {
+  console.log('🔄 Force refreshing video...');
+  
+  try {
+    // Get CURRENT month from API
+    const response = await fetch('/api/journey');
+    const data = await response.json();
+    const currentMonth = data.currentMonth;
+    
+    console.log('📍 API says you are in Month:', currentMonth);
+    
+    // Find the correct video
+    const correctVideo = VIDEO_CONFIG.find(v => v.month === currentMonth);
+    
+    if (!correctVideo) {
+      console.error('❌ No video found for month', currentMonth);
+      return;
+    }
+    
+    console.log('✅ Loading video:', correctVideo.title);
+    
+    // Validate and fix URL
+    const validatedUrl = validateAndFixVideoUrl(correctVideo.url);
+    if (!validatedUrl) {
+      console.error('❌ Invalid video URL');
+      return;
+    }
+    
+    // Update global state
+    window.currentVideo = { ...correctVideo, url: validatedUrl };
+    
+    // Update UI elements
+    const videoTitle = document.getElementById('videoTitle');
+    if (videoTitle) {
+      videoTitle.textContent = `Month ${currentMonth}: ${correctVideo.title}`;
+    }
+    
+    const videoDescription = document.getElementById('videoDescription');
+    if (videoDescription) {
+      videoDescription.textContent = correctVideo.description;
+    }
+    
+    const videoMeta = document.getElementById('videoMeta');
+    if (videoMeta) {
+      videoMeta.textContent = `${correctVideo.duration} • Month ${currentMonth}`;
+    }
+    
+    // Force reload video
+    playVideo();
+    
+    console.log('✅ Video refresh complete!');
+    
+  } catch (error) {
+    console.error('❌ Force refresh failed:', error);
+  }
+}
+
+// Export debug functions for console access
+window.debugJourneyMonth = debugJourneyMonth;
+window.forceVideoRefresh = forceVideoRefresh;
+
+console.log('🔧 Debug tools loaded! Type debugJourneyMonth() in console to diagnose the issue.');
+
+// ============================================
+// NUCLEAR FIX - This bypasses ALL other logic
+// This will force-update the video every 2 seconds based on what the dashboard says
+// ============================================
+
+// Wait for page to fully load
+setTimeout(() => {
+  console.log('🔥 NUCLEAR FIX ACTIVATED - Force syncing video to dashboard');
+  
+  function forceVideoSync() {
+    try {
+      // Step 1: Read what month the dashboard says
+      const journeyMonthElement = document.getElementById('journeyMonth');
+      
+      if (!journeyMonthElement) {
+        console.warn('⚠️ journeyMonth element not found');
+        return;
+      }
+      
+      const journeyMonthText = journeyMonthElement.textContent; // e.g., "Month 5 of 12"
+      const match = journeyMonthText.match(/Month (\d+)/);
+      
+      if (!match) {
+        console.warn('⚠️ Could not parse month from:', journeyMonthText);
+        return;
+      }
+      
+      const dashboardMonth = parseInt(match[1]);
+      console.log('📊 Dashboard says: Month', dashboardMonth);
+      
+      // Step 2: Check what the video title says
+      const videoTitleElement = document.getElementById('videoTitle');
+      
+      if (!videoTitleElement) {
+        console.warn('⚠️ videoTitle element not found');
+        return;
+      }
+      
+      const videoTitleText = videoTitleElement.textContent; // e.g., "Month 1: FOUNDATION"
+      const videoMatch = videoTitleText.match(/Month (\d+)/);
+      
+      const currentVideoMonth = videoMatch ? parseInt(videoMatch[1]) : null;
+      console.log('🎥 Video currently shows: Month', currentVideoMonth);
+      
+      // Step 3: If they don't match, force update
+      if (currentVideoMonth !== dashboardMonth) {
+        console.log('❌ MISMATCH DETECTED! Dashboard says', dashboardMonth, 'but video shows', currentVideoMonth);
+        console.log('🔧 FORCING VIDEO UPDATE...');
+        
+        // Find the correct video
+        const correctVideo = VIDEO_CONFIG.find(v => v.month === dashboardMonth);
+        
+        if (!correctVideo) {
+          console.error('❌ No video found for month', dashboardMonth);
+          return;
+        }
+        
+        console.log('✅ Found correct video:', correctVideo.title);
+        
+        // Update video title
+        videoTitleElement.textContent = `Month ${dashboardMonth}: ${correctVideo.title}`;
+        console.log('✅ Updated video title');
+        
+        // Update video description
+        const videoDescription = document.getElementById('videoDescription');
+        if (videoDescription) {
+          videoDescription.textContent = correctVideo.description;
+          console.log('✅ Updated video description');
+        }
+        
+        // Update video meta
+        const videoMeta = document.getElementById('videoMeta');
+        if (videoMeta) {
+          videoMeta.textContent = `${correctVideo.duration} • Month ${dashboardMonth}`;
+          console.log('✅ Updated video meta');
+        }
+        
+        // Update the actual video iframe
+        const videoContainer = document.getElementById('videoContainer');
+        if (videoContainer) {
+          const validatedUrl = validateAndFixVideoUrl(correctVideo.url);
+          
+          if (validatedUrl) {
+            let embedUrl = validatedUrl;
+            if (embedUrl.includes('canva.com')) {
+              const urlParts = embedUrl.split('?');
+              const baseUrl = urlParts[0];
+              const params = new URLSearchParams(urlParts[1] || '');
+              if (!params.has('embed')) params.append('embed', '');
+              params.set('autoplay', '1');
+              embedUrl = baseUrl + '?' + params.toString();
+            }
+            
+            videoContainer.innerHTML = `
+              <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl video-preview" style="padding-top: 56.25%; background: #000;">
+                <iframe 
+                  id="canvaVideoFrame"
+                  class="absolute top-0 left-0 w-full h-full border-0"
+                  src="${embedUrl}"
+                  allow="autoplay *; fullscreen; accelerometer; gyroscope; picture-in-picture; clipboard-write; encrypted-media"
+                  allowfullscreen
+                  frameborder="0"
+                  title="Month ${dashboardMonth}: ${correctVideo.title}"
+                  loading="eager"
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation allow-autoplay">
+                </iframe>
+              </div>
+            `;
+            
+            console.log('✅ Updated video iframe to Month', dashboardMonth);
+            console.log('🎉 VIDEO SYNC COMPLETE!');
+            
+            // Store globally
+            window.currentVideo = { ...correctVideo, url: validatedUrl };
+          }
+        }
+        
+      } else {
+        console.log('✅ Video already matches dashboard (Month', dashboardMonth, ')');
+      }
+      
+    } catch (error) {
+      console.error('❌ Force sync error:', error);
+    }
+  }
+  
+  // Run once immediately
+  console.log('🚀 Running initial video sync...');
+  forceVideoSync();
+  
+  // Then run every 2 seconds to keep checking
+  setInterval(() => {
+    forceVideoSync();
+  }, 2000);
+  
+  console.log('✅ Nuclear fix installed - video will auto-sync every 2 seconds');
+  
+}, 3000); // Wait 3 seconds after page load to ensure everything is ready

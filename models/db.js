@@ -97,7 +97,8 @@ async function createNotification(
   link = null,
   applicationId = null,
   requestId = null,
-  articleId = null
+  articleId = null,
+  certificateId = null // Optional: for linking notifications to certificates
 ) {
   try {
     const notificationData = {
@@ -114,6 +115,12 @@ async function createNotification(
       request_id: requestId || null,
       article_id: articleId || null,
     };
+
+    // Only add certificate_id if provided AND column exists in table
+    // To enable: Run: ALTER TABLE notifications ADD COLUMN certificate_id UUID REFERENCES certificates(certificate_id);
+    if (certificateId) {
+      notificationData.certificate_id = certificateId;
+    }
 
     console.log("📝 Creating notification:", notificationData);
 

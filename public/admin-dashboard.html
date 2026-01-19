@@ -620,6 +620,7 @@
                     <button id="tabPartners" onclick="switchTab('partners')" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700" style="cursor: pointer;">Partners</button>
                     <button id="tabArticles" onclick="switchTab('articles')" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700" style="cursor: pointer;">Articles</button>
                     <button id="tabJourney" onclick="switchTab('journey')" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700" style="cursor: pointer;">Journey Progress</button>
+                    <button id="tabCertificates" onclick="switchTab('certificates')" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700" style="cursor: pointer;">Certificates</button>
                 </div>
             </div>
         </div>
@@ -662,6 +663,9 @@
                                     </button>
                                     <button onclick="setSearchCategory('journey')" class="search-category-option w-full px-4 py-2 text-left text-sm hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2" data-category="journey">
                                         <i class="bx bx-trip"></i> Journey Progress
+                                    </button>
+                                    <button onclick="setSearchCategory('certificates')" class="search-category-option w-full px-4 py-2 text-left text-sm hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2" data-category="certificates">
+                                        <i class="bx bx-certificate"></i> Certificates
                                     </button>
                                 </div>
                             </div>
@@ -1908,6 +1912,9 @@ async function markAllNotificationsRead() {
                     case 'journey':
                         url = '/admin/api/journey/summary';
                         break;
+                    case 'certificates':
+                        url = '/admin/api/certificates';
+                        break;
                     default:
                         url = `/admin/api/ambassadors?page=1&limit=${fetchLimit}`;
                 }
@@ -2019,6 +2026,35 @@ async function markAllNotificationsRead() {
                     const end = Math.min(start + state.limit, items.length);
                     state.items = items.slice(start, end);
                     renderArticlesList();
+                } else if (state.tab === 'certificates') {
+                    // Certificates tab
+                    let items = data.certificates || [];
+                    
+                    // Client-side search filtering for certificates
+                    if (searchQuery) {
+                        items = items.filter(item => {
+                            const searchable = [
+                                item.ambassadorName,
+                                item.ambassadorEmail,
+                                item.course_type,
+                                item.original_name
+                            ].filter(Boolean).join(' ').toLowerCase();
+                            return searchable.includes(searchQuery);
+                        });
+                    }
+                    
+                    // Apply verification filter if set
+                    if (state.status && state.status !== 'all') {
+                        const verified = state.status === 'verified';
+                        items = items.filter(item => item.verified === verified);
+                    }
+                    
+                    state.total = items.length;
+                    // Apply pagination
+                    const start = (state.page - 1) * state.limit;
+                    const end = Math.min(start + state.limit, items.length);
+                    state.items = items.slice(start, end);
+                    renderCertificatesList();
                 } else {
                     // Ambassadors tab
                     let items = data.ambassadors || [];
@@ -2186,6 +2222,59 @@ async function markAllNotificationsRead() {
             bindRowActions();
         }
 
+        function renderCertificatesList() {
+            updateTableHeaders([
+                'Ambassador', 'Email', 'Course Type', 'Upload Date', 'Status', 'Actions'
+            ]);
+            
+            const tbody = elements.listBody;
+            tbody.innerHTML = '';
+            
+            if (!state.items.length) {
+                renderEmptyState();
+                return;
+            }
+            
+            state.items.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-gray-100 hover:bg-gray-50';
+                
+                const uploadDate = item.upload_date ? new Date(item.upload_date).toLocaleDateString() : '-';
+                const courseType = (item.course_type || '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                const verified = item.verified === true || item.verified === 'true';
+                const statusBadge = verified 
+                    ? '<span class="px-2 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold">Verified</span>'
+                    : '<span class="px-2 py-1 rounded-lg bg-yellow-100 text-yellow-700 text-xs font-semibold">Pending</span>';
+                
+                tr.innerHTML = `
+                    <td class="px-4 py-3 text-sm text-gray-900">${item.ambassadorName || '-'}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">${item.ambassadorEmail || '-'}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">${courseType}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">${uploadDate}</td>
+                    <td class="px-4 py-3 text-sm">${statusBadge}</td>
+                    <td class="px-4 py-3 text-sm text-right space-x-2">
+                        <button class="px-3 py-1 rounded-lg border border-blue-300 text-blue-700 hover:bg-blue-50 font-semibold disabled:opacity-60 disabled:cursor-not-allowed" 
+                                onclick="viewCertificate('${item.certificate_id}', this)">
+                            <span class="btn-text">View</span>
+                        </button>
+                        ${!verified ? `
+                            <button class="px-3 py-1 rounded-lg border border-green-300 text-green-700 hover:bg-green-50 font-semibold disabled:opacity-60 disabled:cursor-not-allowed" 
+                                    onclick="verifyCertificate('${item.certificate_id}', true, this)">
+                                <span class="btn-text">Verify</span>
+                            </button>
+                            <button class="px-3 py-1 rounded-lg border border-red-300 text-red-700 hover:bg-red-50 font-semibold disabled:opacity-60 disabled:cursor-not-allowed" 
+                                    onclick="verifyCertificate('${item.certificate_id}', false, this)">
+                                <span class="btn-text">Reject</span>
+                            </button>
+                        ` : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            elements.emptyState.classList.add('hidden');
+        }
+
         function renderArticlesList() {
             updateTableHeaders([
                 'Title', 'Author', 'Company', 'Status', 'Reviews', 'Date', 'Actions'
@@ -2211,23 +2300,16 @@ async function markAllNotificationsRead() {
                 const companyShort = company.length > 60 ? company.substring(0, 57) + '…' : company;
                 const statusClass = badgeClass(item.status);
                 
-                // Review history badges
+                // Review history badges - show update count only
                 const reviewCount = item.review_count || 0;
-                const pendingCount = item.pending_feedback_count || 0;
                 let reviewBadge = '';
                 if (reviewCount > 0) {
-                    if (pendingCount > 0) {
-                        reviewBadge = `<span class="px-2 py-1 rounded-lg bg-orange-100 text-orange-700 text-xs font-semibold" title="${pendingCount} unaddressed feedback">
-                            <i class='bx bx-history'></i> ${reviewCount} (${pendingCount} pending)
-                        </span>`;
-                    } else {
-                        reviewBadge = `<span class="px-2 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold" title="All feedback addressed">
-                            <i class='bx bx-check-circle'></i> ${reviewCount} reviewed
-                        </span>`;
-                    }
+                    reviewBadge = `<span class="px-2 py-1 rounded-lg bg-orange-100 text-orange-700 text-xs font-semibold" title="Updated ${reviewCount} time${reviewCount !== 1 ? 's' : ''}">
+                        <i class='bx bx-history'></i> ${reviewCount} update${reviewCount !== 1 ? 's' : ''}
+                    </span>`;
                 } else {
-                    reviewBadge = `<span class="px-2 py-1 rounded-lg bg-gray-100 text-gray-500 text-xs" title="No previous reviews">
-                        No reviews
+                    reviewBadge = `<span class="px-2 py-1 rounded-lg bg-gray-100 text-gray-500 text-xs" title="No updates yet">
+                        No updates
                     </span>`;
                 }
                 
@@ -3385,29 +3467,14 @@ async function markAllNotificationsRead() {
         function handleSimpleStatusUpdate(articleId) {
             const statusSelect = document.getElementById('simpleStatusSelect');
             const newStatus = statusSelect ? statusSelect.value : null;
+            // Previously, this function sent an immediate PATCH request to update
+            // the article status, which caused duplicate review_history entries
+            // when combined with the "Send Feedback & Update Status" button.
+            //
+            // Now it simply updates the selected value in the UI. The actual
+            // status update + notification + review_history write is handled
+            // centrally by handleSimpleRequestChange when the button is clicked.
             if (!newStatus) return;
-            
-            fetch(`/admin/api/articles/${articleId}`, { 
-                method: 'PATCH', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ status: newStatus }), 
-                credentials: 'include' 
-            })
-            .then(r => { 
-                if (!r.ok) throw new Error('Failed to update'); 
-                return r.json(); 
-            })
-            .then(() => { 
-                showToast(`Status updated to ${newStatus}`);
-                if (state.tab === 'articles') {
-                    fetchList();
-                    fetchStats(); // Refresh stats
-                }
-            })
-            .catch((err) => { 
-                console.error('Error:', err);
-                showToast('Failed to update status', true);
-            });
         }
 
         function openJourneyDetail(ambassadorId) {
@@ -4510,6 +4577,8 @@ async function markAllNotificationsRead() {
             
             // Show/hide article status filters
             const articleStatusFilters = document.getElementById('articleStatusFilters');
+            const statusFilter = document.getElementById('statusFilter');
+            
             if (tabName === 'articles') {
                 if (articleStatusFilters) {
                     articleStatusFilters.style.display = 'flex';
@@ -4517,9 +4586,31 @@ async function markAllNotificationsRead() {
                         setActiveArticleFilter('filterAll');
                     }
                 }
+                if (statusFilter) statusFilter.style.display = 'none';
+            } else if (tabName === 'certificates') {
+                if (articleStatusFilters) {
+                    articleStatusFilters.style.display = 'none';
+                }
+                if (statusFilter) {
+                    statusFilter.style.display = 'block';
+                    statusFilter.innerHTML = `
+                        <option value="all">All Certificates</option>
+                        <option value="verified">Verified</option>
+                        <option value="pending">Pending</option>
+                    `;
+                }
             } else {
                 if (articleStatusFilters) {
                     articleStatusFilters.style.display = 'none';
+                }
+                if (statusFilter) {
+                    statusFilter.style.display = 'block';
+                    statusFilter.innerHTML = `
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="pending">Pending</option>
+                    `;
                 }
             }
             
@@ -4528,7 +4619,8 @@ async function markAllNotificationsRead() {
                 ambassadors: document.getElementById('tabAmbassadors'),
                 partners: document.getElementById('tabPartners'),
                 articles: document.getElementById('tabArticles'),
-                journey: document.getElementById('tabJourney')
+                journey: document.getElementById('tabJourney'),
+                certificates: document.getElementById('tabCertificates')
             };
             
             Object.entries(tabs).forEach(([name, element]) => {
@@ -4569,7 +4661,8 @@ async function markAllNotificationsRead() {
                 ambassadors: 'tabAmbassadors',
                 partners: 'tabPartners',
                 articles: 'tabArticles',
-                journey: 'tabJourney'
+                journey: 'tabJourney',
+                certificates: 'tabCertificates'
             };
             
             // Get all tab elements
@@ -4700,6 +4793,95 @@ async function markAllNotificationsRead() {
         }
 
         // ============================================
+        // CERTIFICATE FUNCTIONS
+        // ============================================
+        function setButtonLoading(button, isLoading, loadingText) {
+            if (!button) return;
+            const textSpan = button.querySelector('.btn-text') || button;
+            if (isLoading) {
+                button.disabled = true;
+                button.dataset.originalText = textSpan.textContent;
+                textSpan.textContent = loadingText;
+            } else {
+                button.disabled = false;
+                if (button.dataset.originalText) {
+                    textSpan.textContent = button.dataset.originalText;
+                }
+            }
+        }
+
+        async function viewCertificate(certificateId, button) {
+            try {
+                setButtonLoading(button, true, 'Opening...');
+                // First, get the certificate to find the filename
+                const certResponse = await fetch('/admin/api/certificates', {
+                    credentials: 'include'
+                });
+                
+                if (!certResponse.ok) {
+                    throw new Error('Failed to fetch certificates');
+                }
+                
+                const certData = await certResponse.json();
+                const certificate = certData.certificates?.find(c => c.certificate_id === certificateId);
+                
+                if (!certificate || !certificate.filename) {
+                    throw new Error('Certificate not found');
+                }
+                
+                // Now fetch the actual file
+                const fileResponse = await fetch(`/uploads/certificates/${certificate.filename}`, {
+                    credentials: 'include'
+                });
+                
+                if (!fileResponse.ok) {
+                    throw new Error('Failed to fetch certificate file');
+                }
+                
+                const blob = await fileResponse.blob();
+                const url = window.URL.createObjectURL(blob);
+                window.open(url, '_blank');
+            } catch (error) {
+                console.error('Error viewing certificate:', error);
+                showToast('Failed to view certificate', true);
+            } finally {
+                setButtonLoading(button, false);
+            }
+        }
+
+        async function verifyCertificate(certificateId, verified, button) {
+            if (!confirm(`Are you sure you want to ${verified ? 'verify' : 'reject'} this certificate?`)) {
+                return;
+            }
+
+            try {
+                setButtonLoading(button, true, verified ? 'Verifying...' : 'Rejecting...');
+                const response = await fetch(`/admin/api/certificates/${certificateId}/verify`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ verified })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to update certificate');
+                }
+
+                showToast(`Certificate ${verified ? 'verified' : 'rejected'} successfully`, false);
+                fetchList(); // Refresh the list
+            } catch (error) {
+                console.error('Error verifying certificate:', error);
+                showToast(error.message || 'Failed to update certificate', true);
+            } finally {
+                setButtonLoading(button, false);
+            }
+        }
+
+        // ============================================
         // INITIALIZE (EXISTING - UNCHANGED)
         // ============================================
         document.addEventListener('DOMContentLoaded', () => {
@@ -4789,6 +4971,8 @@ async function markAllNotificationsRead() {
         window.switchTab = switchTab; // Expose switchTab function for inline onclick handlers
         window.submitLinkedInAudit = submitLinkedInAudit;
         window.submitSpeakerProfile = submitSpeakerProfile;
+        window.viewCertificate = viewCertificate;
+        window.verifyCertificate = verifyCertificate;
         
         // Expose enhanced search functions
         window.toggleSearchCategoryDropdown = toggleSearchCategoryDropdown;

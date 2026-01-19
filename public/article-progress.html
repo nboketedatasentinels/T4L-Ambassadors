@@ -787,76 +787,144 @@
             }).join('');
         }
 
+        // Clipboard helper for sharing / copying links
+        async function copyToClipboard(text) {
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    textarea.style.position = 'fixed';
+                    textarea.style.opacity = '0';
+                    document.body.appendChild(textarea);
+                    textarea.focus();
+                    textarea.select();
+                    document.execCommand('copy');
+                    textarea.remove();
+                }
+                showToast('Link copied to clipboard');
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                showToast('Could not copy link', true);
+            }
+        }
+
+        async function shareOrCopyLink(url, title) {
+            if (!url) {
+                showToast('No link available yet', true);
+                return;
+            }
+            try {
+                if (navigator.share) {
+                    await navigator.share({
+                        title: title || 'My published article',
+                        text: 'Check out my published article on T4L Ambassador!',
+                        url
+                    });
+                } else {
+                    await copyToClipboard(url);
+                }
+            } catch (err) {
+                // If user cancels share, ignore. For other errors, fall back to copy.
+                if (err && err.name !== 'AbortError' && err.name !== 'NotAllowedError') {
+                    console.warn('Share failed, falling back to copy:', err);
+                    await copyToClipboard(url);
+                }
+            }
+        }
+
         // Load published articles
         async function loadPublishedArticles() {
-        try {
-            const response = await fetch('/api/ambassador/articles?limit=50', {
-            credentials: 'include'
-            });
+            try {
+                const response = await fetch('/api/ambassador/articles?limit=50', {
+                    credentials: 'include'
+                });
 
-            if (!response.ok) throw new Error('Failed to load articles');
+                if (!response.ok) throw new Error('Failed to load articles');
 
-            const data = await response.json();
-            const publishedArticles = data.items.filter(a => a.status === 'published');
+                const data = await response.json();
+                const publishedArticles = data.items.filter(a => a.status === 'published');
 
-            const container = document.getElementById('publishedArticlesList');
+                const container = document.getElementById('publishedArticlesList');
 
-            if (publishedArticles.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                <i class="bx bx-file"></i>
-                <p>No published articles yet</p>
-                </div>
-            `;
-            return;
-            }
-
-            container.innerHTML = publishedArticles.map(article => {
-            const hasLink = article.publication_link || article.publicationLink;
-            const pubLink = article.publication_link || article.publicationLink;
-            
-            return `
-                <div class="article-item" style="background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%); border-color: #10b981;">
-                    <div style="display: flex; align-items: flex-start; gap: 1rem;">
-                        <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <i class="bx bx-check-circle" style="font-size: 1.5rem; color: white;"></i>
+                if (publishedArticles.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="bx bx-file"></i>
+                            <p>No published articles yet</p>
                         </div>
-                        <div style="flex: 1;">
-                            <h4 class="article-title" style="margin-bottom: 0.5rem;">${article.title || 'Untitled Article'}</h4>
-                            <div class="article-meta" style="margin-bottom: 0.75rem;">
-                                <span class="article-badge" style="background: #10b981; color: white;">
-                                    <i class="bx bx-check mr-1"></i> Published
-                                </span>
-                                <span class="article-date">${formatDate(article.createdAt)}</span>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = publishedArticles.map(article => {
+                    const hasLink = article.publication_link || article.publicationLink;
+                    const pubLink = article.publication_link || article.publicationLink;
+                    const safeTitle = (article.title || 'Untitled Article').replace(/"/g, '&quot;');
+                    
+                    return `
+                        <div class="article-item" style="background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%); border-color: #10b981;">
+                            <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <i class="bx bx-check-circle" style="font-size: 1.5rem; color: white;"></i>
+                                </div>
+                                <div style="flex: 1;">
+                                    <h4 class="article-title" style="margin-bottom: 0.5rem;">${safeTitle}</h4>
+                                    <div class="article-meta" style="margin-bottom: 0.75rem;">
+                                        <span class="article-badge" style="background: #10b981; color: white;">
+                                            <i class="bx bx-check mr-1"></i> Published
+                                        </span>
+                                        <span class="article-date">${formatDate(article.createdAt)}</span>
+                                    </div>
+                                    ${hasLink ? `
+                                        <a href="${pubLink}" 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.625rem 1rem; background: linear-gradient(135deg, #4b0d7f 0%, #6b1fa0 100%); color: white; border-radius: 8px; font-weight: 600; font-size: 0.875rem; text-decoration: none; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(75, 13, 127, 0.3);">
+                                            <i class="bx bx-link-external"></i>
+                                            View Live Article
+                                        </a>
+                                        <div style="margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+                                            <p style="font-size: 0.8125rem; color: #6b7280; word-break: break-all; flex: 1 1 100%;">
+                                                <i class="bx bx-link" style="margin-right: 0.25rem;"></i>
+                                                ${pubLink}
+                                            </p>
+                                            <button 
+                                                type="button"
+                                                class="btn-share-link"
+                                                data-link="${pubLink}"
+                                                data-title="${safeTitle}"
+                                                style="padding: 0.45rem 0.85rem; border-radius: 9999px; border: none; background: #4b0d9f10; color: #4b0d9f; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;">
+                                                <i class="bx bx-share-alt" style="font-size: 1rem;"></i>
+                                                Share / Copy link
+                                            </button>
+                                        </div>
+                                    ` : `
+                                        <p style="font-size: 0.875rem; color: #9ca3af; font-style: italic;">
+                                            <i class="bx bx-time-five" style="margin-right: 0.25rem;"></i>
+                                            Publication link will be added soon
+                                        </p>
+                                    `}
+                                </div>
                             </div>
-                            ${hasLink ? `
-                                <a href="${pubLink}" 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.625rem 1rem; background: linear-gradient(135deg, #4b0d7f 0%, #6b1fa0 100%); color: white; border-radius: 8px; font-weight: 600; font-size: 0.875rem; text-decoration: none; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(75, 13, 127, 0.3);">
-                                    <i class="bx bx-link-external"></i>
-                                    View Live Article
-                                </a>
-                                <p style="margin-top: 0.75rem; font-size: 0.8125rem; color: #6b7280; word-break: break-all;">
-                                    <i class="bx bx-link" style="margin-right: 0.25rem;"></i>
-                                    ${pubLink}
-                                </p>
-                            ` : `
-                                <p style="font-size: 0.875rem; color: #9ca3af; font-style: italic;">
-                                    <i class="bx bx-time-five" style="margin-right: 0.25rem;"></i>
-                                    Publication link will be added soon
-                                </p>
-                            `}
                         </div>
-                    </div>
-                </div>
-            `;
-            }).join('');
+                    `;
+                }).join('');
 
-        } catch (error) {
-            console.error('Error loading published articles:', error);
+                // Attach click handlers for share / copy buttons
+                container.querySelectorAll('.btn-share-link').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const url = btn.getAttribute('data-link');
+                        const title = btn.getAttribute('data-title');
+                        shareOrCopyLink(url, title);
+                    });
+                });
+
+            } catch (error) {
+                console.error('Error loading published articles:', error);
+            }
         }
-    }
                 
         // Load article progress
         async function loadArticleProgress() {

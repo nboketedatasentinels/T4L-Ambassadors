@@ -198,10 +198,6 @@
           class="bg-gradient-to-r from-[#4b0d7f] to-[#a36737] text-white p-4 md:p-6 rounded-2xl mb-6 shadow-md"
         >
           <h2 class="text-xl md:text-2xl font-semibold mb-2" id="welcomeHeading">Welcome back</h2>
-          <p class="text-sm mb-6" id="heroDescription">
-            You're in Month 1 <span class="font-semibold">Visibility Stage</span><br />
-            There's an opportunity for you to be featured on our next podcast!
-          </p>
 
           <div class="flex flex-col md:flex-row gap-4 items-stretch">
             <div
@@ -334,7 +330,7 @@
                 </a>
 
                 <!-- Event 2 - Shameless Podcast -->
-                <a href="https://cal.com/shameless-podcast-t4l/20-mins-shameless-guest-pre-interview-call?month=2025-11" 
+                <a href="https://cal.com/shameless-podcast-t4l/20-mins-shameless-guest-pre-interview-call" 
                    target="_blank"
                    renderer="_blank"
                    class="block">
@@ -696,63 +692,15 @@
       };
 
 
+      // NOTE: loadCurrentMonthVideo() is now defined in ambassador-dashboard.js
+      // This duplicate function has been removed to prevent conflicts
+      // The JS file version has better logging and proper month synchronization
+      /*
       async function loadCurrentMonthVideo() {
-        try {
-          const response = await fetch('/api/journey');
-          if (!response.ok) throw new Error('Failed to load journey data');
-          
-          const journeyData = await response.json();
-          const currentMonth = Math.max(1, Math.min(12, journeyData.currentMonth || 1));
-          const currentVideo = MONTH_CONFIG.find(v => v.month === currentMonth);
-          
-          if (!currentVideo) throw new Error(`Video configuration missing for month ${currentMonth}`);
-          
-          const validatedUrl = utils.validateVideoUrl(currentVideo.url);
-          if (!validatedUrl) throw new Error(`Invalid video URL for month ${currentMonth}`);
-          
-          window.currentVideo = { ...currentVideo, url: validatedUrl };
-          
-          const currentMonthInfo = MONTH_CONFIG.find(m => m.month === currentMonth);
-          const nextMonthInfo = MONTH_CONFIG.find(m => m.month === currentMonth + 1);
-          
-          // Update UI elements using cached DOM
-          const heroDesc = domCache.get('heroDescription');
-          if (heroDesc && currentMonthInfo) {
-            heroDesc.innerHTML = `You're in Month ${currentMonth} <span class="font-semibold">${currentMonthInfo.title} Stage</span><br />${currentMonthInfo.milestone}`;
-          }
-          
-          const nextMilestone = domCache.get('nextMilestoneText');
-          if (nextMilestone) {
-            nextMilestone.textContent = currentMonth === 12 
-              ? "🎉 Journey Complete! Time to Renew"
-              : nextMonthInfo ? `Month ${nextMonthInfo.month}: ${nextMonthInfo.title}` : '';
-          }
-          
-          const daysInProgram = domCache.get('daysInProgramText');
-          if (daysInProgram) {
-            const tasks = journeyData.tasks || {};
-            const tasksInMonth = Object.keys(tasks).filter(key => {
-              const [monthNum] = key.split('-');
-              return parseInt(monthNum) === currentMonth;
-            }).length;
-            const totalTasks = journeyData.monthTasks?.[currentMonth] || 5;
-            const progress = totalTasks > 0 ? Math.round((tasksInMonth / totalTasks) * 100) : 0;
-            daysInProgram.textContent = `${progress}% of month tasks completed`;
-          }
-          
-          const videoTitle = domCache.get('videoTitle');
-          const videoDesc = domCache.get('videoDescription');
-          const videoMeta = domCache.get('videoMeta');
-          if (videoTitle) videoTitle.textContent = `Month ${currentMonth}: ${currentVideo.title}`;
-          if (videoDesc) videoDesc.textContent = currentVideo.description;
-          if (videoMeta) videoMeta.textContent = `${currentVideo.duration} • Month ${currentMonth}`;
-          
-          // Auto-play video
-          setTimeout(playVideo, 500);
-        } catch (error) {
-          showVideoError(error.message || 'Failed to load video data. Please refresh the page.');
-        }
+        // This function has been moved to ambassador-dashboard.js
+        // to ensure proper synchronization with journey data
       }
+      */
 
       async function loadPartnerCalls() {
         try {
@@ -969,22 +917,10 @@
         }
 
         // Load data in parallel
-        Promise.all([
-          loadCurrentMonthVideo(),
-          loadPartnerCalls()
-        ]).then(() => {
-          loadDashboardStats();
-          
-          // Setup efficient polling
-          let lastKnownTasks = localStorage.getItem('journey_tasks_default');
-          setInterval(() => {
-            const currentTasks = localStorage.getItem('journey_tasks_default');
-            if (currentTasks !== lastKnownTasks) {
-              lastKnownTasks = currentTasks;
-              debouncedLoadStats();
-            }
-          }, 2000);
-        });
+        // NOTE: loadCurrentMonthVideo() and loadDashboardStats() are now handled by ambassador-dashboard.js
+        // The JS file version uses the API as single source of truth
+        // We only load partner calls here to avoid conflicts
+        loadPartnerCalls();
       });
     </script>
   </body>

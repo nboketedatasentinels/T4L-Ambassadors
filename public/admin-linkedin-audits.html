@@ -215,24 +215,45 @@
                     <p class="text-xs text-gray-500 mt-1">Enter the ambassador's speaker bio URL (if applicable)</p>
                 </div>
                 
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Audit Feedback & Recommendations <span class="text-red-500">*</span>
-                    </label>
-                    <textarea 
-                        id="auditFeedback" 
-                        rows="6"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        placeholder="Provide detailed feedback on:
+                <div class="mb-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            LinkedIn Profile Audit Feedback & Recommendations <span class="text-red-500">*</span>
+                        </label>
+                        <textarea 
+                            id="linkedinFeedback" 
+                            rows="4"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            placeholder="Provide detailed feedback on the ambassador's LinkedIn profile:
 - Profile completeness
 - Headline optimization
-- Summary/About section
+- About/Summary section
 - Experience descriptions
 - Skills and endorsements
 - Recommendations
 - Profile photo quality
-- Areas for improvement..."
-                        required></textarea>
+- Areas for improvement..."></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Speaker Profile / Bio Feedback & Recommendations
+                        </label>
+                        <textarea 
+                            id="speakerFeedback" 
+                            rows="4"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            placeholder="Provide detailed feedback on the ambassador's speaker profile/bio:
+- Clarity of positioning and niche
+- Keynote topics and descriptions
+- Social proof (testimonials, logos, past stages)
+- Call-to-action and booking flow
+- Overall narrative and tone
+- Areas for improvement..."></textarea>
+                        <p class="text-xs text-gray-500 mt-1">
+                            Speaker feedback is optional. At least LinkedIn feedback is required to submit.
+                        </p>
+                    </div>
                 </div>
                 
                 <div class="flex justify-end space-x-3">
@@ -284,10 +305,18 @@
                     <a id="viewSpeakerBioUrl" href="#" target="_blank" class="text-blue-600 hover:underline">-</a>
                 </div>
                 
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Audit Feedback</label>
-                    <div class="p-3 bg-gray-50 rounded-lg">
-                        <p class="text-gray-700 whitespace-pre-wrap" id="viewFeedback">-</p>
+                <div class="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">LinkedIn Feedback</label>
+                        <div class="p-3 bg-gray-50 rounded-lg min-h-[80px]">
+                            <p class="text-gray-700 whitespace-pre-wrap" id="viewLinkedinFeedback">-</p>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Speaker Feedback</label>
+                        <div class="p-3 bg-gray-50 rounded-lg min-h-[80px]">
+                            <p class="text-gray-700 whitespace-pre-wrap" id="viewSpeakerFeedback">-</p>
+                        </div>
                     </div>
                 </div>
                 
@@ -501,6 +530,52 @@
             document.getElementById('auditsPending').textContent = pending;
         }
 
+        // Helper to split a combined feedback string into LinkedIn + Speaker sections.
+        // Older audits that only stored a single feedback block will be treated as LinkedIn feedback.
+        function parseAuditFeedback(rawFeedback) {
+            const defaultResult = {
+                linkedinFeedback: rawFeedback || '',
+                speakerFeedback: ''
+            };
+
+            if (!rawFeedback) return defaultResult;
+
+            const markerLinkedin = /LINKEDIN FEEDBACK:/i;
+            const markerSpeaker = /SPEAKER FEEDBACK:/i;
+
+            // If no markers, return everything as LinkedIn feedback
+            if (!markerLinkedin.test(rawFeedback) && !markerSpeaker.test(rawFeedback)) {
+                return defaultResult;
+            }
+
+            let linkedinFeedback = '';
+            let speakerFeedback = '';
+
+            // Normalize by ensuring we have an explicit LinkedIn marker at the start when any marker is present
+            let text = rawFeedback.trim();
+            if (!markerLinkedin.test(text)) {
+                text = 'LINKEDIN FEEDBACK:\n' + text;
+            }
+
+            // Split on the speaker marker
+            const speakerIndex = text.search(markerSpeaker);
+            if (speakerIndex === -1) {
+                // Only LinkedIn marker present
+                linkedinFeedback = text.replace(markerLinkedin, '').trim();
+            } else {
+                const linkedinPart = text.slice(0, speakerIndex);
+                const speakerPart = text.slice(speakerIndex);
+
+                linkedinFeedback = linkedinPart.replace(markerLinkedin, '').trim();
+                speakerFeedback = speakerPart.replace(markerSpeaker, '').trim();
+            }
+
+            return {
+                linkedinFeedback,
+                speakerFeedback
+            };
+        }
+
         function openUploadModal(ambassadorId) {
             currentAmbassador = ambassadors.find(a => a.id === ambassadorId);
             
@@ -517,11 +592,16 @@
             if (currentAmbassador.auditData) {
                 document.getElementById('linkedinUrl').value = currentAmbassador.auditData.url || '';
                 document.getElementById('speakerBioUrl').value = currentAmbassador.auditData.speaker_bio_url || '';
-                document.getElementById('auditFeedback').value = currentAmbassador.auditData.feedback || '';
+
+                // Split existing combined feedback (if present) into LinkedIn + Speaker sections
+                const parsed = parseAuditFeedback(currentAmbassador.auditData.feedback || '');
+                document.getElementById('linkedinFeedback').value = parsed.linkedinFeedback;
+                document.getElementById('speakerFeedback').value = parsed.speakerFeedback;
             } else {
                 document.getElementById('linkedinUrl').value = '';
                 document.getElementById('speakerBioUrl').value = '';
-                document.getElementById('auditFeedback').value = '';
+                document.getElementById('linkedinFeedback').value = '';
+                document.getElementById('speakerFeedback').value = '';
             }
 
             const modal = document.getElementById('uploadModal');
@@ -558,8 +638,11 @@
                 document.getElementById('viewSpeakerBioUrl').textContent = 'Not provided';
                 document.getElementById('viewSpeakerBioUrl').removeAttribute('href');
             }
-            
-            document.getElementById('viewFeedback').textContent = ambassador.auditData.feedback;
+
+            // Split combined feedback into LinkedIn + Speaker sections for display
+            const parsed = parseAuditFeedback(ambassador.auditData.feedback || '');
+            document.getElementById('viewLinkedinFeedback').textContent = parsed.linkedinFeedback || 'No LinkedIn feedback provided.';
+            document.getElementById('viewSpeakerFeedback').textContent = parsed.speakerFeedback || 'No speaker feedback provided.';
             document.getElementById('viewSubmittedAt').textContent = new Date(ambassador.auditData.submittedAt).toLocaleString();
 
             const modal = document.getElementById('viewModal');
@@ -580,7 +663,21 @@
             const ambassadorId = document.getElementById('ambassadorId').value;
             const url = document.getElementById('linkedinUrl').value;
             const speakerBioUrl = document.getElementById('speakerBioUrl').value;
-            const feedback = document.getElementById('auditFeedback').value;
+
+            const linkedinFeedback = document.getElementById('linkedinFeedback').value.trim();
+            const speakerFeedback = document.getElementById('speakerFeedback').value.trim();
+
+            // Ensure at least LinkedIn feedback is provided to satisfy server-side validation
+            if (!linkedinFeedback) {
+                showToast('Please provide LinkedIn profile feedback before submitting.', 'error');
+                return;
+            }
+
+            // Combine into a single feedback string for the backend, keeping it backwards compatible
+            let feedback = `LINKEDIN FEEDBACK:\n${linkedinFeedback}`;
+            if (speakerFeedback) {
+                feedback += `\n\nSPEAKER FEEDBACK:\n${speakerFeedback}`;
+            }
 
             const submitBtn = document.getElementById('submitBtn');
             const originalText = submitBtn.innerHTML;

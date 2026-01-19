@@ -464,6 +464,7 @@ const POSTS_FILE = path.join(DATA_DIR, "posts.json");
 const JOURNEY_FILE = path.join(DATA_DIR, "journey.json");
 const UPLOADS_DIR = path.join(__dirname, "uploads");
 const CVS_DIR = path.join(UPLOADS_DIR, "cvs");
+const CERTS_DIR = path.join(UPLOADS_DIR, "certificates");
 
 function ensureDataDir() {
   try {
@@ -472,6 +473,9 @@ function ensureDataDir() {
     }
     if (!fs.existsSync(CVS_DIR)) {
       fs.mkdirSync(CVS_DIR, { recursive: true });
+    }
+    if (!fs.existsSync(CERTS_DIR)) {
+      fs.mkdirSync(CERTS_DIR, { recursive: true });
     }
   } catch (err) {
     console.warn(
@@ -4201,6 +4205,463 @@ app.get('/admin/api/linkedin-audits/count', requireAuth, requireRole('admin'), a
 });
 
 // ============================================
+// CERTIFICATE UPLOAD & VERIFICATION ENDPOINTS
+// ============================================
+
+// Multer storage for certificates
+const certificateStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    try {
+      ensureDataDir(); // ensures CERTS_DIR exists as well
+    } catch (e) {
+      console.warn("[certificates] ensureDataDir failed:", e?.message || e);
+    }
+    cb(null, CERTS_DIR);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, `cert-${uniqueSuffix}${ext}`);
+  },
+});
+
+const certificateUpload = multer({
+  storage: certificateStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpg|jpeg|png|pdf/;
+    const extname = allowedTypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
+    const mimetype = allowedTypes.test(file.mimetype);
+
+    if (extname && mimetype) {
+      cb(null, true);
+    } else {
+      cb(
+        new Error(
+          "Only JPG, JPEG, PNG, and PDF files are allowed for certificates"
+        )
+      );
+    }
+  },
+});
+
+// Ambassador: upload certificate for a specific course
+app.post(
+  "/api/certificates/upload",
+  requireAuth,
+  requireRole("ambassador"),
+  (req, res, next) => {
+    certificateUpload.single("certificate")(req, res, (err) => {
+      if (err) {
+        console.error("❌ Certificate upload error:", err.message);
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({
+            success: false,
+            error: "File too large",
+            details: "Maximum file size is 10MB",
+          });
+        }
+        return res.status(400).json({
+          success: false,
+          error: "File upload failed",
+          details: err.message,
+        });
+      }
+      next();
+    });
+  },
+  async (req, res) => {
+    try {
+      const userId = req.auth.userId;
+      const { courseType } = req.body;
+
+      const validCourseTypes = [
+        "linkedin_course",
+        "transformational_course",
+        "science_of_you",
+        "ai_stacking",
+      ];
+
+      if (!courseType || !validCourseTypes.includes(courseType)) {
+        if (req.file && req.file.path) {
+          try {
+            fs.unlinkSync(req.file.path);
+          } catch (e) {
+            console.warn(
+              "[certificates] Failed to delete invalid courseType upload:",
+              e?.message || e
+            );
+          }
+        }
+        return res.status(400).json({
+          success: false,
+          error: "Invalid course type",
+          validTypes: validCourseTypes,
+        });
+      }
+
+      if (!req.file) {
+        return res
+          .status(400)
+          .json({ success: false, error: "No file uploaded" });
+      }
+
+      const ambassador = await getUserById(userId, "ambassador");
+      if (!ambassador) {
+        if (req.file && req.file.path) {
+          try {
+            fs.unlinkSync(req.file.path);
+          } catch (e) {
+            console.warn(
+              "[certificates] Failed to delete orphaned upload:",
+              e?.message || e
+            );
+          }
+        }
+        return res.status(404).json({ error: "Ambassador not found" });
+      }
+
+      const ambassadorId = ambassador.ambassador_id || ambassador.id;
+
+      // Check existing certificate
+      const { data: existingCert, error: existingError } = await supabase
+        .from("certificates")
+        .select("*")
+        .eq("ambassador_id", ambassadorId)
+        .eq("course_type", courseType)
+        .maybeSingle();
+
+      if (existingError && existingError.code !== "PGRST116") {
+        console.error(
+          "❌ Error checking existing certificate:",
+          existingError.message
+        );
+      }
+
+      if (existingCert && existingCert.filename) {
+        const oldPath = path.join(CERTS_DIR, existingCert.filename);
+        if (fs.existsSync(oldPath)) {
+          try {
+            fs.unlinkSync(oldPath);
+          } catch (e) {
+            console.warn(
+              "[certificates] Failed to delete old certificate file:",
+              e?.message || e
+            );
+          }
+        }
+      }
+
+      const now = new Date().toISOString();
+      const certificateData = {
+        certificate_id: existingCert?.certificate_id || uuidv4(),
+        ambassador_id: ambassadorId,
+        course_type: courseType,
+        filename: req.file.filename,
+        original_name: req.file.originalname,
+        file_size: req.file.size,
+        upload_date: now,
+        verified: existingCert?.verified || false,
+        verified_by: existingCert?.verified_by || null,
+        verified_at: existingCert?.verified_at || null,
+        created_at: existingCert?.created_at || now,
+        updated_at: now,
+      };
+
+      let savedCert;
+      let dbError;
+
+      if (existingCert) {
+        const { data, error } = await supabase
+          .from("certificates")
+          .update(certificateData)
+          .eq("certificate_id", existingCert.certificate_id)
+          .select()
+          .single();
+        savedCert = data;
+        dbError = error;
+      } else {
+        const { data, error } = await supabase
+          .from("certificates")
+          .insert([certificateData])
+          .select()
+          .single();
+        savedCert = data;
+        dbError = error;
+      }
+
+      if (dbError) {
+        console.error("❌ Failed to save certificate:", dbError);
+        try {
+          if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+          }
+        } catch (e) {
+          console.warn(
+            "[certificates] Failed to delete file after DB error:",
+            e?.message || e
+          );
+        }
+        return res.status(500).json({
+          success: false,
+          error: "Failed to save certificate",
+          details: dbError.message,
+        });
+      }
+
+      // Notify admins
+      try {
+        const { data: admins } = await supabase
+          .from("admins")
+          .select("user_id");
+
+        if (admins && admins.length > 0) {
+          const ambassadorName = `${ambassador.first_name || ""} ${
+            ambassador.last_name || ""
+          }`.trim() || "An ambassador";
+          const courseName = courseType
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, (l) => l.toUpperCase());
+
+          for (const admin of admins) {
+            await createNotification(
+              admin.user_id,
+              "admin",
+              "certificate_uploaded",
+              "📜 New Certificate Uploaded",
+              `${ambassadorName} uploaded a certificate for ${courseName}`,
+              "/admin-dashboard.html",
+              null, // application_id
+              null, // request_id
+              null, // article_id
+              savedCert.certificate_id // certificate_id - required by notifications_reference_check
+            );
+          }
+        }
+      } catch (e) {
+        console.warn(
+          "[certificates] Failed to send admin notifications:",
+          e?.message || e
+        );
+      }
+
+      return res.json({
+        success: true,
+        certificate: {
+          id: savedCert.certificate_id,
+          courseType: savedCert.course_type,
+          filename: savedCert.filename,
+          uploadDate: savedCert.upload_date,
+          verified: savedCert.verified,
+        },
+        message:
+          "Certificate uploaded successfully. Awaiting admin verification.",
+      });
+    } catch (error) {
+      console.error("❌ Unexpected certificate upload error:", error);
+      if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (e) {
+          console.warn(
+            "[certificates] Failed to remove file after unexpected error:",
+            e?.message || e
+          );
+        }
+      }
+      return res.status(500).json({
+        success: false,
+        error: "Failed to upload certificate",
+        details: error.message,
+      });
+    }
+  }
+);
+
+// Ambassador: get own certificates
+app.get(
+  "/api/certificates",
+  requireAuth,
+  requireRole("ambassador"),
+  async (req, res) => {
+    try {
+      const userId = req.auth.userId;
+      const ambassador = await getUserById(userId, "ambassador");
+
+      if (!ambassador) {
+        return res.status(404).json({ error: "Ambassador not found" });
+      }
+
+      const ambassadorId = ambassador.ambassador_id || ambassador.id;
+
+      const { data, error } = await supabase
+        .from("certificates")
+        .select("*")
+        .eq("ambassador_id", ambassadorId)
+        .order("upload_date", { ascending: false });
+
+      if (error) {
+        console.error("❌ Error fetching certificates:", error);
+        return res.status(500).json({
+          error: "Failed to fetch certificates",
+          details: error.message,
+        });
+      }
+
+      return res.json({
+        success: true,
+        certificates: data || [],
+      });
+    } catch (error) {
+      console.error("❌ Unexpected error fetching certificates:", error);
+      return res.status(500).json({
+        error: "Failed to fetch certificates",
+        details: error.message,
+      });
+    }
+  }
+);
+
+// Serve certificate files (protected)
+app.get(
+  "/uploads/certificates/:filename",
+  requireAuth,
+  (req, res) => {
+    const filePath = path.join(CERTS_DIR, req.params.filename);
+    if (fs.existsSync(filePath)) {
+      return res.sendFile(filePath);
+    }
+    return res.status(404).json({ error: "Certificate file not found" });
+  }
+);
+
+// Admin: verify or reject certificate
+app.patch(
+  "/admin/api/certificates/:id/verify",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const certificateId = req.params.id;
+      const { verified } = req.body;
+      const adminUserId = req.auth.userId;
+
+      const { data: admin, error: adminError } = await supabase
+        .from("admins")
+        .select("admin_id")
+        .eq("user_id", adminUserId)
+        .single();
+
+      if (adminError || !admin) {
+        return res.status(404).json({ error: "Admin not found" });
+      }
+
+      const now = new Date().toISOString();
+      const updates = {
+        verified: verified === true,
+        verified_by: verified ? admin.admin_id : null,
+        verified_at: verified ? now : null,
+        updated_at: now,
+      };
+
+      const { data, error } = await supabase
+        .from("certificates")
+        .update(updates)
+        .eq("certificate_id", certificateId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("❌ Error updating certificate verification:", error);
+        return res.status(500).json({
+          error: "Failed to update certificate verification",
+          details: error.message,
+        });
+      }
+
+      return res.json({
+        success: true,
+        certificate: data,
+        message: `Certificate ${verified ? "verified" : "rejected"} successfully`,
+      });
+    } catch (error) {
+      console.error("❌ Unexpected error verifying certificate:", error);
+      return res.status(500).json({
+        error: "Failed to verify certificate",
+        details: error.message,
+      });
+    }
+  }
+);
+
+// Admin: list certificates with optional filters
+app.get(
+  "/admin/api/certificates",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const { verified, courseType } = req.query;
+
+      let query = supabase
+        .from("certificates")
+        .select(
+          `
+          *,
+          ambassadors!inner (
+            first_name,
+            last_name,
+            email
+          )
+        `
+        )
+        .order("upload_date", { ascending: false });
+
+      if (verified !== undefined) {
+        query = query.eq("verified", verified === "true");
+      }
+
+      if (courseType) {
+        query = query.eq("course_type", courseType);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("❌ Error fetching certificates for admin:", error);
+        return res.status(500).json({
+          error: "Failed to fetch certificates",
+          details: error.message,
+        });
+      }
+
+      const formatted =
+        data?.map((cert) => ({
+          ...cert,
+          ambassadorName: `${cert.ambassadors.first_name || ""} ${
+            cert.ambassadors.last_name || ""
+          }`.trim(),
+          ambassadorEmail: cert.ambassadors.email,
+        })) || [];
+
+      return res.json({
+        success: true,
+        certificates: formatted,
+        total: formatted.length,
+      });
+    } catch (error) {
+      console.error("❌ Unexpected error fetching admin certificates:", error);
+      return res.status(500).json({
+        error: "Failed to fetch certificates",
+        details: error.message,
+      });
+    }
+  }
+);
+
+// ============================================
 // AMBASSADOR: Get Own LinkedIn Audit
 // ============================================
 app.get(
@@ -4653,11 +5114,13 @@ app.post("/api/profile/about-me", requireAuth, requireRole("ambassador"), async 
       });
     }
 
-    // Validate minimum word count for summary (250 words)
+    // Validate minimum word count for summary
+    // NOTE: This should stay in sync with the MIN_WORDS constant in `public/about-me.html`
+    const MIN_SUMMARY_WORDS = 70;
     const wordCount = professional_summary.trim().split(/\s+/).filter(word => word.length > 0).length;
-    if (wordCount < 250) {
+    if (wordCount < MIN_SUMMARY_WORDS) {
       return res.status(400).json({ 
-        error: "Professional summary must be at least 250 words" 
+        error: `Professional summary must be at least ${MIN_SUMMARY_WORDS} words` 
       });
     }
 
@@ -4743,15 +5206,51 @@ app.get(
   requireRole("ambassador"),
   async (req, res) => {
     try {
-      const userId = req.auth.userId;
-      const progress = (await getJourneyProgress(userId)) || {
-        current_month: 1,
-        completed_tasks: {},
-        start_date: new Date().toISOString(),
-        month_start_dates: { 1: new Date().toISOString() },
-      };
-
-      // Calculate statistics
+      const userId = req.auth.userId; // This is user_id from session
+      
+      console.log('📡 ========== /api/journey REQUEST ==========');
+      console.log('   User ID from session:', userId);
+      
+      // ✅ STEP 1: Get ambassador_id from ambassadors table
+      const ambassador = await getUserById(userId, "ambassador");
+      
+      if (!ambassador) {
+        console.error('❌ Ambassador not found for user_id:', userId);
+        return res.status(404).json({ error: 'Ambassador not found' });
+      }
+      
+      const ambassadorId = ambassador.ambassador_id || ambassador.id;
+      console.log('✅ Found ambassador_id:', ambassadorId);
+      
+      // ✅ STEP 2: Get journey progress using AMBASSADOR_ID
+      let progress = await getJourneyProgress(ambassadorId); // ← USING AMBASSADOR_ID!
+      
+      // ✅ STEP 3: If no progress exists, create default
+      if (!progress) {
+        console.log('⚠️ No journey progress found, creating default...');
+        progress = {
+          current_month: 1,
+          completed_tasks: {},
+          start_date: new Date().toISOString(),
+          month_start_dates: { 1: new Date().toISOString() },
+        };
+        
+        // ✅ Save with AMBASSADOR_ID
+        try {
+          await upsertJourneyProgress(ambassadorId, progress); // ← USING AMBASSADOR_ID!
+          console.log('✅ Default journey progress created for ambassador:', ambassadorId);
+        } catch (upsertError) {
+          console.error('❌ Failed to create journey progress:', upsertError);
+          // Continue anyway - return default progress
+        }
+      }
+      
+      console.log('✅ Journey Progress:');
+      console.log('   Ambassador ID:', ambassadorId);
+      console.log('   Current Month:', progress.current_month);
+      console.log('   Completed Tasks:', Object.keys(progress.completed_tasks || {}).length);
+      
+      // ✅ Calculate statistics
       const totalTasks = JOURNEY_MONTHS.reduce(
         (sum, month) => sum + month.tasks.length,
         0
@@ -4766,6 +5265,7 @@ app.get(
       const currentMonthData = JOURNEY_MONTHS.find(
         (m) => m.month === progress.current_month
       );
+      
       let currentMonthProgress = 0;
       let currentMonthTasks = [];
 
@@ -4822,14 +5322,11 @@ app.get(
         };
       });
 
-      return res.json({
+      // Build response
+      const response = {
         currentMonth: progress.current_month,
-        currentMonthTitle: currentMonthData
-          ? currentMonthData.title
-          : "Month 1",
-        currentMonthMilestone: currentMonthData
-          ? currentMonthData.milestone
-          : "",
+        currentMonthTitle: currentMonthData ? currentMonthData.title : "Month 1",
+        currentMonthMilestone: currentMonthData ? currentMonthData.milestone : "",
         completedTasks: progress.completed_tasks,
         startDate: progress.start_date,
         monthStartDates: progress.month_start_dates || {},
@@ -4845,12 +5342,98 @@ app.get(
         },
         currentMonthTasks,
         months,
+      };
+      
+      console.log('📤 Sending Response:');
+      console.log('   currentMonth:', response.currentMonth);
+      console.log('   overallProgress:', response.statistics.overallProgress);
+      console.log('========== /api/journey COMPLETE ==========\n');
+
+      return res.json(response);
+    } catch (error) {
+      console.error('❌ Journey fetch error:', error);
+      console.error('Stack:', error.stack);
+      return res.status(500).json({ 
+        error: "Failed to fetch journey progress",
+        details: error.message 
+      });
+    }
+  }
+);
+
+// ============================================
+// ADDITIONAL FIX: Clear any localStorage conflicts
+// ============================================
+
+// Add this endpoint to help clear localStorage if needed
+app.post(
+  "/api/journey/clear-cache",
+  requireAuth,
+  requireRole("ambassador"),
+  async (req, res) => {
+    try {
+      const userId = req.auth.userId;
+      
+      console.log('🧹 Clearing journey cache for user:', userId);
+      
+      // Get fresh data from database
+      const progress = await getJourneyProgress(userId);
+      
+      if (!progress) {
+        return res.status(404).json({ error: 'No journey progress found' });
+      }
+      
+      console.log('✅ Cache cleared, fresh data retrieved');
+      console.log('   Current Month:', progress.current_month);
+      
+      return res.json({
+        success: true,
+        message: 'Cache cleared successfully',
+        currentMonth: progress.current_month,
+        completedTasks: Object.keys(progress.completed_tasks || {}).length
       });
     } catch (error) {
-      console.error("Journey fetch error:", error);
-      return res
-        .status(500)
-        .json({ error: "Failed to fetch journey progress" });
+      console.error('Error clearing cache:', error);
+      return res.status(500).json({ error: 'Failed to clear cache' });
+    }
+  }
+);
+
+// ============================================
+// DEBUG ENDPOINT: Check journey data
+// ============================================
+
+app.get(
+  "/api/debug/journey",
+  requireAuth,
+  requireRole("ambassador"),
+  async (req, res) => {
+    try {
+      const userId = req.auth.userId;
+      
+      console.log('🔍 DEBUG: Checking journey for user:', userId);
+      
+      // Get from database
+      const progress = await getJourneyProgress(userId);
+      
+      console.log('📊 Journey Progress:');
+      console.log('   Current Month:', progress?.current_month);
+      console.log('   Tasks:', Object.keys(progress?.completed_tasks || {}).length);
+      console.log('   Start Date:', progress?.start_date);
+      
+      return res.json({
+        userId,
+        progress,
+        database: {
+          currentMonth: progress?.current_month,
+          tasksCount: Object.keys(progress?.completed_tasks || {}).length,
+          startDate: progress?.start_date
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Debug error:', error);
+      return res.status(500).json({ error: error.message });
     }
   }
 );
@@ -4869,7 +5452,18 @@ app.post(
         return res.status(400).json({ error: "taskId and month are required" });
       }
 
-      let progress = await getJourneyProgress(userId);
+      // ✅ Get ambassador_id
+      const ambassador = await getUserById(userId, "ambassador");
+      if (!ambassador) {
+        return res.status(404).json({ error: "Ambassador not found" });
+      }
+      
+      const ambassadorId = ambassador.ambassador_id || ambassador.id;
+      console.log('✅ Updating task for ambassador_id:', ambassadorId);
+
+      // ✅ Get progress using ambassador_id
+      let progress = await getJourneyProgress(ambassadorId);
+      
       if (!progress) {
         progress = {
           current_month: 1,
@@ -4895,12 +5489,13 @@ app.post(
         delete completedTasks[taskKey];
       }
 
-      await upsertJourneyProgress(userId, {
+      // ✅ Save using ambassador_id
+      await upsertJourneyProgress(ambassadorId, {
         ...progress,
         completed_tasks: completedTasks,
       });
 
-      // Calculate real-time statistics
+      // Calculate stats
       const totalTasks = JOURNEY_MONTHS.reduce(
         (sum, m) => sum + m.tasks.length,
         0
@@ -5004,7 +5599,17 @@ app.post(
   async (req, res) => {
     try {
       const userId = req.auth.userId;
-      let progress = await getJourneyProgress(userId);
+      
+      // ✅ Get ambassador_id
+      const ambassador = await getUserById(userId, "ambassador");
+      if (!ambassador) {
+        return res.status(404).json({ error: "Ambassador not found" });
+      }
+      
+      const ambassadorId = ambassador.ambassador_id || ambassador.id;
+      
+      // ✅ Get progress using ambassador_id
+      let progress = await getJourneyProgress(ambassadorId);
 
       if (!progress) {
         return res.status(400).json({ error: "No journey progress found" });
@@ -5014,6 +5619,7 @@ app.post(
       const currentMonthData = JOURNEY_MONTHS.find(
         (m) => m.month === progress.current_month
       );
+      
       if (!currentMonthData) {
         return res.status(400).json({ error: "Invalid current month" });
       }
@@ -5043,7 +5649,8 @@ app.post(
         month_start_dates: monthStartDates,
       };
 
-      await upsertJourneyProgress(userId, updatedProgress);
+      // ✅ Save using ambassador_id
+      await upsertJourneyProgress(ambassadorId, updatedProgress);
 
       return res.json({
         success: true,
@@ -7105,76 +7712,116 @@ app.post(
         notification.notification_id
       );
 
-      // ✅ Also add this feedback to the article's review_history
-      if (targetArticleId && message) {
-        try {
-          // Fetch the current article to get existing review_history
-          const { data: currentArticle, error: articleFetchError } =
-            await supabase
-              .from("articles")
-              .select("*, status")
-              .eq("article_id", targetArticleId)
-              .single();
-
-          if (!articleFetchError && currentArticle) {
-            const adminEmail = admin ? admin.email : "unknown";
-            const adminFullName = admin
-              ? `${admin.first_name || ""} ${admin.last_name || ""}`.trim() ||
-                admin.name ||
-                "Admin"
-              : "Admin";
-
-            const existingHistory = currentArticle.review_history || [];
-            const newReviewEntry = {
-              id: `rev_${Date.now()}_${Math.random()
-                .toString(36)
-                .substr(2, 9)}`,
-              admin_name: adminFullName,
-              admin_email: adminEmail,
-              message: message,
-              old_status: currentArticle.status,
-              new_status: notificationType === "needs_update" ? "needs_update" : currentArticle.status,
-              timestamp: new Date().toISOString(),
-              addressed: false,
-            };
-
-            const { error: historyUpdateError } = await supabase
-              .from("articles")
-              .update({
-                review_history: [...existingHistory, newReviewEntry],
-                updated_at: new Date().toISOString(),
-              })
-              .eq("article_id", targetArticleId);
-
-            // Gracefully handle if review_history column doesn't exist
-            if (historyUpdateError) {
-              if (historyUpdateError.code === 'PGRST204' && historyUpdateError.message.includes('review_history')) {
-                console.warn("⚠️ review_history column not found. Please add it to your Supabase articles table.");
-              } else {
-                console.error(
-                  "⚠️ Failed to update review history:",
-                  historyUpdateError
-                );
-              }
-            } else {
-              console.log("✅ Review history updated for article:", targetArticleId);
-            }
-          }
-        } catch (historyError) {
-          console.error("⚠️ Error updating review history:", historyError);
-        }
-      }
-
       return res.json({
         success: true,
         notification,
-        message: "Notification sent successfully",
+        message: "Notification sent successfully (review history updated via /admin/api/articles/:id)",
       });
     } catch (error) {
       console.error("❌ Error creating notification:", error);
       return res.status(500).json({
         error: "Failed to send notification",
         details: error.message,
+      });
+    }
+  }
+);
+
+// ============================================
+// ADMIN: Clean Up Duplicate Review History Entries
+// ============================================
+
+app.post(
+  "/admin/api/articles/cleanup-duplicates",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      console.log("🧹 Starting duplicate review cleanup...");
+
+      // Get all articles with review history
+      const { data: articles, error: fetchError } = await supabase
+        .from("articles")
+        .select("article_id, title, review_history")
+        .not("review_history", "is", null);
+
+      if (fetchError) {
+        console.error("❌ Error fetching articles:", fetchError);
+        throw fetchError;
+      }
+
+      console.log(`📊 Found ${articles?.length || 0} articles with review history`);
+
+      let totalCleaned = 0;
+      let totalDuplicatesRemoved = 0;
+
+      for (const article of articles || []) {
+        const reviewHistory = article.review_history || [];
+        
+        if (reviewHistory.length === 0) continue;
+
+        console.log(`\n🔍 Checking article: ${article.title}`);
+        console.log(`   Original review count: ${reviewHistory.length}`);
+
+        // Remove duplicates based on timestamp + message + admin
+        const seen = new Map();
+        const cleaned = [];
+
+        for (const review of reviewHistory) {
+          // Create unique key based on timestamp + message + admin
+          const key = `${review.timestamp}_${review.message}_${review.admin_email}`;
+          
+          if (!seen.has(key)) {
+            seen.set(key, true);
+            cleaned.push(review);
+          } else {
+            console.log(`   ❌ Found duplicate: ${review.message?.substring(0, 30)}... at ${review.timestamp}`);
+            totalDuplicatesRemoved++;
+          }
+        }
+
+        // If duplicates were found, update the article
+        if (cleaned.length < reviewHistory.length) {
+          console.log(`   ✅ Cleaning: ${reviewHistory.length} → ${cleaned.length} reviews`);
+          
+          const { error: updateError } = await supabase
+            .from("articles")
+            .update({
+              review_history: cleaned,
+              updated_at: new Date().toISOString()
+            })
+            .eq("article_id", article.article_id);
+
+          if (updateError) {
+            console.error(`   ⚠️ Failed to update article ${article.article_id}:`, updateError);
+          } else {
+            totalCleaned++;
+          }
+        } else {
+          console.log(`   ✓ No duplicates found`);
+        }
+      }
+
+      console.log("\n📊 CLEANUP SUMMARY:");
+      console.log(`   Articles checked: ${articles?.length || 0}`);
+      console.log(`   Articles cleaned: ${totalCleaned}`);
+      console.log(`   Duplicate reviews removed: ${totalDuplicatesRemoved}`);
+
+      return res.json({
+        success: true,
+        summary: {
+          articlesChecked: articles?.length || 0,
+          articlesCleaned: totalCleaned,
+          duplicatesRemoved: totalDuplicatesRemoved
+        },
+        message: `Removed ${totalDuplicatesRemoved} duplicate reviews from ${totalCleaned} articles`
+      });
+
+    } catch (error) {
+      console.error("❌ Error during cleanup:", error);
+      return res.status(500).json({
+        error: "Failed to clean up duplicates",
+        details: error.message
       });
     }
   }
