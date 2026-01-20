@@ -4206,24 +4206,11 @@ app.get('/admin/api/linkedin-audits/count', requireAuth, requireRole('admin'), a
 
 // ============================================
 // CERTIFICATE UPLOAD & VERIFICATION ENDPOINTS
+// FIXED FOR VERCEL - Uses Supabase Storage
 // ============================================
 
-// Multer storage for certificates
-const certificateStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    try {
-      ensureDataDir(); // ensures CERTS_DIR exists as well
-    } catch (e) {
-      console.warn("[certificates] ensureDataDir failed:", e?.message || e);
-    }
-    cb(null, CERTS_DIR);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, `cert-${uniqueSuffix}${ext}`);
-  },
-});
+// ✅ Use memory storage instead of disk storage (required for Vercel)
+const certificateStorage = multer.memoryStorage();
 
 const certificateUpload = multer({
   storage: certificateStorage,
@@ -4285,16 +4272,6 @@ app.post(
       ];
 
       if (!courseType || !validCourseTypes.includes(courseType)) {
-        if (req.file && req.file.path) {
-          try {
-            fs.unlinkSync(req.file.path);
-          } catch (e) {
-            console.warn(
-              "[certificates] Failed to delete invalid courseType upload:",
-              e?.message || e
-            );
-          }
-        }
         return res.status(400).json({
           success: false,
           error: "Invalid course type",
@@ -4303,55 +4280,62 @@ app.post(
       }
 
       if (!req.file) {
-        return res
-          .status(400)
-          .json({ success: false, error: "No file uploaded" });
+        return res.status(400).json({ 
+          success: false, 
+          error: "No file uploaded" 
+        });
       }
 
       const ambassador = await getUserById(userId, "ambassador");
       if (!ambassador) {
-        if (req.file && req.file.path) {
-          try {
-            fs.unlinkSync(req.file.path);
-          } catch (e) {
-            console.warn(
-              "[certificates] Failed to delete orphaned upload:",
-              e?.message || e
-            );
-          }
-        }
         return res.status(404).json({ error: "Ambassador not found" });
       }
 
       const ambassadorId = ambassador.ambassador_id || ambassador.id;
 
-      // Check existing certificate
-      const { data: existingCert, error: existingError } = await supabase
+      // ✅ Generate unique filename
+      const fileExt = path.extname(req.file.originalname);
+      const uniqueFilename = `${ambassadorId}_${courseType}_${Date.now()}${fileExt}`;
+
+      console.log("📤 Uploading to Supabase Storage:", uniqueFilename);
+
+      // ✅ Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("certificates") // Make sure this bucket exists!
+        .upload(uniqueFilename, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: true, // Overwrite if exists
+        });
+
+      if (uploadError) {
+        console.error("❌ Supabase upload error:", uploadError);
+        return res.status(500).json({
+          success: false,
+          error: "Failed to upload file to storage",
+          details: uploadError.message,
+        });
+      }
+
+      console.log("✅ File uploaded to Supabase:", uploadData.path);
+
+      // ✅ Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("certificates")
+        .getPublicUrl(uniqueFilename);
+
+      // Check for existing certificate
+      const { data: existingCert } = await supabase
         .from("certificates")
         .select("*")
         .eq("ambassador_id", ambassadorId)
         .eq("course_type", courseType)
         .maybeSingle();
 
-      if (existingError && existingError.code !== "PGRST116") {
-        console.error(
-          "❌ Error checking existing certificate:",
-          existingError.message
-        );
-      }
-
+      // Delete old file from storage if it exists
       if (existingCert && existingCert.filename) {
-        const oldPath = path.join(CERTS_DIR, existingCert.filename);
-        if (fs.existsSync(oldPath)) {
-          try {
-            fs.unlinkSync(oldPath);
-          } catch (e) {
-            console.warn(
-              "[certificates] Failed to delete old certificate file:",
-              e?.message || e
-            );
-          }
-        }
+        await supabase.storage
+          .from("certificates")
+          .remove([existingCert.filename]);
       }
 
       const now = new Date().toISOString();
@@ -4359,7 +4343,7 @@ app.post(
         certificate_id: existingCert?.certificate_id || uuidv4(),
         ambassador_id: ambassadorId,
         course_type: courseType,
-        filename: req.file.filename,
+        filename: uniqueFilename,
         original_name: req.file.originalname,
         file_size: req.file.size,
         upload_date: now,
@@ -4371,8 +4355,6 @@ app.post(
       };
 
       let savedCert;
-      let dbError;
-
       if (existingCert) {
         const { data, error } = await supabase
           .from("certificates")
@@ -4381,7 +4363,7 @@ app.post(
           .select()
           .single();
         savedCert = data;
-        dbError = error;
+        if (error) throw error;
       } else {
         const { data, error } = await supabase
           .from("certificates")
@@ -4389,34 +4371,12 @@ app.post(
           .select()
           .single();
         savedCert = data;
-        dbError = error;
-      }
-
-      if (dbError) {
-        console.error("❌ Failed to save certificate:", dbError);
-        try {
-          if (req.file && req.file.path && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
-          }
-        } catch (e) {
-          console.warn(
-            "[certificates] Failed to delete file after DB error:",
-            e?.message || e
-          );
-        }
-        return res.status(500).json({
-          success: false,
-          error: "Failed to save certificate",
-          details: dbError.message,
-        });
+        if (error) throw error;
       }
 
       // Notify admins
       try {
-        const { data: admins } = await supabase
-          .from("admins")
-          .select("user_id");
-
+        const { data: admins } = await supabase.from("admins").select("user_id");
         if (admins && admins.length > 0) {
           const ambassadorName = `${ambassador.first_name || ""} ${
             ambassador.last_name || ""
@@ -4433,18 +4393,15 @@ app.post(
               "📜 New Certificate Uploaded",
               `${ambassadorName} uploaded a certificate for ${courseName}`,
               "/admin-dashboard.html",
-              null, // application_id
-              null, // request_id
-              null, // article_id
-              savedCert.certificate_id // certificate_id - required by notifications_reference_check
+              null,
+              null,
+              null,
+              savedCert.certificate_id
             );
           }
         }
       } catch (e) {
-        console.warn(
-          "[certificates] Failed to send admin notifications:",
-          e?.message || e
-        );
+        console.warn("⚠️ Failed to send admin notifications:", e?.message);
       }
 
       return res.json({
@@ -4455,22 +4412,12 @@ app.post(
           filename: savedCert.filename,
           uploadDate: savedCert.upload_date,
           verified: savedCert.verified,
+          url: publicUrl, // Include URL for downloading
         },
-        message:
-          "Certificate uploaded successfully. Awaiting admin verification.",
+        message: "Certificate uploaded successfully. Awaiting admin verification.",
       });
     } catch (error) {
       console.error("❌ Unexpected certificate upload error:", error);
-      if (req.file && req.file.path && fs.existsSync(req.file.path)) {
-        try {
-          fs.unlinkSync(req.file.path);
-        } catch (e) {
-          console.warn(
-            "[certificates] Failed to remove file after unexpected error:",
-            e?.message || e
-          );
-        }
-      }
       return res.status(500).json({
         success: false,
         error: "Failed to upload certificate",
@@ -4524,16 +4471,29 @@ app.get(
   }
 );
 
-// Serve certificate files (protected)
+// Serve certificate files (protected) - FIXED FOR VERCEL
 app.get(
   "/uploads/certificates/:filename",
   requireAuth,
-  (req, res) => {
-    const filePath = path.join(CERTS_DIR, req.params.filename);
-    if (fs.existsSync(filePath)) {
-      return res.sendFile(filePath);
+  async (req, res) => {
+    try {
+      const filename = req.params.filename;
+
+      // ✅ Get signed URL from Supabase Storage
+      const { data, error } = await supabase.storage
+        .from("certificates")
+        .createSignedUrl(filename, 3600); // Valid for 1 hour
+
+      if (error || !data) {
+        return res.status(404).json({ error: "Certificate not found" });
+      }
+
+      // Redirect to the signed URL
+      return res.redirect(data.signedUrl);
+    } catch (error) {
+      console.error("❌ Error serving certificate:", error);
+      return res.status(500).json({ error: "Failed to retrieve certificate" });
     }
-    return res.status(404).json({ error: "Certificate file not found" });
   }
 );
 
