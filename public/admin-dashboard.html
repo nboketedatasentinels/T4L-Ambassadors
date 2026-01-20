@@ -4829,21 +4829,26 @@ async function markAllNotificationsRead() {
                     throw new Error('Certificate not found');
                 }
                 
-                // Now fetch the actual file
+                // Get the signed URL from the server
                 const fileResponse = await fetch(`/uploads/certificates/${certificate.filename}`, {
                     credentials: 'include'
                 });
                 
                 if (!fileResponse.ok) {
-                    throw new Error('Failed to fetch certificate file');
+                    const errorData = await fileResponse.json().catch(() => ({}));
+                    throw new Error(errorData.error || 'Failed to fetch certificate file');
                 }
                 
-                const blob = await fileResponse.blob();
-                const url = window.URL.createObjectURL(blob);
-                window.open(url, '_blank');
+                const urlData = await fileResponse.json();
+                if (!urlData.success || !urlData.url) {
+                    throw new Error('Invalid response from server');
+                }
+                
+                // Open the signed URL directly in a new tab
+                window.open(urlData.url, '_blank');
             } catch (error) {
                 console.error('Error viewing certificate:', error);
-                showToast('Failed to view certificate', true);
+                showToast(`Failed to view certificate: ${error.message}`, true);
             } finally {
                 setButtonLoading(button, false);
             }

@@ -4485,11 +4485,15 @@ app.get(
         .createSignedUrl(filename, 3600); // Valid for 1 hour
 
       if (error || !data) {
+        console.error("❌ Supabase signed URL error:", error);
         return res.status(404).json({ error: "Certificate not found" });
       }
 
-      // Redirect to the signed URL
-      return res.redirect(data.signedUrl);
+      // Return the signed URL as JSON so frontend can use it directly
+      return res.json({ 
+        success: true, 
+        url: data.signedUrl 
+      });
     } catch (error) {
       console.error("❌ Error serving certificate:", error);
       return res.status(500).json({ error: "Failed to retrieve certificate" });
