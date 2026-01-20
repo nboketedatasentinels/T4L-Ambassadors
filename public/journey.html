@@ -3456,6 +3456,15 @@ Best,
           showToast('Please select a certificate file to upload.', 'error');
           return;
         }
+        
+        // Validate file size (10 MB = 10 * 1024 * 1024 bytes)
+        const maxFileSize = 10 * 1024 * 1024; // 10 MB
+        const selectedFile = fileInput.files[0];
+        if (selectedFile.size > maxFileSize) {
+          showToast('File size exceeds the maximum limit of 10 MB. Please choose a smaller file.', 'error');
+          return;
+        }
+        
         if (!uploadingCourseType) {
           showToast('Unknown course type for certificate.', 'error');
           return;
@@ -3667,13 +3676,18 @@ Best,
                   for this course before marking the task as done.
                 </p>
                 <form onSubmit={handleCertificateUploadSubmit} className="space-y-4">
-                  <input
-                    type="file"
-                    name="certificateFile"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#4b0d7f]"
-                    required
-                  />
+                  <div>
+                    <input
+                      type="file"
+                      name="certificateFile"
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#4b0d7f]"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                      Maximum file size: <strong>10 MB</strong>. Accepted formats: JPG, JPEG, PNG, PDF
+                    </p>
+                  </div>
                   <div className="flex justify-end gap-3 pt-2">
                     <button
                       type="button"
