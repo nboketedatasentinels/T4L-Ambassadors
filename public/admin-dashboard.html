@@ -1380,7 +1380,7 @@ function renderNotificationList() {
             <div class="notification-item ${readClass} p-4 hover:bg-gray-50 cursor-pointer transition-colors" 
                  data-id="${notification.notification_id || notification.id}" 
                  data-read="${notification.read}"
-                 onclick="handleNotificationClick('${notification.notification_id || notification.id}', '${notification.type}', '${notification.article_id || ''}')">
+                 onclick="handleNotificationClick('${notification.notification_id || notification.id}', '${notification.type}', '${notification.article_id || ''}', '${notification.certificate_id || ''}')">
                 <div class="flex items-start gap-3">
                     <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${getNotificationIconColor(notification.type)}">
                         <i class="bx ${icon} text-lg"></i>
@@ -1411,7 +1411,8 @@ function getNotificationIcon(type) {
                 'article_submitted': 'bx-edit',
                 'article_published': 'bx-check-circle',
                 'needs_update': 'bx-message-error',
-                'update_request': 'bx-message-detail'
+                'update_request': 'bx-message-detail',
+                'certificate_uploaded': 'bx-certificate'
             };
             return icons[type] || 'bx-bell';
         }
@@ -1424,7 +1425,8 @@ function getNotificationIcon(type) {
                 'article_submitted': 'bg-yellow-100 text-yellow-600',
                 'article_published': 'bg-teal-100 text-teal-600',
                 'needs_update': 'bg-orange-100 text-orange-600',
-                'update_request': 'bg-red-100 text-red-600'
+                'update_request': 'bg-red-100 text-red-600',
+                'certificate_uploaded': 'bg-indigo-100 text-indigo-600'
             };
             return colors[type] || 'bg-gray-100 text-gray-600';
         }
@@ -1437,7 +1439,8 @@ function getNotificationIcon(type) {
                 'article_submitted': 'Article Submitted',
                 'article_published': 'Article Published',
                 'needs_update': 'Changes Required',
-                'update_request': 'Update Requested'
+                'update_request': 'Update Requested',
+                'certificate_uploaded': 'New Certificate Uploaded'
             };
             return titles[type] || 'Notification';
         }
@@ -1457,7 +1460,7 @@ function getNotificationIcon(type) {
             return date.toLocaleDateString();
         }
 
-        async function handleNotificationClick(notificationId, type, articleId) {
+        async function handleNotificationClick(notificationId, type, articleId, certificateId) {
             try {
                 // ✅ Mark as read first
                 await markNotificationRead(notificationId);
@@ -1476,7 +1479,15 @@ function getNotificationIcon(type) {
                 // ✅ Then refresh from server to ensure consistency
                 await fetchNotifications();
                 
-                if (articleId && (type === 'article_submitted' || type === 'needs_update' || type === 'article_published')) {
+                // Handle certificate notifications - navigate to certificates tab
+                if (type === 'certificate_uploaded') {
+                    closeNotificationDropdown();
+                    switchTab('certificates');
+                    // Scroll to top of certificates list
+                    setTimeout(() => {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }, 100);
+                } else if (articleId && (type === 'article_submitted' || type === 'needs_update' || type === 'article_published')) {
                     openReviewModal(articleId);
                     closeNotificationDropdown();
                 }

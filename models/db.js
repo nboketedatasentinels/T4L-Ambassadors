@@ -118,17 +118,43 @@ async function createNotification(
 
     // Only add certificate_id if provided AND column exists in table
     // To enable: Run: ALTER TABLE notifications ADD COLUMN certificate_id UUID REFERENCES certificates(certificate_id);
+    // Also need to update the constraint: ALTER TABLE notifications DROP CONSTRAINT notifications_reference_check;
+    // Then recreate: ALTER TABLE notifications ADD CONSTRAINT notifications_reference_check CHECK (
+    //   (application_id IS NOT NULL)::int + (request_id IS NOT NULL)::int + (article_id IS NOT NULL)::int + (certificate_id IS NOT NULL)::int = 1
+    // );
     if (certificateId) {
       notificationData.certificate_id = certificateId;
     }
 
     console.log("📝 Creating notification:", notificationData);
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("notifications")
       .insert([notificationData])
       .select()
       .single();
+
+    // ✅ FIX: If constraint error (23514) and certificate_id was included, retry without it
+    if (error && error.code === '23514' && certificateId) {
+      console.warn("⚠️ Constraint violation with certificate_id, retrying without it...");
+      // Remove certificate_id and retry
+      delete notificationData.certificate_id;
+      const retryData = { ...notificationData };
+      
+      const retryResult = await supabase
+        .from("notifications")
+        .insert([retryData])
+        .select()
+        .single();
+      
+      if (retryResult.error) {
+        console.error("❌ Notification creation failed even without certificate_id:", retryResult.error);
+        return null;
+      }
+      
+      console.log("✅ Notification created (without certificate_id due to constraint):", retryResult.data);
+      return retryResult.data;
+    }
 
     if (error) {
       console.error("❌ Notification creation failed:", error);
