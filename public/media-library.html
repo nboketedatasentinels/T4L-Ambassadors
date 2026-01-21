@@ -1316,7 +1316,7 @@
         <!-- Announce Your Ambassadorship Section -->
         <section class="mb-12">
           <h3 class="text-2xl font-bold text-gray-900 mb-6">Announce your ambassadorship</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
             
             <!-- Badges Card -->
             <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow">
@@ -1392,7 +1392,7 @@
         <!-- Social Media Section -->
         <section class="mb-12">
           <h3 class="text-2xl font-bold text-gray-900 mb-6">Social media</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
             
             <!-- Social Media Carousels Card -->
             <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow">
@@ -1466,7 +1466,7 @@
         <!-- Additional Support Section -->
         <section class="mb-12">
           <h3 class="text-2xl font-bold text-gray-900 mb-6">Additional support</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
             
             <!-- Email Signature Card -->
             <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow">
@@ -1535,6 +1535,36 @@
                 <p class="text-sm text-gray-600 mb-4">Everything you need to know about T4L's visual identity, colours, fonts, and brand usage rules.</p>
                 <button onclick="openBrandGuidelines()" class="w-full bg-[#350e6f] hover:bg-[#27062e] text-white font-bold py-3 px-4 rounded-lg transition-colors">
                   VIEW GUIDELINES
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- Facebook Cover (Final Card) Section -->
+        <section class="mb-12">
+          <h3 class="text-2xl font-bold text-gray-900 mb-6">Facebook cover</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6">
+            
+            <!-- Facebook Cover Card (Last Card on Page) -->
+            <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow">
+              <div class="h-48 flex items-center justify-center p-0" style="background: linear-gradient(135deg, #27062e 0%, #350e6f 100%);">
+                <div class="card-image">
+                  <div class="text-center text-white">
+                    <div class="w-28 h-12 mx-auto mb-0 overflow-hidden shadow-2xl border-4 border-white rounded-lg flex items-center justify-center text-4xl font-bold">
+                      f
+                    </div>
+                    <div class="font-bold text-sm drop-shadow-lg mt-2 tracking-wide">TRANSFORMATION LEADER</div>
+                    <div class="text-2xl font-black drop-shadow-lg">FACEBOOK COVER</div>
+                  </div>
+                </div>
+              </div>
+              <div class="p-6" style="background: linear-gradient(to bottom, #eab130, #f9db59);">
+                <h4 class="text-xl font-bold text-gray-900 mb-3">Facebook Cover</h4>
+                <p class="text-sm text-gray-600 mb-4">Update your Facebook cover with our professionally designed template optimised for desktop.</p>
+                <button onclick="openFacebookCover()" class="w-full bg-[#350e6f] hover:bg-[#27062e] text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                  OPEN FACEBOOK COVER
                 </button>
               </div>
             </div>
@@ -2137,8 +2167,13 @@
       }
       
       function openLinkedInHeaderFolder() {
-        window.open('https://www.canva.com/folder/FAF-edDFygg', '_blank');
-        showToast('💼 LinkedIn header folder opened! Choose and customize your header.', 'success');
+        window.open('https://www.canva.com/design/DAG-MmaRy-0/u_aWexDepkmqPtQS4hIK2g/edit', '_blank');
+        showToast('💼 LinkedIn header template opened! Customize your header in Canva.', 'success');
+      }
+      
+      function openFacebookCover() {
+        window.open('https://www.canva.com/design/DAG-Mk-72ao/uK0FuAfDGeykmt98_VJMRA/edit', '_blank');
+        showToast('📘 Facebook cover template opened! Customize your cover in Canva.', 'success');
       }
       
       function openTikTokDesign() {
