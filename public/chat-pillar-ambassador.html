@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Partners Community - T4L Ambassador</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: #f5f5f5;
+        }
+
+        .gradient-header {
+            background: linear-gradient(135deg, #6b21a8 0%, #7c3aed 50%, #c2410c 100%);
+        }
+
+        .member-avatar {
+            transition: transform 0.2s ease;
+        }
+
+        .member-avatar:hover {
+            transform: scale(1.15);
+            z-index: 10;
+        }
+
+        .group-card {
+            transition: all 0.3s ease;
+        }
+
+        .group-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .tab-button {
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            background: #000;
+            color: white;
+        }
+
+        .region-icon {
+            font-size: 2rem;
+        }
+
+        .sidebar-link.active {
+            background: rgba(107, 13, 127, 0.1);
+        }
+
+        .section-header {
+            background: white;
+        }
+        
+        /* New styles for full-width layout */
+        .full-width-container {
+            width: 100%;
+            padding: 0;
+        }
+        
+        .expanded-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.25rem;
+            width: 100%;
+            margin-top: 2rem; /* Add space before the cards */
+        }
+        
+        .content-wrapper {
+            width: 100%;
+            padding: 0 2rem;
+        }
+        
+        .group-card {
+            height: 100%;
+            padding: 1.25rem; /* Reduce padding to make cards smaller */
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Global Notification Script -->
+    <script src="/js/notifications.js"></script>
+    <div class="flex min-h-screen">
+        <!-- Static Ambassador Sidebar -->
+        <aside class="sidebar w-20 bg-white shadow-md flex flex-col items-center py-6 space-y-6 z-40">
+          <div class="mb-4">
+            <div class="bg-[#4b0d7f] text-white px-3 py-2 rounded-xl font-semibold text-sm">T4L</div>
+          </div>
+          <nav class="flex flex-col space-y-4 text-gray-700 w-full">
+            <a href="/ambassador-dashboard.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+              <i class="bx bxs-home text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-transform duration-200"></i>
+              <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Home</span>
+            </a>
+            <a href="/article-amb.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+              <i class="bx bx-edit-alt text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+              <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Publishing</span>
+            </a>
+            <a href="/journey.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+              <i class="bx bx-check-square text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+              <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Task</span>
+            </a>
+            <a href="/impactlog-ambassador.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+              <i class="bx bx-line-chart text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+              <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Impact Log</span>
+            </a>
+            <a href="/Partner-Calls.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+              <i class="bx bx-briefcase text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+              <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Partners</span>
+            </a>
+            <a href="/services-ambassador.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+              <i class="bx bx-briefcase-alt-2 text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+              <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Services</span>
+            </a>
+            <a href="https://www.t4leader.com/ambassador-events" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+              <i class="bx bx-calendar-event text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+              <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Events</span>
+            </a>
+            <a href="/profile-ambassador.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+              <i class="bx bx-user text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+              <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Profile</span>
+            </a>
+            <a href="/profile-ambassador.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+              <i class="bx bx-cog text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+              <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Settings</span>
+            </a>
+            <div id="logoutBtn" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-red-50">
+              <i class="bx bx-log-out text-2xl group-hover:text-red-600 group-hover:scale-110 transition-all duration-200"></i>
+              <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-red-600 transition-colors duration-200">Logout</span>
+            </div>
+          </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <div class="flex-1 full-width-container">
+            <!-- HEADER -->
+            <header class="section-header px-8 py-5 flex items-center justify-between shadow-sm sticky top-0 z-30">
+                <div class="flex-1 max-w-2xl">
+                    <h1 class="text-2xl font-bold text-gray-900">Partners Community</h1>
+                    <p class="text-gray-600 mt-1">Join partner groups to connect with like-minded organizations</p>
+                </div>
+                
+                <div class="flex items-center space-x-5">
+                    <div class="relative w-64">
+                        <input 
+                            type="text" 
+                            placeholder="Search articles, posts, applications..." 
+                            class="w-full px-4 py-2.5 pl-10 border-2 border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-[#4b0d7f] transition-all bg-white/80 backdrop-blur-sm"
+                        >
+                        <i class="bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+                    </div>
+
+                    <div class="flex items-center space-x-5">
+                        <div class="relative cursor-pointer group">
+                            <i class="bx bx-bell text-2xl text-gray-600 group-hover:text-[#4b0d7f] transition-colors"></i>
+                        </div>
+                        <div class="w-11 h-11 bg-gradient-to-br from-[#4b0d7f] to-[#6b1fa1] rounded-2xl flex items-center justify-center text-white font-bold shadow-lg cursor-pointer hover:scale-105 transition-transform">
+                            D
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- GROUPS SECTION -->
+            <div class="p-8 content-wrapper">
+                <!-- Full-width grid layout for Group Cards -->
+                <div class="expanded-grid">
+                    <!-- Ambassadors -->
+                    <div class="group-card bg-white border-2 border-gray-200 rounded-2xl p-6 shadow-md flex flex-col">
+                        <div class="flex flex-col items-center flex-1">
+                            <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-3 border-2 border-gray-200">
+                                <span class="text-2xl font-bold text-white">A</span>
+                            </div>
+                            
+                            <h3 class="text-lg font-bold text-gray-900 mb-1">Ambassadors</h3>
+                            <p class="text-sm text-gray-600 mb-4 text-center">Connect with other ambassadors in the T4L community.</p>
+                            
+                            <div class="flex items-center justify-center mb-4 -space-x-2">
+                                <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white flex items-center justify-center">
+                                    <span class="text-white text-xs font-bold">+</span>
+                                </div>
+                            </div>
+                            
+                            <a href="https://chat.whatsapp.com/CVo6JV3GQie206W8m89b3t" target="_blank" rel="noopener noreferrer"
+                               class="w-full text-center bg-black text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition-colors mt-auto">
+                                Join
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Book Club -->
+                    <div class="group-card bg-white border-2 border-gray-200 rounded-2xl p-6 shadow-md flex flex-col">
+                        <div class="flex flex-col items-center flex-1">
+                            <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mb-3 border-2 border-gray-200">
+                                <span class="text-2xl">📚</span>
+                            </div>
+                            
+                            <h3 class="text-lg font-bold text-gray-900 mb-1 text-center">Book Club</h3>
+                            <p class="text-sm text-gray-600 mb-4 text-center">Join our leadership and growth-focused reading community.</p>
+                            
+                            <div class="flex items-center justify-center mb-4 -space-x-2">
+                                <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white"></div>
+                                <div class="member-avatar w-8 h-8 rounded-full bg-purple-600 border-2 border-white"></div>
+                                <div class="member-avatar w-8 h-8 rounded-full bg-purple-500 border-2 border-white flex items-center justify-center">
+                                    <span class="text-white text-xs font-bold">+</span>
+                                </div>
+                            </div>
+                            
+                            <a href="https://chat.whatsapp.com/IJO0RJlUX9CDO1vciAHIsu" target="_blank" rel="noopener noreferrer"
+                               class="w-full text-center bg-black text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition-colors mt-auto">
+                                Join
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+      // (Intentionally left empty – no tabs on this page anymore)
+    </script>
+</body>
+</html>

@@ -102,16 +102,162 @@
       .animate-spin {
         animation: spin 1s linear infinite;
       }
+
+      /* Embedded Partner Sidebar */
+      .partner-sidebar {
+        width: 80px;
+        background: white;
+        box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 1.5rem 0;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+        flex-shrink: 0;
+      }
+      
+      .partner-sidebar-logo {
+        background: #4b0d7f;
+        color: white;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.75rem;
+        font-weight: 700;
+        font-size: 0.875rem;
+        margin-bottom: 1.5rem;
+        letter-spacing: 0.5px;
+      }
+      
+      .partner-sidebar-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        width: 100%;
+        padding: 0 0.5rem;
+        flex: 1;
+      }
+      
+      .partner-nav-link {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 0.625rem 0.5rem;
+        border-radius: 0.625rem;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: #6b7280;
+      }
+      
+      .partner-nav-link:hover {
+        background: rgba(75, 13, 127, 0.08);
+        color: #4b0d9f;
+      }
+      
+      .partner-nav-link.active {
+        background: rgba(75, 13, 127, 0.1);
+        color: #4b0d9f;
+      }
+      
+      .partner-nav-link i {
+        font-size: 1.5rem;
+        transition: transform 0.2s ease;
+      }
+      
+      .partner-nav-link:hover i {
+        transform: scale(1.1);
+      }
+      
+      .partner-nav-link span {
+        font-size: 0.625rem;
+        margin-top: 0.375rem;
+        font-weight: 500;
+        text-align: center;
+        line-height: 1.2;
+      }
+      
+      .partner-nav-link.logout:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: #dc2626;
+      }
+      
+      .partner-nav-spacer {
+        flex: 1;
+      }
+      
+      .partner-sidebar-toggle {
+        display: none;
+      }
+      
+      @media (max-width: 768px) {
+        .partner-sidebar-toggle {
+          display: flex;
+          position: fixed;
+          top: 1rem;
+          left: 1rem;
+          z-index: 50;
+          background: #4b0d7f;
+          color: white;
+          border: none;
+          border-radius: 50%;
+          width: 44px;
+          height: 44px;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 12px rgba(75, 13, 127, 0.3);
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        
+        .partner-sidebar-toggle:hover {
+          transform: scale(1.05);
+          box-shadow: 0 6px 16px rgba(75, 13, 127, 0.4);
+        }
+        
+        .partner-sidebar-toggle i {
+          font-size: 1.5rem;
+        }
+        
+        .partner-sidebar {
+          position: fixed;
+          left: 0;
+          top: 0;
+          transform: translateX(-100%);
+          transition: transform 0.3s ease;
+          z-index: 45;
+        }
+        
+        .partner-sidebar.active {
+          transform: translateX(0);
+        }
+        
+        .partner-sidebar-overlay {
+          display: none;
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 40;
+        }
+        
+        .partner-sidebar-overlay.active {
+          display: block;
+        }
+      }
     </style>
   </head>
   <body class="bg-gray-50 font-sans">
     <!-- Global Notification Script -->
     <script src="/js/notifications.js"></script>
-    <button class="sidebar-toggle" id="sidebarToggle">
+    
+    <!-- Mobile Toggle -->
+    <button class="partner-sidebar-toggle" id="sidebarToggle">
       <i class="bx bx-menu text-xl"></i>
     </button>
     
-    <div class="overlay" id="overlay"></div>
+    <!-- Mobile Overlay -->
+    <div class="partner-sidebar-overlay" id="sidebarOverlay"></div>
     
     <!-- Success Toast Notification -->
     <div id="successToast" class="hidden fixed top-4 right-4 z-50 bg-white border-l-4 border-green-500 rounded-lg shadow-lg p-4 max-w-md">
@@ -145,48 +291,46 @@
       </div>
     </div>
     
+    <!-- Main Layout Container -->
     <div class="flex min-h-screen">
-      <aside class="sidebar w-20 bg-white shadow-md flex flex-col items-center py-6 space-y-6 z-40">
-        <div class="mb-4">
-          <div class="bg-[#4b0d7f] text-white px-3 py-2 rounded-xl font-semibold text-sm">T4L</div>
-        </div>
-        <nav class="flex flex-col space-y-4 text-gray-700 w-full">
-          <a href="/ambassador-dashboard.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
-            <i class="bx bxs-home text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
-            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Home</span>
+      <!-- Sidebar -->
+      <aside class="partner-sidebar" id="partnerSidebar">
+        <div class="partner-sidebar-logo">T4L</div>
+        <nav class="partner-sidebar-nav">
+          <a href="/partner-dashboard.html" class="partner-nav-link">
+            <i class="bx bxs-home"></i>
+            <span>Home</span>
           </a>
-          <a href="/services.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg bg-purple-50">
-            <i class="bx bx-briefcase-alt-2 text-2xl text-[#4b0d9f] group-hover:scale-110 transition-transform duration-200"></i>
-            <span class="text-[10px] mt-1.5 font-medium text-[#4b0d9f] transition-colors duration-200">Services</span>
+          <a href="/services-partner.html" class="partner-nav-link active">
+            <i class="bx bx-briefcase-alt-2"></i>
+            <span>Services</span>
           </a>
-          <a href="/article-amb.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
-            <i class="bx bx-edit-alt text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
-            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Publishing</span>
+          <a href="/impactlog-partner.html" class="partner-nav-link">
+            <i class="bx bx-line-chart"></i>
+            <span>Impact Log</span>
           </a>
-          <!-- Task (Journey) -->
-          <a href="/journey.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
-            <i class="bx bx-check-square text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
-            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Task</span>
+          <a href="/chat-pillar-partner.html" class="partner-nav-link">
+            <i class="bx bxs-group"></i>
+            <span>Partners Community</span>
           </a>
-          <a href="/Partner-Calls.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
-            <i class="bx bx-briefcase text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
-            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Partners</span>
+          <a href="https://www.t4leader.com/event" class="partner-nav-link" target="_blank" rel="noopener noreferrer">
+            <i class="bx bx-calendar-event"></i>
+            <span>Events</span>
           </a>
-          <a href="https://www.t4leader.com/event" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
-            <i class="bx bx-calendar-event text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
-            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Events</span>
+          <a href="/profile-partner.html" class="partner-nav-link">
+            <i class="bx bx-user"></i>
+            <span>Profile</span>
           </a>
-          <a href="/profile.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
-            <i class="bx bx-user text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
-            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Profile</span>
+          <a href="/profile-partner.html" class="partner-nav-link">
+            <i class="bx bx-cog"></i>
+            <span>Settings</span>
           </a>
-          <a href="/profile.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
-            <i class="bx bx-cog text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
-            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Settings</span>
-          </a>
-          <div id="logoutBtn" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-red-50">
-            <i class="bx bx-log-out text-2xl text-gray-600 group-hover:text-red-600 group-hover:scale-110 transition-all duration-200"></i>
-            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-red-600 transition-colors duration-200">Logout</span>
+          
+          <div class="partner-nav-spacer"></div>
+          
+          <div class="partner-nav-link logout" id="logoutBtn">
+            <i class="bx bx-log-out"></i>
+            <span>Logout</span>
           </div>
         </nav>
       </aside>
@@ -301,6 +445,55 @@
 
       </main>
     </div>
+
+    <!-- Sidebar Script -->
+    <script>
+      // Mobile toggle
+      const toggle = document.getElementById('sidebarToggle');
+      const sidebar = document.getElementById('partnerSidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      
+      if (toggle && sidebar && overlay) {
+        toggle.addEventListener('click', () => {
+          sidebar.classList.toggle('active');
+          overlay.classList.toggle('active');
+        });
+        
+        overlay.addEventListener('click', () => {
+          sidebar.classList.remove('active');
+          overlay.classList.remove('active');
+        });
+      }
+      
+      // Logout
+      const logoutBtnInline = document.getElementById('logoutBtn');
+      if (logoutBtnInline) {
+        logoutBtnInline.addEventListener('click', () => {
+          fetch('/api/logout', { 
+            method: 'POST',
+            credentials: 'include'
+          })
+          .then(() => {
+            window.location.href = '/partner-signin';
+          })
+          .catch(() => {
+            window.location.href = '/partner-signin';
+          });
+        });
+      }
+      
+      // Set active nav item based on current page
+      const currentPage = window.location.pathname.split('/').pop();
+      const navLinks = document.querySelectorAll('.partner-nav-link');
+      
+      navLinks.forEach(link => {
+        const href = link.getAttribute('href');
+        if (href && href.includes(currentPage)) {
+          navLinks.forEach(l => l.classList.remove('active'));
+          link.classList.add('active');
+        }
+      });
+    </script>
 
     <script>
       const API_URL = '/api';
@@ -591,24 +784,6 @@
       }
 
       function setupEventListeners() {
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        const sidebar = document.querySelector('.sidebar');
-        const overlay = document.getElementById('overlay');
-        
-        if (sidebarToggle) {
-          sidebarToggle.addEventListener('click', () => {
-            sidebar.classList.add('active');
-            overlay.classList.add('active');
-          });
-        }
-        
-        if (overlay) {
-          overlay.addEventListener('click', () => {
-            sidebar.classList.remove('active');
-            overlay.classList.remove('active');
-          });
-        }
-        
         document.querySelectorAll('.filter-btn').forEach(btn => {
           btn.addEventListener('click', function() {
             document.querySelectorAll('.filter-btn').forEach(b => {
@@ -657,19 +832,6 @@
         document.getElementById('requestModal').addEventListener('click', (e) => {
           if (e.target.id === 'requestModal') {
             document.getElementById('requestModal').classList.add('hidden');
-          }
-        });
-        
-        document.getElementById('logoutBtn').addEventListener('click', async () => {
-          try {
-            await fetch(`${API_URL}/logout`, {
-              method: 'POST',
-              credentials: 'include'
-            });
-            window.location.href = '/signin';
-          } catch (error) {
-            console.error('Logout error:', error);
-            window.location.href = '/signin';
           }
         });
       }

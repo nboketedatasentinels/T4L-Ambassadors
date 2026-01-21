@@ -521,6 +521,19 @@ async function initializeDashboard() {
   try {
     console.log('🚀 ========== DASHBOARD INITIALIZATION START ==========');
     
+    // ✅ STEP 0: Show loading states immediately
+    const videoTitle = document.getElementById('videoTitle');
+    const videoDescription = document.getElementById('videoDescription');
+    const videoMeta = document.getElementById('videoMeta');
+    const journeyProgress = document.getElementById('journeyProgress');
+    const journeyMonth = document.getElementById('journeyMonth');
+    
+    if (videoTitle) videoTitle.textContent = 'Loading...';
+    if (videoDescription) videoDescription.textContent = 'Loading journey data...';
+    if (videoMeta) videoMeta.textContent = 'Please wait...';
+    if (journeyProgress) journeyProgress.textContent = '--';
+    if (journeyMonth) journeyMonth.textContent = 'Loading...';
+    
     // ✅ STEP 1: Fetch journey data FIRST
     console.log('📡 Step 1: Fetching journey data...');
     const journeyResponse = await fetch('/api/journey', {
@@ -563,7 +576,15 @@ async function initializeDashboard() {
     console.error('❌ ========== DASHBOARD INITIALIZATION FAILED ==========');
     console.error('Error:', error.message);
     console.error('Stack:', error.stack);
+    // Show a friendly video error but still try to load basic stats
     showVideoError('Failed to initialize dashboard');
+    try {
+      // Fallback: load stats from local journey data (localStorage) so
+      // the top cards don’t stay stuck on "Loading..."
+      await loadDashboardStats();
+    } catch (statsError) {
+      console.error('❌ Failed to load fallback dashboard stats:', statsError);
+    }
   }
 }
 

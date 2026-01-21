@@ -965,7 +965,7 @@ app.post(
               "application_received",
               "🎯 New Application Received",
               `${ambassadorName} has applied to your opportunity "${postTitle || post.title}"`,
-              `/applications.html`,
+              `/application-details.html?id=${applicationId}`,
               applicationId
             );
             console.log("   ✅ Partner notification sent");
@@ -1317,7 +1317,7 @@ app.post(
               "application_received",
               "🎯 New Application Received",
               `${ambassadorName} has applied to your opportunity "${post.title}"`,
-              `/applications.html`,
+              `/application-details.html?id=${applicationId}`,
               applicationId
             );
             console.log("✅ Partner notification sent to:", partner.company_name || partner.user_id);
@@ -2954,18 +2954,54 @@ app.get(
 // SERVICES HTML PAGE ROUTES
 // ============================================
 
-// Services page (for everyone)
+// Services page - redirect to role-specific version
 app.get("/services.html", requireAuth, async (req, res) => {
   try {
     const user = await getUserById(req.auth.userId, req.auth.role);
     if (!user) {
       return res.redirect("/signin");
     }
-    console.log("✅ Serving services.html to:", user.email);
-    res.sendFile(path.join(__dirname, "public", "services.html"));
+    // Redirect to role-specific services page
+    if (user.role === "partner") {
+      return res.redirect("/services-partner.html");
+    } else if (user.role === "ambassador") {
+      return res.redirect("/services-ambassador.html");
+    } else {
+      return res.redirect("/signin");
+    }
   } catch (error) {
     console.error("Error serving services page:", error);
     return res.redirect("/signin");
+  }
+});
+
+// Services - Ambassador version
+app.get("/services-ambassador.html", requireAuth, requireRole("ambassador"), async (req, res) => {
+  try {
+    const user = await getUserById(req.auth.userId, "ambassador");
+    if (!user) {
+      return res.redirect("/signin");
+    }
+    console.log("✅ Serving services-ambassador.html to:", user.email);
+    res.sendFile(path.join(__dirname, "public", "services-ambassador.html"));
+  } catch (error) {
+    console.error("Error serving ambassador services page:", error);
+    return res.redirect("/signin");
+  }
+});
+
+// Services - Partner version
+app.get("/services-partner.html", requireAuth, requireRole("partner"), async (req, res) => {
+  try {
+    const user = await getUserById(req.auth.userId, "partner");
+    if (!user) {
+      return res.redirect("/partner-signin");
+    }
+    console.log("✅ Serving services-partner.html to:", user.email);
+    res.sendFile(path.join(__dirname, "public", "services-partner.html"));
+  } catch (error) {
+    console.error("Error serving partner services page:", error);
+    return res.redirect("/partner-signin");
   }
 });
 
@@ -2989,21 +3025,39 @@ app.get(
   }
 );
 
-// My services page (for T4L partners only)
+// My services page (for T4L partners only - STRICT ENFORCEMENT)
 app.get(
   "/my-services.html",
   requireAuth,
-  requireRole("partner"),
   async (req, res) => {
     try {
+      // ✅ CRITICAL: Check role FIRST - redirect non-partners immediately
+      if (!req.auth || req.auth.role !== "partner") {
+        console.log("🚫 Blocked access to my-services.html - role:", req.auth?.role);
+        if (req.auth?.role === "ambassador") {
+          return res.redirect("/ambassador-dashboard.html");
+        } else {
+          return res.redirect("/partner-signin");
+        }
+      }
+
+      // ✅ DOUBLE CHECK: Verify user is actually a partner
       const user = await getUserById(req.auth.userId, "partner");
       if (!user) {
+        console.log("🚫 User not found as partner:", req.auth.userId);
         return res.redirect("/partner-signin");
       }
+
+      // ✅ TRIPLE CHECK: Verify role from database matches
+      if (user.role !== "partner") {
+        console.log("🚫 User role mismatch - DB role:", user.role, "Session role:", req.auth.role);
+        return res.redirect("/partner-signin");
+      }
+
       console.log("✅ Serving my-services.html to partner:", user.email);
       res.sendFile(path.join(__dirname, "public", "my-services.html"));
     } catch (error) {
-      console.error("Error serving my services page:", error);
+      console.error("❌ Error serving my services page:", error);
       return res.redirect("/partner-signin");
     }
   }
@@ -4209,6 +4263,50 @@ app.get('/admin/api/linkedin-audits/count', requireAuth, requireRole('admin'), a
 // FIXED FOR VERCEL - Uses Supabase Storage
 // ============================================
 
+// ✅ Retry helper function with exponential backoff
+async function retryOperation(operation, maxRetries = 3, delay = 1000) {
+  let lastError;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries) {
+        const waitTime = delay * Math.pow(2, attempt - 1); // Exponential backoff
+        console.log(`⚠️ Operation failed (attempt ${attempt}/${maxRetries}), retrying in ${waitTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+  throw lastError;
+}
+
+// ✅ Health check for Supabase storage (non-blocking, just logs)
+async function checkStorageHealth() {
+  try {
+    if (!supabase || !supabase.storage) {
+      console.error("❌ Supabase storage not initialized");
+      return false;
+    }
+    // Quick check - try to list buckets (this is a lightweight operation)
+    const { data, error } = await supabase.storage.listBuckets();
+    if (error) {
+      console.warn("⚠️ Storage health check warning:", error.message);
+      return false;
+    }
+    // Check if certificates bucket exists
+    const hasCertBucket = data && data.some(bucket => bucket.name === 'certificates');
+    if (!hasCertBucket) {
+      console.warn("⚠️ Certificates bucket not found in storage");
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.warn("⚠️ Storage health check failed:", error.message);
+    return false;
+  }
+}
+
 // ✅ Use memory storage instead of disk storage (required for Vercel)
 const certificateStorage = multer.memoryStorage();
 
@@ -4260,9 +4358,19 @@ app.post(
     });
   },
   async (req, res) => {
+    let uploadedFilename = null; // Track uploaded file for cleanup on failure
+    
     try {
       const userId = req.auth.userId;
       const { courseType } = req.body;
+
+      // ✅ Validate inputs
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: "Authentication required",
+        });
+      }
 
       const validCourseTypes = [
         "linkedin_course",
@@ -4279,63 +4387,178 @@ app.post(
         });
       }
 
-      if (!req.file) {
+      if (!req.file || !req.file.buffer) {
         return res.status(400).json({ 
           success: false, 
-          error: "No file uploaded" 
+          error: "No file uploaded or file buffer is missing" 
         });
       }
 
-      const ambassador = await getUserById(userId, "ambassador");
+      // ✅ Validate file buffer
+      if (!Buffer.isBuffer(req.file.buffer) || req.file.buffer.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid file data",
+        });
+      }
+
+      // ✅ Get ambassador with retry
+      const ambassador = await retryOperation(
+        () => getUserById(userId, "ambassador"),
+        3,
+        500
+      );
+
       if (!ambassador) {
         return res.status(404).json({ error: "Ambassador not found" });
       }
 
       const ambassadorId = ambassador.ambassador_id || ambassador.id;
 
-      // ✅ Generate unique filename
-      const fileExt = path.extname(req.file.originalname);
-      const uniqueFilename = `${ambassadorId}_${courseType}_${Date.now()}${fileExt}`;
+      // ✅ Generate unique filename with better collision prevention
+      const fileExt = path.extname(req.file.originalname) || '.pdf';
+      const timestamp = Date.now();
+      const randomSuffix = crypto.randomBytes(4).toString('hex');
+      const uniqueFilename = `cert_${ambassadorId}_${courseType}_${timestamp}_${randomSuffix}${fileExt}`;
+      uploadedFilename = uniqueFilename; // Track for cleanup
 
       console.log("📤 Uploading to Supabase Storage:", uniqueFilename);
 
-      // ✅ Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("certificates") // Make sure this bucket exists!
-        .upload(uniqueFilename, req.file.buffer, {
-          contentType: req.file.mimetype,
-          upsert: true, // Overwrite if exists
-        });
-
-      if (uploadError) {
-        console.error("❌ Supabase upload error:", uploadError);
+      // ✅ Verify Supabase is available
+      if (!supabase || !supabase.storage) {
+        console.error("❌ Supabase storage not initialized");
         return res.status(500).json({
           success: false,
-          error: "Failed to upload file to storage",
-          details: uploadError.message,
+          error: "Storage service unavailable. Please contact support.",
         });
       }
+
+      // ✅ Quick storage health check (non-blocking, just for logging)
+      const storageHealthy = await checkStorageHealth().catch(() => false);
+      if (!storageHealthy) {
+        console.error("⚠️ Storage health check failed - proceeding anyway but may fail");
+      }
+
+      // ✅ Upload to Supabase Storage with retry and comprehensive error handling
+      const uploadData = await retryOperation(
+        async () => {
+          try {
+            const { data, error } = await supabase.storage
+              .from("certificates")
+              .upload(uniqueFilename, req.file.buffer, {
+                contentType: req.file.mimetype || 'application/octet-stream',
+                upsert: false, // Don't overwrite - we use unique names
+              });
+            
+            if (error) {
+              // Handle specific Supabase errors
+              const errorMsg = error.message || String(error);
+              
+              // Check if bucket doesn't exist or permission denied
+              if (errorMsg.includes('Bucket not found') || errorMsg.includes('not found') || errorMsg.includes('permission')) {
+                console.error("❌ Supabase bucket error:", errorMsg);
+                throw new Error("Storage bucket configuration error. Please contact support.");
+              }
+              
+              // Check if it's a duplicate (which shouldn't happen with unique names)
+              if (errorMsg.includes('already exists') || errorMsg.includes('duplicate')) {
+                // Generate new unique name and retry once
+                const newTimestamp = Date.now();
+                const newRandomSuffix = crypto.randomBytes(4).toString('hex');
+                uploadedFilename = `cert_${ambassadorId}_${courseType}_${newTimestamp}_${newRandomSuffix}${fileExt}`;
+                console.log("🔄 Retrying with new filename:", uploadedFilename);
+                
+                const { data: retryData, error: retryError } = await supabase.storage
+                  .from("certificates")
+                  .upload(uploadedFilename, req.file.buffer, {
+                    contentType: req.file.mimetype || 'application/octet-stream',
+                    upsert: false,
+                  });
+                if (retryError) {
+                  const retryErrorMsg = retryError.message || String(retryError);
+                  if (retryErrorMsg.includes('Bucket not found') || retryErrorMsg.includes('permission')) {
+                    throw new Error("Storage bucket configuration error. Please contact support.");
+                  }
+                  throw retryError;
+                }
+                return retryData;
+              }
+              
+              // Handle quota/rate limit errors
+              if (errorMsg.includes('quota') || errorMsg.includes('rate limit') || errorMsg.includes('too many')) {
+                throw new Error("Storage quota exceeded. Please try again later or contact support.");
+              }
+              
+              // Generic error
+              console.error("❌ Supabase upload error:", errorMsg);
+              throw error;
+            }
+            
+            if (!data) {
+              throw new Error("Upload succeeded but no data returned");
+            }
+            
+            return data;
+          } catch (uploadError) {
+            // Re-throw with better context
+            if (uploadError.message && uploadError.message.includes('contact support')) {
+              throw uploadError; // Already has good message
+            }
+            const errorMsg = uploadError.message || String(uploadError);
+            if (errorMsg.includes('network') || errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED')) {
+              throw new Error("Network error connecting to storage. Please check your connection and try again.");
+            }
+            throw uploadError;
+          }
+        },
+        3,
+        1000
+      );
 
       console.log("✅ File uploaded to Supabase:", uploadData.path);
 
       // ✅ Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from("certificates")
-        .getPublicUrl(uniqueFilename);
+        .getPublicUrl(uploadedFilename);
 
-      // Check for existing certificate
-      const { data: existingCert } = await supabase
-        .from("certificates")
-        .select("*")
-        .eq("ambassador_id", ambassadorId)
-        .eq("course_type", courseType)
-        .maybeSingle();
+      // ✅ Check for existing certificate with retry
+      const existingCert = await retryOperation(
+        async () => {
+          const { data, error } = await supabase
+            .from("certificates")
+            .select("*")
+            .eq("ambassador_id", ambassadorId)
+            .eq("course_type", courseType)
+            .maybeSingle();
+          
+          if (error) throw error;
+          return data;
+        },
+        3,
+        500
+      );
 
-      // Delete old file from storage if it exists
+      // ✅ Delete old file from storage if it exists (with error handling)
       if (existingCert && existingCert.filename) {
-        await supabase.storage
-          .from("certificates")
-          .remove([existingCert.filename]);
+        try {
+          await retryOperation(
+            async () => {
+              const { error } = await supabase.storage
+                .from("certificates")
+                .remove([existingCert.filename]);
+              if (error && !error.message.includes('not found')) {
+                throw error;
+              }
+            },
+            2,
+            500
+          );
+          console.log("✅ Old certificate file removed:", existingCert.filename);
+        } catch (deleteError) {
+          console.warn("⚠️ Failed to delete old certificate file (non-critical):", deleteError.message);
+          // Continue - this is not critical
+        }
       }
 
       const now = new Date().toISOString();
@@ -4343,7 +4566,7 @@ app.post(
         certificate_id: existingCert?.certificate_id || uuidv4(),
         ambassador_id: ambassadorId,
         course_type: courseType,
-        filename: uniqueFilename,
+        filename: uploadedFilename,
         original_name: req.file.originalname,
         file_size: req.file.size,
         upload_date: now,
@@ -4354,27 +4577,50 @@ app.post(
         updated_at: now,
       };
 
+      // ✅ Save certificate to database with retry
       let savedCert;
-      if (existingCert) {
-        const { data, error } = await supabase
-          .from("certificates")
-          .update(certificateData)
-          .eq("certificate_id", existingCert.certificate_id)
-          .select()
-          .single();
-        savedCert = data;
-        if (error) throw error;
-      } else {
-        const { data, error } = await supabase
-          .from("certificates")
-          .insert([certificateData])
-          .select()
-          .single();
-        savedCert = data;
-        if (error) throw error;
+      try {
+        savedCert = await retryOperation(
+          async () => {
+            if (existingCert) {
+              const { data, error } = await supabase
+                .from("certificates")
+                .update(certificateData)
+                .eq("certificate_id", existingCert.certificate_id)
+                .select()
+                .single();
+              if (error) throw error;
+              return data;
+            } else {
+              const { data, error } = await supabase
+                .from("certificates")
+                .insert([certificateData])
+                .select()
+                .single();
+              if (error) throw error;
+              return data;
+            }
+          },
+          3,
+          1000
+        );
+      } catch (dbError) {
+        // ✅ Rollback: Delete uploaded file if database save fails
+        console.error("❌ Database save failed, cleaning up uploaded file...");
+        try {
+          await supabase.storage
+            .from("certificates")
+            .remove([uploadedFilename]);
+          console.log("✅ Cleaned up uploaded file after database failure");
+        } catch (cleanupError) {
+          console.error("❌ Failed to cleanup file after database failure:", cleanupError);
+        }
+        throw dbError;
       }
 
-      // Notify admins
+      console.log("✅ Certificate saved to database:", savedCert.certificate_id);
+
+      // ✅ Notify admins (non-critical, don't fail if this fails)
       try {
         const { data: admins } = await supabase.from("admins").select("user_id");
         if (admins && admins.length > 0) {
@@ -4385,23 +4631,26 @@ app.post(
             .replace(/_/g, " ")
             .replace(/\b\w/g, (l) => l.toUpperCase());
 
-          for (const admin of admins) {
-            await createNotification(
-              admin.user_id,
-              "admin",
-              "certificate_uploaded",
-              "📜 New Certificate Uploaded",
-              `${ambassadorName} uploaded a certificate for ${courseName}`,
-              "/admin-dashboard.html",
-              null,
-              null,
-              null,
-              savedCert.certificate_id
-            );
-          }
+          // Send notifications in parallel, don't wait for all
+          Promise.all(
+            admins.map(admin =>
+              createNotification(
+                admin.user_id,
+                "admin",
+                "certificate_uploaded",
+                "📜 New Certificate Uploaded",
+                `${ambassadorName} uploaded a certificate for ${courseName}`,
+                "/admin-dashboard.html",
+                null,
+                null,
+                null,
+                savedCert.certificate_id
+              ).catch(err => console.warn(`⚠️ Failed to notify admin ${admin.user_id}:`, err.message))
+            )
+          ).catch(err => console.warn("⚠️ Notification batch failed:", err.message));
         }
       } catch (e) {
-        console.warn("⚠️ Failed to send admin notifications:", e?.message);
+        console.warn("⚠️ Failed to send admin notifications (non-critical):", e?.message);
       }
 
       return res.json({
@@ -4412,16 +4661,66 @@ app.post(
           filename: savedCert.filename,
           uploadDate: savedCert.upload_date,
           verified: savedCert.verified,
-          url: publicUrl, // Include URL for downloading
+          url: publicUrl,
         },
         message: "Certificate uploaded successfully. Awaiting admin verification.",
       });
     } catch (error) {
       console.error("❌ Unexpected certificate upload error:", error);
-      return res.status(500).json({
+      
+      // ✅ Final cleanup attempt if file was uploaded but something else failed
+      if (uploadedFilename) {
+        try {
+          await supabase.storage
+            .from("certificates")
+            .remove([uploadedFilename]);
+          console.log("✅ Cleaned up uploaded file after error");
+        } catch (cleanupError) {
+          console.error("❌ Failed to cleanup file:", cleanupError);
+        }
+      }
+
+      // ✅ Provide helpful error messages based on error type
+      let errorMessage = "Failed to upload certificate";
+      let errorDetails = error.message || String(error);
+      let statusCode = 500;
+
+      // Categorize errors for better user experience
+      if (errorDetails.includes('timeout') || errorDetails.includes('ETIMEDOUT')) {
+        errorMessage = "Upload timed out. Please check your connection and try again.";
+        statusCode = 408;
+      } else if (errorDetails.includes('network') || errorDetails.includes('ECONNREFUSED') || errorDetails.includes('ENOTFOUND')) {
+        errorMessage = "Network error. Please check your internet connection and try again.";
+        statusCode = 503;
+      } else if (errorDetails.includes('Storage bucket') || errorDetails.includes('bucket configuration')) {
+        errorMessage = "Storage service configuration error. Our team has been notified. Please try again in a few minutes.";
+        statusCode = 503;
+        // Log for admin attention
+        console.error("🚨 CRITICAL: Storage bucket configuration issue detected!");
+      } else if (errorDetails.includes('quota') || errorDetails.includes('rate limit')) {
+        errorMessage = "Storage quota exceeded. Please try again later or contact support.";
+        statusCode = 429;
+      } else if (errorDetails.includes('Authentication') || errorDetails.includes('unauthorized') || errorDetails.includes('401')) {
+        errorMessage = "Authentication error. Please refresh the page and try again.";
+        statusCode = 401;
+      } else if (errorDetails.includes('not found') && errorDetails.includes('Ambassador')) {
+        errorMessage = "User account not found. Please contact support.";
+        statusCode = 404;
+      } else {
+        // Generic error - log full details for debugging
+        console.error("❌ Certificate upload error details:", {
+          message: error.message,
+          stack: error.stack,
+          userId,
+          courseType,
+          filename: uploadedFilename,
+        });
+      }
+
+      return res.status(statusCode).json({
         success: false,
-        error: "Failed to upload certificate",
-        details: error.message,
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? errorDetails : undefined, // Only show details in dev
       });
     }
   }
@@ -4810,8 +5109,35 @@ app.get(
   }
 );
 
-app.get("/profile.html", requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "profile.html"));
+// Profile page - redirect to role-specific version
+app.get("/profile.html", requireAuth, async (req, res) => {
+  try {
+    const user = await getUserById(req.auth.userId, req.auth.role);
+    if (!user) {
+      return res.redirect("/signin");
+    }
+    // Redirect to role-specific profile page
+    if (user.role === "partner") {
+      return res.redirect("/profile-partner.html");
+    } else if (user.role === "ambassador") {
+      return res.redirect("/profile-ambassador.html");
+    } else {
+      return res.redirect("/signin");
+    }
+  } catch (error) {
+    console.error("Error serving profile page:", error);
+    return res.redirect("/signin");
+  }
+});
+
+// Profile - Ambassador version
+app.get("/profile-ambassador.html", requireAuth, requireRole("ambassador"), (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "profile-ambassador.html"));
+});
+
+// Profile - Partner version
+app.get("/profile-partner.html", requireAuth, requireRole("partner"), (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "profile-partner.html"));
 });
 
 app.get(
@@ -4832,7 +5158,7 @@ app.get(
   }
 );
 
-app.get("/Partner-Calls.html", requireAuth, (req, res) => {
+app.get("/Partner-Calls.html", requireAuth, requireRole("partner"), (req, res) => {
   res.sendFile(path.join(__dirname, "public", "Partner-Calls.html"));
 });
 
@@ -4840,11 +5166,86 @@ app.get("/journey.html", requireAuth, requireRole("ambassador"), (req, res) => {
   res.sendFile(path.join(__dirname, "public", "journey.html"));
 });
 
-app.get("/chat-pillar.html", requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "chat-pillar.html"));
+// Impact Log - Ambassador version
+app.get("/impactlog-ambassador.html", requireAuth, requireRole("ambassador"), (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "impactlog-ambassador.html"));
 });
 
-app.get("/chat-region.html", requireAuth, (req, res) => {
+// Impact Log - Partner version
+app.get("/impactlog-partner.html", requireAuth, requireRole("partner"), (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "impactlog-partner.html"));
+});
+
+// Legacy Impactlog.html - redirect based on role
+app.get("/Impactlog.html", requireAuth, async (req, res) => {
+  try {
+    const user = await getUserById(req.auth.userId, req.auth.role);
+    if (!user) {
+      return res.redirect("/signin");
+    }
+    // Redirect to role-specific impact log page
+    if (user.role === "partner") {
+      return res.redirect("/impactlog-partner.html");
+    } else if (user.role === "ambassador") {
+      return res.redirect("/impactlog-ambassador.html");
+    } else {
+      return res.redirect("/signin");
+    }
+  } catch (error) {
+    console.error("Error serving impact log page:", error);
+    return res.redirect("/signin");
+  }
+});
+
+// Redirect chat-pillar.html based on role
+app.get("/chat-pillar.html", requireAuth, async (req, res) => {
+  try {
+    const user = await getUserById(req.auth.userId, req.auth.role);
+    if (!user) {
+      return res.redirect("/signin");
+    }
+    if (user.role === "partner") {
+      return res.redirect("/chat-pillar-partner.html");
+    } else if (user.role === "ambassador") {
+      return res.redirect("/chat-pillar-ambassador.html");
+    } else {
+      return res.redirect("/signin");
+    }
+  } catch (error) {
+    console.error("Error serving chat-pillar page:", error);
+    return res.redirect("/signin");
+  }
+});
+
+// Ambassador Chat Pillar page
+app.get("/chat-pillar-ambassador.html", requireAuth, requireRole("ambassador"), async (req, res) => {
+  try {
+    const user = await getUserById(req.auth.userId, "ambassador");
+    if (!user) {
+      return res.redirect("/signin");
+    }
+    res.sendFile(path.join(__dirname, "public", "chat-pillar-ambassador.html"));
+  } catch (error) {
+    console.error("Error serving ambassador chat-pillar page:", error);
+    return res.redirect("/signin");
+  }
+});
+
+// Partner Chat Pillar page
+app.get("/chat-pillar-partner.html", requireAuth, requireRole("partner"), async (req, res) => {
+  try {
+    const user = await getUserById(req.auth.userId, "partner");
+    if (!user) {
+      return res.redirect("/partner-signin");
+    }
+    res.sendFile(path.join(__dirname, "public", "chat-pillar-partner.html"));
+  } catch (error) {
+    console.error("Error serving partner chat-pillar page:", error);
+    return res.redirect("/partner-signin");
+  }
+});
+
+app.get("/chat-region.html", requireAuth, requireRole("partner"), (req, res) => {
   res.sendFile(path.join(__dirname, "public", "chat-region.html"));
 });
 
@@ -5207,12 +5608,100 @@ app.get(
           console.error('❌ Failed to create journey progress:', upsertError);
           // Continue anyway - return default progress
         }
+      } else {
+        // ✅ SAFETY GUARD:
+        // If there are ZERO completed tasks, force current_month to 1.
+        // This prevents brand‑new ambassadors (who may have a bad/legacy
+        // journey_progress row) from incorrectly showing as Month 2/3+
+        // when they have not completed any journey tasks yet.
+        const completedCountSafe = Object.keys(progress.completed_tasks || {}).filter(
+          (key) => progress.completed_tasks[key]
+        ).length;
+
+        if (!completedCountSafe && progress.current_month !== 1) {
+          console.log(
+            '⚠️ Journey progress had no completed tasks but month was',
+            progress.current_month,
+            '→ forcing Month 1 for safety.'
+          );
+
+          progress.current_month = 1;
+
+          try {
+            await upsertJourneyProgress(ambassadorId, {
+              ...progress,
+              current_month: 1,
+            });
+            console.log('✅ Journey progress normalized to Month 1 for ambassador:', ambassadorId);
+          } catch (normalizeError) {
+            console.error('❌ Failed to normalize journey month to 1:', normalizeError);
+            // Non‑fatal – we still respond with the in‑memory normalized value
+          }
+        }
       }
       
       console.log('✅ Journey Progress:');
       console.log('   Ambassador ID:', ambassadorId);
       console.log('   Current Month:', progress.current_month);
       console.log('   Completed Tasks:', Object.keys(progress.completed_tasks || {}).length);
+      
+      // ✅ BACKEND GUARD: Clamp current_month based on completed tasks
+      // This prevents users from being shown a month they haven't legitimately reached
+      // by checking if all tasks for each month are actually completed
+      let maxEligibleMonth = 1; // Start at month 1
+      
+      console.log('🔍 Checking task completion to determine maxEligibleMonth...');
+      
+      // Check each month from 1 to 12 to see if all tasks are completed
+      for (let monthNum = 1; monthNum <= 12; monthNum++) {
+        const monthData = JOURNEY_MONTHS.find(m => m.month === monthNum);
+        if (!monthData) {
+          console.log(`   Month ${monthNum}: No data found, skipping`);
+          continue;
+        }
+        
+        // Check if ALL tasks for this month are completed
+        const allTasksCompleted = monthData.tasks.every(task => {
+          const taskKey = `${monthNum}-${task.id}`;
+          return !!progress.completed_tasks[taskKey];
+        });
+        
+        const completedCount = monthData.tasks.filter(task => {
+          const taskKey = `${monthNum}-${task.id}`;
+          return !!progress.completed_tasks[taskKey];
+        }).length;
+        
+        console.log(
+          `   Month ${monthNum}: ${completedCount}/${monthData.tasks.length} tasks completed - ` +
+          `${allTasksCompleted ? '✅ ALL COMPLETE' : '❌ INCOMPLETE'}`
+        );
+        
+        if (allTasksCompleted) {
+          // If all tasks for this month are done, they're eligible for the next month
+          // But cap at 12 (the maximum month)
+          maxEligibleMonth = Math.min(monthNum + 1, 12);
+        } else {
+          // Found the first month that's not fully complete - stop here
+          console.log(`   ⏹️ Stopping at Month ${monthNum} (first incomplete month)`);
+          break;
+        }
+      }
+      
+      // Clamp the effective current month to the maximum eligible month
+      // This ensures users can't be shown a month they haven't legitimately reached
+      const effectiveCurrentMonth = Math.min(progress.current_month, maxEligibleMonth);
+      
+      console.log(`📊 Month Calculation:`);
+      console.log(`   Database current_month: ${progress.current_month}`);
+      console.log(`   maxEligibleMonth (based on tasks): ${maxEligibleMonth}`);
+      console.log(`   effectiveCurrentMonth (clamped): ${effectiveCurrentMonth}`);
+      
+      if (effectiveCurrentMonth !== progress.current_month) {
+        console.log(
+          `⚠️ Journey month clamped: ${progress.current_month} → ${effectiveCurrentMonth} ` +
+          `(maxEligibleMonth: ${maxEligibleMonth} based on completed tasks)`
+        );
+      }
       
       // ✅ Calculate statistics
       const totalTasks = JOURNEY_MONTHS.reduce(
@@ -5225,9 +5714,9 @@ app.get(
       const overallProgress =
         totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
 
-      // Get current month data
+      // Get current month data (using effectiveCurrentMonth)
       const currentMonthData = JOURNEY_MONTHS.find(
-        (m) => m.month === progress.current_month
+        (m) => m.month === effectiveCurrentMonth
       );
       
       let currentMonthProgress = 0;
@@ -5239,7 +5728,7 @@ app.get(
           text: task.text,
           description: task.description || "",
           completed:
-            !!progress.completed_tasks[`${progress.current_month}-${task.id}`],
+            !!progress.completed_tasks[`${effectiveCurrentMonth}-${task.id}`],
           critical: task.critical || false,
           time: task.time || "",
           deadline: task.deadline || "",
@@ -5273,8 +5762,8 @@ app.get(
           totalTasks: month.tasks.length,
           completedTasks: monthCompleted,
           progress: monthProgress,
-          isCurrentMonth: month.month === progress.current_month,
-          isCompleted: month.month < progress.current_month,
+          isCurrentMonth: month.month === effectiveCurrentMonth,
+          isCompleted: month.month < effectiveCurrentMonth,
           tasks: month.tasks.map((task) => ({
             id: task.id,
             text: task.text,
@@ -5286,9 +5775,9 @@ app.get(
         };
       });
 
-      // Build response
+      // Build response (using effectiveCurrentMonth)
       const response = {
-        currentMonth: progress.current_month,
+        currentMonth: effectiveCurrentMonth,
         currentMonthTitle: currentMonthData ? currentMonthData.title : "Month 1",
         currentMonthMilestone: currentMonthData ? currentMonthData.milestone : "",
         completedTasks: progress.completed_tasks,
@@ -8198,9 +8687,9 @@ app.post(
 
       console.log("✅ Post created successfully:", newPost.post_id);
 
-      // Notify admins about the new post created by a partner
+      // Notify admins and ambassadors about the new post created by a partner
       try {
-        const { data: admins } = await supabase.from("admins").select("user_id");
+        // Resolve partner display name once
         let partnerName = "A partner";
         try {
           const { data: partnerProfile } = await supabase
@@ -8212,23 +8701,71 @@ app.post(
             partnerProfile?.organization_name ||
             partnerProfile?.contact_person ||
             partnerName;
-        } catch (e) {}
+        } catch (e) {
+          // Non-fatal – fall back to default name
+        }
 
-        if (admins && admins.length > 0) {
-          for (const admin of admins) {
-            await createNotification(
-              admin.user_id,
-              "admin",
-              "post_created",
-              "💼 New Opportunity Posted",
-              `${partnerName} posted a new opportunity: "${title}"`,
-              `/admin-dashboard.html`
+        // 🔔 Notify all admins
+        try {
+          const { data: admins } = await supabase
+            .from("admins")
+            .select("user_id");
+
+          if (admins && admins.length > 0) {
+            for (const admin of admins) {
+              await createNotification(
+                admin.user_id,
+                "admin",
+                "post_created",
+                "💼 New Opportunity Posted",
+                `${partnerName} posted a new opportunity: "${title}"`,
+                `/admin-dashboard.html`
+              );
+            }
+            console.log("✅ Admin notifications sent for new post");
+          }
+        } catch (adminNotifError) {
+          console.error(
+            "⚠️ Failed to notify admins about new post:",
+            adminNotifError.message
+          );
+        }
+
+        // 🔔 Notify all ambassadors
+        try {
+          const { data: ambassadors } = await supabase
+            .from("ambassadors")
+            .select("user_id");
+
+          if (ambassadors && ambassadors.length > 0) {
+            for (const amb of ambassadors) {
+              // ⚡ Don't block the response on each notification – fire-and-forget
+              createNotification(
+                amb.user_id,
+                "ambassador",
+                "new_partner_post",
+                "New Opportunity Available",
+                `${partnerName} just posted a new opportunity: "${title}"`,
+                `/partner-dashboard.html`
+              ).catch((err) => {
+                console.error(
+                  "⚠️ Failed to create ambassador notification for new post:",
+                  err?.message || err
+                );
+              });
+            }
+            console.log(
+              "✅ Ambassador notifications sent for new partner post"
             );
           }
-          console.log("✅ Admin notifications sent for new post");
+        } catch (ambNotifError) {
+          console.error(
+            "⚠️ Failed to notify ambassadors about new post:",
+            ambNotifError.message
+          );
         }
       } catch (notifError) {
-        console.error("⚠️ Failed to notify admins:", notifError.message);
+        console.error("⚠️ Failed to send notifications:", notifError.message);
       }
 
       return res.json({

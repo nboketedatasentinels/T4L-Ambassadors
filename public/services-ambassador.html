@@ -107,11 +107,6 @@
   <body class="bg-gray-50 font-sans">
     <!-- Global Notification Script -->
     <script src="/js/notifications.js"></script>
-    <button class="sidebar-toggle" id="sidebarToggle">
-      <i class="bx bx-menu text-xl"></i>
-    </button>
-    
-    <div class="overlay" id="overlay"></div>
     
     <!-- Success Toast Notification -->
     <div id="successToast" class="hidden fixed top-4 right-4 z-50 bg-white border-l-4 border-green-500 rounded-lg shadow-lg p-4 max-w-md">
@@ -146,6 +141,7 @@
     </div>
     
     <div class="flex min-h-screen">
+      <!-- Static Ambassador Sidebar -->
       <aside class="sidebar w-20 bg-white shadow-md flex flex-col items-center py-6 space-y-6 z-40">
         <div class="mb-4">
           <div class="bg-[#4b0d7f] text-white px-3 py-2 rounded-xl font-semibold text-sm">T4L</div>
@@ -155,7 +151,7 @@
             <i class="bx bxs-home text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Home</span>
           </a>
-          <a href="/services.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg bg-purple-50">
+          <a href="/services-ambassador.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg bg-purple-50">
             <i class="bx bx-briefcase-alt-2 text-2xl text-[#4b0d9f] group-hover:scale-110 transition-transform duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-[#4b0d9f] transition-colors duration-200">Services</span>
           </a>
@@ -163,29 +159,32 @@
             <i class="bx bx-edit-alt text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Publishing</span>
           </a>
-          <!-- Task (Journey) -->
           <a href="/journey.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
             <i class="bx bx-check-square text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Task</span>
+          </a>
+          <a href="/impactlog-ambassador.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-line-chart text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Impact Log</span>
           </a>
           <a href="/Partner-Calls.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
             <i class="bx bx-briefcase text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Partners</span>
           </a>
-          <a href="https://www.t4leader.com/event" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <a href="https://www.t4leader.com/ambassador-events" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
             <i class="bx bx-calendar-event text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Events</span>
           </a>
-          <a href="/profile.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <a href="/profile-ambassador.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
             <i class="bx bx-user text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Profile</span>
           </a>
-          <a href="/profile.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <a href="/profile-ambassador.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
             <i class="bx bx-cog text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Settings</span>
           </a>
           <div id="logoutBtn" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-red-50">
-            <i class="bx bx-log-out text-2xl text-gray-600 group-hover:text-red-600 group-hover:scale-110 transition-all duration-200"></i>
+            <i class="bx bx-log-out text-2xl group-hover:text-red-600 group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-red-600 transition-colors duration-200">Logout</span>
           </div>
         </nav>
@@ -591,24 +590,6 @@
       }
 
       function setupEventListeners() {
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        const sidebar = document.querySelector('.sidebar');
-        const overlay = document.getElementById('overlay');
-        
-        if (sidebarToggle) {
-          sidebarToggle.addEventListener('click', () => {
-            sidebar.classList.add('active');
-            overlay.classList.add('active');
-          });
-        }
-        
-        if (overlay) {
-          overlay.addEventListener('click', () => {
-            sidebar.classList.remove('active');
-            overlay.classList.remove('active');
-          });
-        }
-        
         document.querySelectorAll('.filter-btn').forEach(btn => {
           btn.addEventListener('click', function() {
             document.querySelectorAll('.filter-btn').forEach(b => {
@@ -657,19 +638,6 @@
         document.getElementById('requestModal').addEventListener('click', (e) => {
           if (e.target.id === 'requestModal') {
             document.getElementById('requestModal').classList.add('hidden');
-          }
-        });
-        
-        document.getElementById('logoutBtn').addEventListener('click', async () => {
-          try {
-            await fetch(`${API_URL}/logout`, {
-              method: 'POST',
-              credentials: 'include'
-            });
-            window.location.href = '/signin';
-          } catch (error) {
-            console.error('Logout error:', error);
-            window.location.href = '/signin';
           }
         });
       }

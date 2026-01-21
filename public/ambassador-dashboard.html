@@ -107,8 +107,6 @@
   <body class="bg-gray-50 font-sans">
     <!-- Global Notification Script -->
     <script src="/js/notifications.js"></script>
-    <!-- Global Ambassador Sidebar -->
-    <script src="/js/ambassador-sidebar.js"></script>
     <!-- Mobile Sidebar Toggle -->
     <button class="sidebar-toggle" id="sidebarToggle">
       <i class="bx bx-menu text-xl"></i>
@@ -132,23 +130,30 @@
             <i class="bx bx-edit-alt text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Publishing</span>
           </a>
-          <a href="/media-library.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
-            <i class="bx bx-image text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
-            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Media Kit</span>
+          <!-- Task (Journey) -->
+          <a href="/journey.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-check-square text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Task</span>
           </a>
-          <a href="/Impactlog.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
-            <i class="bx bx-line-chart text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
-            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">ImpactLog</span>
-          </a>
+          <!-- Partners directly under Task -->
           <a href="/Partner-Calls.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
             <i class="bx bx-briefcase text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Partners</span>
+          </a>
+          <!-- Impact Log -->
+          <a href="/impactlog-ambassador.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-line-chart text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Impact Log</span>
+          </a>
+          <a href="/media-library.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-image text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Media Kit</span>
           </a>
         <a href="/services.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
           <i class="bx bx-briefcase-alt-2 text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
           <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Services</span>
         </a>
-          <a href="https://www.t4leader.com/event" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <a href="https://www.t4leader.com/ambassador-events" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
             <i class="bx bx-calendar-event text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Events</span>
           </a>
@@ -239,9 +244,9 @@
             class="bg-white border border-purple-300 shadow hover:shadow-2xl rounded-xl p-4 md:p-5 text-center transition-all hover:-translate-y-1 hover:border-purple-500"
           >
             <i class="bx bx-trending-up text-3xl text-purple-600 mx-auto mb-2"></i>
-            <p class="font-bold text-black text-lg" id="journeyProgress">25%</p>
+            <p class="font-bold text-black text-lg" id="journeyProgress">--</p>
             <p class="text-black text-sm">Journey Progress</p>
-            <p class="text-black text-xs" id="journeyMonth">Month 3 of 12</p>
+            <p class="text-black text-xs" id="journeyMonth">Loading...</p>
         </a>
 
           <!-- Completed Tasks -->
@@ -281,12 +286,21 @@
           <div class="bg-white rounded-2xl p-4 md:p-6 lg:col-span-2 border border-gray-100 flex flex-col">
             <!-- Header -->
             <div class="flex justify-between items-center mb-4">
-              <h4 class="font-semibold text-gray-900 text-lg" id="videoTitle">This Month's Video</h4>
+              <h4 class="font-semibold text-gray-900 text-lg" id="videoTitle">Loading...</h4>
               <a href="/journey.html" class="text-purple-600 text-sm font-medium hover:text-purple-700 transition-colors">View Journey</a>
             </div>
 
             <!-- Video Container -->
             <div id="videoContainer" class="rounded-2xl min-h-[16rem] relative overflow-hidden">
+              <!-- Loading State -->
+              <div class="flex flex-col items-center justify-center h-full bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl">
+                <div class="animate-pulse flex flex-col items-center">
+                  <div class="bg-white rounded-full p-4 mb-4">
+                    <i class="bx bx-loader-alt text-3xl text-purple-600 animate-spin"></i>
+                  </div>
+                  <p class="text-gray-700 font-medium">Loading journey data...</p>
+                </div>
+              </div>
               <!-- Loading State -->
               <div class="flex flex-col items-center justify-center h-full bg-gradient-to-br from-purple-50 to-pink-50">
                 <div class="animate-pulse flex flex-col items-center">
@@ -921,14 +935,6 @@
         // The JS file version uses the API as single source of truth
         // We only load partner calls here to avoid conflicts
         loadPartnerCalls();
-      });
-    </script>
-  </body>
-</html>sks = currentTasks;
-              debouncedLoadStats();
-            }
-          }, 2000);
-        });
       });
     </script>
   </body>

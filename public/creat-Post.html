@@ -378,10 +378,6 @@
             <span>Events</span>
           </a>
 
-          <a href="/chat-pillar.html" class="sidebar-link">
-            <i class="bx bx-chat"></i>
-            <span>Chat</span>
-          </a>
 
           <a href="/profile.html" class="sidebar-link">
             <i class="bx bx-user"></i>
@@ -546,7 +542,7 @@
               Location
             </label>
             <div class="relative">
-              <select name="location" class="w-full px-4 py-3 md:px-5 md:py-4 border-2 border-gray-200 rounded-xl text-sm md:text-base appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white transition-all">
+              <select id="locationSelect" name="location" class="w-full px-4 py-3 md:px-5 md:py-4 border-2 border-gray-200 rounded-xl text-sm md:text-base appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white transition-all">
                 <option value="">Select a location</option>
                 <option value="Austin, Texas">Austin, Texas</option>
                 <option value="New York, NY">New York, NY</option>
@@ -554,10 +550,21 @@
                 <option value="Chicago, IL">Chicago, IL</option>
                 <option value="Boston, MA">Boston, MA</option>
                 <option value="Remote">Remote</option>
+                <option value="other">Other (enter city)</option>
               </select>
               <svg class="absolute right-4 md:right-5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
               </svg>
+            </div>
+            <!-- Custom location when "Other" is selected -->
+            <div id="locationOtherWrapper" class="mt-3 hidden">
+              <input
+                type="text"
+                id="locationOtherInput"
+                name="locationOther"
+                class="w-full px-4 py-3 md:px-5 md:py-4 border-2 border-gray-200 rounded-xl text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                placeholder="Enter your city and country (e.g. Lagos, Nigeria)"
+              />
             </div>
           </div>
 
@@ -680,7 +687,9 @@
       // NEW: Handle format change to show/hide location
       function handleFormatChange(format) {
         const locationField = document.getElementById('locationField');
-        const locationSelect = document.querySelector('select[name="location"]');
+        const locationSelect = document.getElementById('locationSelect');
+        const locationOtherWrapper = document.getElementById('locationOtherWrapper');
+        const locationOtherInput = document.getElementById('locationOtherInput');
         
         console.log('Format changed to:', format); // Debug
         
@@ -690,6 +699,10 @@
           locationField.style.display = 'none';
           // Clear location value
           locationSelect.value = '';
+          if (locationOtherWrapper && locationOtherInput) {
+            locationOtherWrapper.classList.add('hidden');
+            locationOtherInput.value = '';
+          }
         } else {
           // SHOW location field for in-person or hybrid
           locationField.classList.remove('hidden');
@@ -1067,6 +1080,21 @@
                 }
             });
         }
+
+        // Location "Other" handling
+        const locationSelect = document.getElementById('locationSelect');
+        const locationOtherWrapper = document.getElementById('locationOtherWrapper');
+        const locationOtherInput = document.getElementById('locationOtherInput');
+        if (locationSelect && locationOtherWrapper && locationOtherInput) {
+          locationSelect.addEventListener('change', function () {
+            if (this.value === 'other') {
+              locationOtherWrapper.classList.remove('hidden');
+            } else {
+              locationOtherWrapper.classList.add('hidden');
+              locationOtherInput.value = '';
+            }
+          });
+        }
       });
 
       document.getElementById('postForm').addEventListener('submit', async function(e) {
@@ -1082,7 +1110,8 @@
         const title = formData.get('title').trim();
         const description = formData.get('description').trim();
         const format = formData.get('format');
-        const location = formData.get('location');
+        const locationSelectValue = formData.get('location');
+        const locationOther = formData.get('locationOther')?.trim() || '';
         const deadline = formData.get('deadline').trim();
         
         const postTypeRadio = document.querySelector('input[name="postType"]:checked');
@@ -1093,12 +1122,21 @@
           liftPillars.push(checkbox.value);
         });
         
+        // Decide final location value:
+        // - If virtual: null
+        // - If in-person/hybrid & "other" selected: use free-text other
+        // - Else: use selected predefined location (may be empty)
+        const finalLocation =
+          format === 'virtual'
+            ? null
+            : (locationSelectValue === 'other' ? (locationOther || null) : (locationSelectValue || null));
+
         const postData = {
             title: title,
             content: description,  // ✅ Changed 'description' to 'content'
             category: postType,    // ✅ Changed 'postType' to 'category'
             format: format,
-            location: format === 'virtual' ? null : location,
+            location: finalLocation,
             deadline: deadline,
             liftPillars: liftPillars
           };
@@ -1183,5 +1221,7 @@
 
       document.getElementById('selectAllCheckbox').addEventListener('change', selectAllLift);
     </script>
+    <!-- Global Partner Sidebar -->
+    <script src="/js/partner-sidebar.js"></script>
   </body>
 </html>
