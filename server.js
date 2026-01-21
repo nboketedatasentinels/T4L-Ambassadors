@@ -6463,7 +6463,7 @@ app.post(
     try {
       console.log("📝 Creating ambassador:", req.body);
 
-      const { first_name, email, access_code, password } = req.body; // CHANGED: name → first_name
+      const { first_name, email, access_code, password, subscription_type } = req.body; // ✅ ADDED subscription_type
 
       if (!first_name || !email || !access_code || !password) {
         // CHANGED: name → first_name
@@ -6492,6 +6492,7 @@ app.post(
         salt: salt,
         generated_password: password, // Store the plain text password for admin reference
         status: "active",
+        subscription_type: subscription_type || "free", // ✅ NEW: Default to free
       };
 
       console.log("💾 Saving ambassador to database:", userData);
@@ -6533,6 +6534,7 @@ app.post(
             email: newAmbassador.email,
             access_code: newAmbassador.access_code,
             status: newAmbassador.status,
+            subscription_type: newAmbassador.subscription_type, // ✅ NEW
           },
           emailSent: false,
           message: "✅ Ambassador added! (Email failed to send)",
@@ -6549,6 +6551,7 @@ app.post(
           email: newAmbassador.email,
           access_code: newAmbassador.access_code,
           status: newAmbassador.status,
+          subscription_type: newAmbassador.subscription_type, // ✅ NEW
         },
         emailSent: true,
         message: "✅ Ambassador added! Welcome email sent with access code.",
@@ -6562,6 +6565,67 @@ app.post(
     }
   }
 );
+
+// ✅ NEW: Endpoint to check ambassador subscription status
+app.get(
+  "/api/ambassador/subscription",
+  requireAuth,
+  requireRole("ambassador"),
+  async (req, res) => {
+    try {
+      const userId = req.auth.userId;
+
+      const ambassador = await getUserById(userId, "ambassador");
+      if (!ambassador) {
+        return res.status(404).json({ error: "Ambassador not found" });
+      }
+
+      return res.json({
+        subscription_type: ambassador.subscription_type || "free",
+        has_full_access: ambassador.subscription_type === "paid",
+      });
+    } catch (error) {
+      console.error("Error checking subscription:", error);
+      return res.status(500).json({ error: "Failed to check subscription" });
+    }
+  }
+);
+
+// ✅ NEW: Middleware to check subscription access
+function requireSubscription(featureName) {
+  return async function (req, res, next) {
+    try {
+      const userId = req.auth.userId;
+      const ambassador = await getUserById(userId, "ambassador");
+
+      if (!ambassador) {
+        return res.status(404).json({ error: "Ambassador not found" });
+      }
+
+      // If paid subscription, allow all access
+      if (ambassador.subscription_type === "paid") {
+        return next();
+      }
+
+      // Free tier allowed features
+      const freeFeatures = ["events", "partners", "impact-log", "chat"];
+
+      if (freeFeatures.includes(featureName)) {
+        return next();
+      }
+
+      // Feature not allowed for free tier
+      return res.status(403).json({
+        error: "This feature requires a paid subscription",
+        subscription_type: "free",
+        required_subscription: "paid",
+      });
+    } catch (error) {
+      console.error("Subscription check error:", error);
+      return res.status(500).json({ error: "Failed to verify subscription" });
+    }
+  };
+}
 
 app.put(
   "/admin/api/ambassadors/:id",

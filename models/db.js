@@ -37,6 +37,7 @@ function normalizeAmbassadorData(userData, ambassadorData) {
     professional_headline: ambassadorData.professional_headline,
     professional_summary: ambassadorData.professional_summary,
     profile_completion_percentage: ambassadorData.profile_completion_percentage,
+    subscription_type: ambassadorData.subscription_type || 'free', // ✅ NEW: Subscription type
     created_at: userData.created_at,
     updated_at: userData.updated_at,
     last_login: userData.last_login,
@@ -349,6 +350,7 @@ async function createUser(userData, role = 'ambassador') {
         continent: userData.continent || '',
         cv_filename: userData.cv_filename || null,
         generated_password: userData.generated_password || null, // Store plain text password for admin reference
+        subscription_type: userData.subscription_type || 'free', // ✅ NEW: Subscription type
       };
     } else if (role === 'partner') {
       roleTable = 'partners';
@@ -424,6 +426,7 @@ async function updateUser(id, updates, role = 'ambassador') {
       if (updates.country !== undefined) roleUpdates.country = updates.country;
       if (updates.state !== undefined) roleUpdates.state = updates.state;
       if (updates.continent !== undefined) roleUpdates.continent = updates.continent;
+      if (updates.subscription_type !== undefined) roleUpdates.subscription_type = updates.subscription_type; // ✅ NEW: Subscription type
     } else if (role === 'partner') {
       if (updates.organization_name !== undefined) roleUpdates.organization_name = updates.organization_name;
       if (updates.contact_person !== undefined) roleUpdates.contact_person = updates.contact_person;
