@@ -437,23 +437,7 @@
 
         <!-- Stats Section -->
         <section class="mb-6">
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <!-- Total Views Card -->
-            <div class="bg-white border border-purple-300 rounded-2xl p-5 shadow hover:shadow-lg transition-all hover:-translate-y-1 hover:border-purple-500 cursor-pointer">
-              <div class="flex justify-center mb-3">
-                <div class="rounded-xl p-3">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9 text-purple-800" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                    <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10M14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                  </svg>
-                </div>
-              </div>
-              <div class="text-center">
-                <p class="text-2xl font-bold text-gray-900 mb-1" id="totalViews">0</p>
-                <p class="text-sm text-gray-600 font-medium">Total Views</p>
-              </div>
-            </div>
-
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
             <!-- Pending Review Card -->
             <div class="bg-white border border-yellow-300 rounded-2xl p-5 shadow hover:shadow-lg transition-all hover:-translate-y-1 hover:border-yellow-500 cursor-pointer">
               <div class="flex justify-center mb-3">
@@ -631,11 +615,7 @@
                 activePostsElement.textContent = myPosts.length;
               }
               
-              const totalViews = myPosts.reduce((sum, post) => sum + (post.views || 0), 0);
-              const totalViewsElement = document.getElementById('totalViews');
-              if (totalViewsElement) {
-                totalViewsElement.textContent = totalViews;
-              }
+              // Views removed - no longer tracking
 
               // Create cards
               myPosts.forEach((post, index) => {
@@ -787,17 +767,7 @@
           </div>
           
           <!-- Stats Footer -->
-          <div class="flex items-center justify-between pt-2 border-t border-gray-200">
-            <div class="flex items-center gap-3">
-              <div class="flex items-center gap-1 text-gray-600">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                <span class="font-medium text-xs">${post.views || 0}</span>
-              </div>
-            </div>
-            
+          <div class="flex items-center justify-end pt-2 border-t border-gray-200">
             <!-- FIXED: Changed from "View All" link to "View Applications" button -->
             <button onclick="viewPostApplications('${post.post_id}')" 
                     class="text-purple-600 hover:text-purple-700 font-semibold text-sm hover:underline">

@@ -288,7 +288,7 @@
       <!-- Notification Bell -->
       <div class="absolute top-4 right-4 z-50">
         <div class="relative">
-          <button id="notificationBell" class="bg-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all">
+          <button id="notificationBell" class="bg-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all relative">
             <i class="bx bx-bell text-2xl text-gray-700"></i>
             <span id="notificationBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center notification-badge font-bold">0</span>
           </button>
@@ -914,8 +914,20 @@ function createOpportunityCard(post) {
     day: 'numeric'
   });
   
+  // Format deadline date
+  const deadlineDate = post.deadline ? new Date(post.deadline).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  }) : null;
+  
   const applicationStatus = post.applicationStatus || null;
   const hasApplied = post.hasApplied || false;
+  
+  // Determine location display based on format
+  const format = post.format || '';
+  const isInPerson = format.toLowerCase() === 'in-person';
+  const displayLocation = isInPerson ? (post.location || 'Location TBD') : 'Virtual';
   
   let statusBadgeHtml = '';
   if (hasApplied && applicationStatus) {
@@ -952,7 +964,16 @@ function createOpportunityCard(post) {
         </div>
         <div class="min-w-0 flex-1">
           <h3 class="text-lg font-bold text-gray-900 truncate">Partner Opportunity</h3>
-          <p class="text-sm text-gray-500">${createdDate}</p>
+          <div class="flex items-center gap-3 flex-wrap">
+            ${deadlineDate ? `<p class="text-sm text-gray-600 flex items-center gap-1">
+              <i class="bx bx-calendar-check text-xs"></i>
+              <span class="font-medium">Deadline: ${deadlineDate}</span>
+            </p>` : ''}
+            <p class="text-sm text-gray-600 flex items-center gap-1">
+              <i class="bx ${isInPerson ? 'bx-map' : 'bx-video'} text-xs"></i>
+              <span class="font-medium">${escapeHtml(displayLocation)}</span>
+            </p>
+          </div>
         </div>
       </div>
       <div class="flex gap-2 flex-wrap flex-shrink-0">
@@ -965,34 +986,27 @@ function createOpportunityCard(post) {
     <p class="text-gray-700 text-base mb-6 leading-relaxed line-clamp-3 break-words">${escapeHtml(post.content)}</p>
 
     <div class="bg-[#4b0d7f] text-white px-6 py-4 rounded-xl mb-6 flex items-center justify-between flex-wrap gap-4">
-      <span class="font-bold text-base md:text-lg whitespace-nowrap">Posted: ${createdDate}</span>
+      <div class="flex items-center gap-4 flex-wrap">
+        ${deadlineDate ? `<span class="font-bold text-base md:text-lg whitespace-nowrap flex items-center gap-1.5">
+          <i class="bx bx-calendar-check text-lg"></i>
+          Deadline: ${deadlineDate}
+        </span>` : ''}
+        <span class="font-semibold text-sm md:text-base whitespace-nowrap flex items-center gap-1.5">
+          <i class="bx ${isInPerson ? 'bx-map' : 'bx-video'} text-base"></i>
+          ${escapeHtml(displayLocation)}
+        </span>
+      </div>
       <span class="font-semibold whitespace-nowrap">${hasApplied ? 'Applied' : 'Apply Now'}</span>
     </div>
 
-    <div class="flex items-center justify-between flex-wrap gap-4">
-      <div class="flex items-center gap-4 md:gap-6 flex-wrap">
-        <button class="flex items-center gap-2 text-gray-600 hover:text-purple-700 transition-all">
-          <i class="bx bx-heart text-2xl"></i>
-          <span class="font-medium">0</span>
-        </button>
-        <button class="flex items-center gap-2 text-gray-600 hover:text-purple-700 transition-all">
-          <i class="bx bx-comment text-2xl"></i>
-          <span class="font-medium">0</span>
-        </button>
-        <div class="flex items-center gap-2 text-gray-600">
-          <i class="bx bx-show text-2xl"></i>
-          <span class="font-medium">0</span>
-        </div>
-      </div>
-      <div class="flex items-center gap-3 flex-wrap">
-        <button class="text-gray-600 hover:text-purple-700 p-2 hover:bg-gray-100 rounded-lg transition-all">
-          <i class="bx bx-bookmark text-2xl"></i>
-        </button>
-        <button class="text-gray-600 hover:text-purple-700 p-2 hover:bg-gray-100 rounded-lg transition-all">
-          <i class="bx bx-share-alt text-2xl"></i>
-        </button>
-        ${applyButtonHtml}
-      </div>
+    <div class="flex items-center justify-end flex-wrap gap-3">
+      <button class="text-gray-600 hover:text-purple-700 p-2 hover:bg-gray-100 rounded-lg transition-all">
+        <i class="bx bx-bookmark text-2xl"></i>
+      </button>
+      <button class="text-gray-600 hover:text-purple-700 p-2 hover:bg-gray-100 rounded-lg transition-all">
+        <i class="bx bx-share-alt text-2xl"></i>
+      </button>
+      ${applyButtonHtml}
     </div>
   `;
   

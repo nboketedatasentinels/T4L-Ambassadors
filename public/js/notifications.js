@@ -884,6 +884,11 @@
     const bellContainers = document.querySelectorAll('[data-notification-attached]');
     
     bellContainers.forEach(container => {
+      // Skip if page has its own notification badge (e.g., #notificationBadge)
+      if (container.querySelector('#notificationBadge') || document.getElementById('notificationBadge')) {
+        return; // Page manages its own badge, don't add ours
+      }
+      
       // Remove existing badge
       const existingBadge = container.querySelector('.notification-bell-badge');
       if (existingBadge) {

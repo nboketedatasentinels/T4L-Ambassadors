@@ -81,6 +81,8 @@ class SubscriptionManager {
         featureName = 'profile';
       } else if ((hrefLower.includes('service') || hrefLower.includes('my-services')) && !hrefLower.includes('services-partner')) {
         featureName = 'services';
+      } else if (hrefLower.includes('media-library') || hrefLower.includes('media-kit')) {
+        featureName = 'media-kit';
       }
       
       // If feature requires paid subscription
@@ -93,7 +95,7 @@ class SubscriptionManager {
         if (!link.querySelector('.lock-icon')) {
           const lockIcon = document.createElement('i');
           lockIcon.className = 'fas fa-lock lock-icon';
-          lockIcon.style.cssText = 'margin-left: 8px; font-size: 12px; color: #f59e0b;';
+          lockIcon.style.cssText = 'margin-left: 8px; font-size: 12px; color: #4b0d7f;';
           link.appendChild(lockIcon);
         }
         
@@ -111,12 +113,12 @@ class SubscriptionManager {
     const modalHTML = `
       <div id="subscriptionModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" style="animation: fadeIn 0.2s ease;">
         <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl" style="animation: slideUp 0.3s ease;">
-          <div class="p-6 border-b border-gray-200 bg-gradient-to-r from-amber-500 to-orange-600">
+          <div class="p-6 border-b border-gray-200" style="background: linear-gradient(to right, #4b0d7f, #a36737);">
             <div class="flex items-center gap-3">
               <i class="fas fa-crown text-white text-3xl"></i>
               <div>
                 <h3 class="text-2xl font-bold text-white">Upgrade Required</h3>
-                <p class="text-amber-100 text-sm">Unlock this feature with a paid subscription</p>
+                <p class="text-white/90 text-sm">Unlock this feature with a paid subscription</p>
               </div>
             </div>
           </div>
@@ -124,47 +126,55 @@ class SubscriptionManager {
           <div class="p-6">
             <div class="mb-6">
               <div class="flex items-start gap-3 mb-4">
-                <i class="fas fa-info-circle text-blue-500 text-xl mt-0.5"></i>
+                <i class="fas fa-info-circle text-[#4b0d7f] text-xl mt-0.5"></i>
                 <div>
                   <p class="text-gray-700 mb-2">
                     You're currently on a <strong>Free</strong> subscription which includes:
                   </p>
-                  <ul class="text-sm text-gray-600 space-y-1">
-                    <li>✅ Access to Events</li>
-                    <li>✅ Partner Opportunities</li>
-                    <li>✅ Impact Log</li>
-                    <li>✅ Chat & Communication</li>
+                  <ul class="text-sm text-gray-600 space-y-1.5">
+                    <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> Access to Events</li>
+                    <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> Partner Opportunities</li>
+                    <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> Impact Log</li>
+                    <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> Chat & Communication</li>
                   </ul>
                 </div>
               </div>
               
-              <div class="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl p-4">
+              <div class="bg-gradient-to-br from-purple-50 to-[#f5e6d3] border-2 border-purple-200 rounded-xl p-4">
                 <div class="flex items-start gap-3">
-                  <i class="fas fa-star text-amber-500 text-xl mt-0.5"></i>
+                  <i class="fas fa-star text-[#4b0d7f] text-xl mt-0.5"></i>
                   <div>
                     <h4 class="font-bold text-gray-900 mb-2">Upgrade to Paid for Full Access:</h4>
-                    <ul class="text-sm text-gray-700 space-y-1">
-                      <li>🚀 Journey Progress Tracking</li>
-                      <li>📝 Article Publishing</li>
-                      <li>👤 Advanced Profile Features</li>
-                      <li>🔧 Professional Services</li>
-                      <li>📊 Analytics & Insights</li>
-                      <li>🎯 Priority Support</li>
+                    <ul class="text-sm text-gray-700 space-y-1.5">
+                      <li class="flex items-center gap-2"><i class="fas fa-rocket text-[#4b0d7f] text-xs"></i> Journey Progress Tracking</li>
+                      <li class="flex items-center gap-2"><i class="fas fa-file-alt text-[#4b0d7f] text-xs"></i> Article Publishing</li>
+                      <li class="flex items-center gap-2"><i class="fas fa-user-cog text-[#4b0d7f] text-xs"></i> Advanced Profile Features</li>
+                      <li class="flex items-center gap-2"><i class="fas fa-briefcase text-[#4b0d7f] text-xs"></i> Professional Services</li>
+                      <li class="flex items-center gap-2"><i class="fas fa-image text-[#4b0d7f] text-xs"></i> Media Kit Access</li>
+                      <li class="flex items-center gap-2"><i class="fas fa-chart-line text-[#4b0d7f] text-xs"></i> Analytics & Insights</li>
+                      <li class="flex items-center gap-2"><i class="fas fa-headset text-[#4b0d7f] text-xs"></i> Priority Support</li>
                     </ul>
                   </div>
                 </div>
               </div>
             </div>
             
-            <div class="flex gap-3">
-              <button onclick="subscriptionManager.closeUpgradeModal()" 
-                      class="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all">
+            <div class="mb-4">
+              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                <p class="text-gray-700 text-sm mb-2">
+                  <strong>To renew your subscription,</strong> please contact:
+                </p>
+                <p class="text-[#4b0d7f] font-semibold text-base">
+                  <i class="fas fa-envelope mr-2"></i>
+                  leaders@t4leader.com
+                </p>
+              </div>
+            </div>
+            
+            <div class="flex justify-center">
+              <button onclick="window.subscriptionManager.closeUpgradeModal()" 
+                      class="px-8 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all">
                 Maybe Later
-              </button>
-              <button onclick="subscriptionManager.contactSupport()" 
-                      class="flex-1 px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-lg font-semibold hover:from-amber-600 hover:to-orange-700 transition-all shadow-lg hover:shadow-xl">
-                <i class="fas fa-envelope mr-2"></i>
-                Contact Support
               </button>
             </div>
           </div>
@@ -191,11 +201,28 @@ class SubscriptionManager {
   }
 
   contactSupport() {
-    // Redirect to support or show contact form
-    // You can customize this to your support page
-    window.location.href = '/contact-support.html';
-    // Or open email client
-    // window.location.href = 'mailto:support@t4leader.com?subject=Subscription Upgrade Request';
+    // Close modal first
+    this.closeUpgradeModal();
+    
+    // Simple email details
+    const subject = 'Subscription Upgrade Request';
+    const body = `Hello T4L Team,
+
+I am interested in upgrading my subscription from Free to Paid to access all features.
+
+Current Subscription: Free
+Requested Subscription: Paid
+
+Please let me know the next steps to proceed with the upgrade.
+
+Thank you,
+[Your Name]`;
+    
+    // Create mailto link - simple and direct
+    const mailtoLink = `mailto:leaders@t4leader.com,ambassadors@t4leader.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    // Open email client directly
+    window.location.href = mailtoLink;
   }
 
   async initialize() {
@@ -212,11 +239,11 @@ class SubscriptionManager {
     badge.innerHTML = `
       <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${
         this.hasFullAccess 
-          ? 'bg-green-100 text-green-700' 
-          : 'bg-blue-100 text-blue-700'
-      }">
+          ? 'text-white' 
+          : 'bg-purple-100 text-[#4b0d7f]'
+      }" ${this.hasFullAccess ? 'style="background: linear-gradient(to right, #4b0d7f, #a36737);"' : ''}>
         <i class="fas ${this.hasFullAccess ? 'fa-crown' : 'fa-user'}"></i>
-        ${this.hasFullAccess ? 'Paid' : 'Free'} Subscription
+        ${this.hasFullAccess ? 'Paid' : 'Free Subscription'}
       </div>
     `;
     
@@ -278,6 +305,9 @@ class SubscriptionManager {
 
 // Initialize subscription manager
 const subscriptionManager = new SubscriptionManager();
+
+// Make it globally accessible for onclick handlers
+window.subscriptionManager = subscriptionManager;
 
 // Check subscription on page load
 document.addEventListener('DOMContentLoaded', async () => {

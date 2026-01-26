@@ -102,9 +102,26 @@
           opacity: 0;
         }
       }
+      
+      @keyframes pulse {
+        0%, 100% {
+          transform: scale(1);
+          box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+        }
+        50% {
+          transform: scale(1.01);
+          box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+        }
+      }
 
       .animate-slideIn {
         animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      
+      .error-highlight {
+        border: 3px solid #ef4444 !important;
+        background-color: #fef2f2 !important;
+        animation: pulse 0.5s ease-in-out 3;
       }
 
       /* Custom date picker styling */
@@ -695,14 +712,28 @@
         console.log('Format changed to:', format); // Debug
         
         if (format === 'virtual') {
-          // HIDE location field when virtual is selected
-          locationField.classList.add('hidden');
-          locationField.style.display = 'none';
-          // Clear location value
-          locationSelect.value = '';
-          if (locationOtherWrapper && locationOtherInput) {
-            locationOtherWrapper.classList.add('hidden');
-            locationOtherInput.value = '';
+          // For virtual, location is still required but will be auto-set to "Remote"
+          // Keep field visible so users understand location is required
+          locationField.classList.remove('hidden');
+          locationField.style.display = 'block';
+          // Try to auto-select "Remote" if available
+          if (locationSelect) {
+            const remoteOption = Array.from(locationSelect.options).find(opt => 
+              opt.value.toLowerCase().includes('remote') || opt.text.toLowerCase().includes('remote')
+            );
+            if (remoteOption) {
+              locationSelect.value = remoteOption.value;
+            } else {
+              // If no "Remote" option, select "other" and set it
+              const otherOption = Array.from(locationSelect.options).find(opt => opt.value === 'other');
+              if (otherOption) {
+                locationSelect.value = 'other';
+                if (locationOtherInput) {
+                  locationOtherInput.value = 'Remote';
+                  locationOtherWrapper.classList.remove('hidden');
+                }
+              }
+            }
           }
         } else {
           // SHOW location field for in-person or hybrid
@@ -807,34 +838,67 @@
       }
 
       function showErrorNotification(message) {
+        console.log('🔴 Showing error notification:', message);
+        
+        // Remove any existing error notifications first
+        const existingNotifications = document.querySelectorAll('.error-notification-popup');
+        existingNotifications.forEach(n => n.remove());
+        
         const notification = document.createElement('div');
-        notification.className = 'fixed top-4 right-4 bg-white rounded-xl shadow-2xl p-6 max-w-md z-[200] animate-slideIn';
+        notification.className = 'error-notification-popup fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-50 border-4 border-red-600 rounded-2xl shadow-2xl p-6 max-w-2xl w-[90%] z-[9999]';
         notification.style.animation = 'slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+        notification.style.boxShadow = '0 25px 50px -12px rgba(239, 68, 68, 0.5), 0 0 0 1px rgba(239, 68, 68, 0.1)';
+        notification.style.backgroundColor = '#fef2f2';
         notification.innerHTML = `
           <div class="flex items-start gap-4">
-            <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            <div class="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center flex-shrink-0 animate-pulse">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
             <div class="flex-1">
-              <h4 class="font-bold text-gray-900 text-lg mb-1">Error</h4>
-              <p class="text-gray-600 text-sm leading-relaxed">${message}</p>
+              <h4 class="font-bold text-red-900 text-2xl mb-3">🚨 Required Field Missing!</h4>
+              <p class="text-red-800 text-lg leading-relaxed whitespace-pre-line font-semibold">${message}</p>
             </div>
-            <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-gray-600 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            <button onclick="this.closest('.error-notification-popup').remove()" class="text-red-400 hover:text-red-700 transition-colors flex-shrink-0 p-1">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
         `;
         
         document.body.appendChild(notification);
+        console.log('✅ Error notification added to DOM:', notification);
+        console.log('📍 Notification position:', notification.getBoundingClientRect());
         
+        // Force visibility
+        notification.style.display = 'block';
+        notification.style.visibility = 'visible';
+        notification.style.opacity = '1';
+        
+        // Scroll to top to ensure user sees it
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        // Verify it's actually in the DOM after a brief delay
+        setTimeout(() => {
+          const isInDOM = document.body.contains(notification);
+          console.log('✅ Notification still in DOM?', isInDOM);
+          if (!isInDOM) {
+            console.error('❌ Notification was removed! Re-adding...');
+            document.body.appendChild(notification);
+          }
+        }, 100);
+        
+        // Make it stay longer for important errors
         setTimeout(() => {
           notification.style.animation = 'fadeOut 0.3s ease-out';
-          setTimeout(() => notification.remove(), 300);
-        }, 5000);
+          setTimeout(() => {
+            if (notification.parentElement) {
+              notification.remove();
+            }
+          }, 300);
+        }, 10000); // Show for 10 seconds
       }
 
       function validateForm() {
@@ -846,6 +910,8 @@
         const description = formData.get('description').trim();
         const format = formData.get('format');
         const deadline = formData.get('deadline').trim();
+        const locationSelectValue = formData.get('location');
+        const locationOther = formData.get('locationOther')?.trim() || '';
         
         const postTypeRadio = document.querySelector('input[name="postType"]:checked');
         const postType = postTypeRadio ? postTypeRadio.value : null;
@@ -858,9 +924,12 @@
         clearErrorHighlights();
 
         if (!postType) {
-            errors.push('Please select the post type');
+            console.log('❌ Post Type is missing!');
+            errors.push('⚠️ Post Type is REQUIRED - Please select a post type (Speaking, Podcast, Webinar, or Volunteering)');
             highlightPostTypeError();
             isValid = false;
+        } else {
+            console.log('✅ Post Type selected:', postType);
         }
 
         if (!title) {
@@ -905,6 +974,22 @@
             }
         }
 
+        // ✅ Require location for all formats (virtual can be "Remote" or "Virtual")
+        const finalLocation = format === 'virtual' 
+          ? 'Remote' // Auto-set for virtual, but still require it
+          : (locationSelectValue === 'other' ? locationOther : locationSelectValue);
+        
+        if (!finalLocation || finalLocation.trim() === '') {
+            errors.push('Location is required. For virtual events, use "Remote" or "Virtual".');
+            if (format === 'virtual') {
+              // For virtual, we'll auto-set it, but show the error
+              highlightFieldError('select[name="format"]', 'Location will be set to "Remote" for virtual events');
+            } else {
+              highlightFieldError('select[name="location"]', 'Please select or enter a location');
+            }
+            isValid = false;
+        }
+
         if (liftPillars.length === 0) {
             errors.push('Please select at least one LIFT pillar');
             highlightLiftPillarsError();
@@ -912,30 +997,54 @@
         }
 
         if (errors.length > 0) {
+            console.log('❌ Validation failed with errors:', errors);
             showValidationErrors(errors);
+            // Scroll to top to ensure user sees the error
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         return isValid;
       }
 
       function highlightPostTypeError() {
+          console.log('🔴 Highlighting post type error...');
+          
           const postTypeCards = document.querySelectorAll('.post-type-card');
           postTypeCards.forEach(card => {
               card.classList.add('error-highlight');
+              card.style.border = '3px solid #ef4444';
+              card.style.backgroundColor = '#fef2f2';
           });
           
-          const postTypeSection = document.querySelector('.mb-6.md\\:mb-8');
-          let errorElement = postTypeSection.querySelector('.field-error');
-          if (!errorElement) {
-              errorElement = document.createElement('div');
-              errorElement.className = 'field-error text-red-600 text-sm mt-2 flex items-center gap-1';
-              errorElement.innerHTML = `
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                  </svg>
-                  <span>Please select a post type</span>
-              `;
-              postTypeSection.appendChild(errorElement);
+          // Find the post type section - look for the label containing "Post Type"
+          const postTypeLabel = Array.from(document.querySelectorAll('label')).find(label => 
+            label.textContent.includes('Post Type')
+          );
+          const postTypeSection = postTypeLabel ? postTypeLabel.closest('.mb-6, .mb-8') || postTypeLabel.parentElement : null;
+          
+          if (postTypeSection) {
+              console.log('✅ Found post type section, scrolling to it...');
+              // Scroll to the post type section
+              postTypeSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              
+              // Add a pulsing animation
+              postTypeSection.style.animation = 'pulse 0.5s ease-in-out 3';
+              
+              let errorElement = postTypeSection.querySelector('.field-error');
+              if (!errorElement) {
+                  errorElement = document.createElement('div');
+                  errorElement.className = 'field-error text-red-600 text-base mt-3 p-3 bg-red-50 border-2 border-red-500 rounded-lg flex items-center gap-2';
+                  errorElement.innerHTML = `
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                      </svg>
+                      <span class="font-bold text-red-700 text-base">⚠️ POST TYPE IS REQUIRED - Please select one of the options above (Speaking, Podcast, Webinar, or Volunteering)</span>
+                  `;
+                  postTypeSection.appendChild(errorElement);
+                  console.log('✅ Error message added below post type section');
+              }
+          } else {
+              console.error('❌ Could not find post type section!');
           }
       }
 
@@ -1015,8 +1124,26 @@
       }
 
       function showValidationErrors(errors) {
-          const errorList = errors.map(error => `• ${error}`).join('\n');
-          showErrorNotification(`Please fix the following errors:\n${errorList}`);
+          // Check if post type error is in the list - make it more prominent
+          const hasPostTypeError = errors.some(err => err.toLowerCase().includes('post type'));
+          
+          let errorMessage;
+          if (hasPostTypeError && errors.length === 1) {
+              // If only post type is missing, show a focused, prominent message
+              errorMessage = '🚨 POST TYPE IS REQUIRED!\n\nYou must select a post type before submitting.\n\nPlease choose one:\n• Speaking\n• Podcast\n• Webinar\n• Volunteering';
+          } else if (hasPostTypeError) {
+              // Post type is missing along with other errors - highlight it first
+              const postTypeError = errors.find(err => err.toLowerCase().includes('post type'));
+              const otherErrors = errors.filter(err => !err.toLowerCase().includes('post type'));
+              
+              errorMessage = `🚨 POST TYPE IS REQUIRED!\n\n${postTypeError}\n\n${otherErrors.length > 0 ? 'Other errors:\n' + otherErrors.map(e => `• ${e}`).join('\n') : ''}`;
+          } else {
+              // No post type error, show all errors normally
+              const errorList = errors.map(error => `• ${error}`).join('\n');
+              errorMessage = `Please fix the following errors:\n\n${errorList}`;
+          }
+          
+          showErrorNotification(errorMessage);
       }
 
       document.addEventListener('DOMContentLoaded', function() {
@@ -1098,12 +1225,38 @@
         }
       });
 
-      document.getElementById('postForm').addEventListener('submit', async function(e) {
+      // Ensure form exists before attaching handler
+      const postForm = document.getElementById('postForm');
+      if (!postForm) {
+        console.error('❌ Form not found!');
+        return;
+      }
+      
+      postForm.addEventListener('submit', async function(e) {
         e.preventDefault();
+        e.stopPropagation();
         
-        if (!validateForm()) {
-            return;
+        console.log('📝 Form submitted, validating...');
+        
+        // DIRECT CHECK: Post Type must be selected FIRST
+        const postTypeRadio = document.querySelector('input[name="postType"]:checked');
+        const postType = postTypeRadio ? postTypeRadio.value : null;
+        
+        if (!postType) {
+          console.log('❌ Post Type is missing - showing error immediately');
+          // Show error immediately without going through validateForm
+          showErrorNotification('🚨 POST TYPE IS REQUIRED!\n\nYou must select a post type before submitting.\n\nPlease choose one:\n• Speaking\n• Podcast\n• Webinar\n• Volunteering');
+          highlightPostTypeError();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return false;
         }
+        
+        // Now run full validation
+        if (!validateForm()) {
+            console.log('❌ Validation failed - form not submitted');
+            return false;
+        }
+        console.log('✅ Validation passed, submitting form...');
         
         const submitButton = this.querySelector('button[type="submit"]');
         
@@ -1115,27 +1268,32 @@
         const locationOther = formData.get('locationOther')?.trim() || '';
         const deadline = formData.get('deadline').trim();
         
-        const postTypeRadio = document.querySelector('input[name="postType"]:checked');
-        const postType = postTypeRadio ? postTypeRadio.value : null;
+        // Post Type already checked above, use the variable we already have
         
         const liftPillars = [];
         document.querySelectorAll('.lift-checkbox input[type="checkbox"]:checked').forEach(checkbox => {
           liftPillars.push(checkbox.value);
         });
         
-        // Decide final location value:
-        // - If virtual: null
+        // ✅ Location is now required for all formats
+        // - If virtual: set to "Remote" (applicants need to know it's remote)
         // - If in-person/hybrid & "other" selected: use free-text other
-        // - Else: use selected predefined location (may be empty)
+        // - Else: use selected predefined location
         const finalLocation =
           format === 'virtual'
-            ? null
+            ? 'Remote' // Always set location for virtual events
             : (locationSelectValue === 'other' ? (locationOther || null) : (locationSelectValue || null));
+        
+        // Validate location is provided
+        if (!finalLocation || finalLocation.trim() === '') {
+          showErrorNotification('Location is required. Applicants need to know where the opportunity is located.');
+          return;
+        }
 
         const postData = {
             title: title,
             content: description,  // ✅ Changed 'description' to 'content'
-            category: postType,    // ✅ Changed 'postType' to 'category'
+            category: postType,    // ✅ Use postType from above
             format: format,
             location: finalLocation,
             deadline: deadline,

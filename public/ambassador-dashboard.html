@@ -103,6 +103,119 @@
       .animate-pulse {
         animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
       }
+
+      /* Daily Reminder Popup Styles */
+      .daily-reminder-popup {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+      }
+
+      .daily-reminder-popup.active {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .daily-reminder-content {
+        background: linear-gradient(135deg, #4b0d7f 0%, #6c3aed 100%);
+        border-radius: 24px;
+        padding: 40px;
+        max-width: 500px;
+        width: 90%;
+        text-align: center;
+        position: relative;
+        box-shadow: 0 20px 60px rgba(75, 13, 127, 0.4);
+        animation: dailyReminderSlideIn 0.5s ease-out;
+      }
+
+      @keyframes dailyReminderSlideIn {
+        from {
+          transform: translateY(-30px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      .daily-reminder-icon-container {
+        margin-bottom: 20px;
+      }
+
+      .daily-reminder-icon {
+        font-size: 64px;
+        color: #fff;
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      .daily-reminder-message {
+        font-size: 24px;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 24px;
+        line-height: 1.4;
+      }
+
+      .daily-reminder-task-container {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
+        backdrop-filter: blur(10px);
+      }
+
+      .daily-reminder-task-label {
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.8);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .daily-reminder-task-name {
+        font-size: 18px;
+        font-weight: 600;
+        color: #fff;
+        line-height: 1.5;
+      }
+
+      .daily-reminder-cta {
+        font-size: 16px;
+        color: rgba(255, 255, 255, 0.9);
+        margin-top: 16px;
+        font-weight: 500;
+      }
+
+      .daily-reminder-close {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: #fff;
+        font-size: 20px;
+      }
+
+      .daily-reminder-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(1.1);
+      }
     </style>
   </head>
   <body class="bg-gray-50 font-sans">
@@ -390,6 +503,39 @@
 
 
       </main>
+    </div>
+
+    <!-- Daily Reminder Popup -->
+    <div id="dailyReminderPopup" class="daily-reminder-popup hidden">
+      <div class="daily-reminder-content">
+        <!-- Motivational Icon -->
+        <div class="daily-reminder-icon-container">
+          <i class='bx bx-bullseye daily-reminder-icon'></i>
+        </div>
+
+        <!-- Motivational Message -->
+        <div class="daily-reminder-message" id="dailyReminderMessage">
+          💪 Keep pushing forward!
+        </div>
+
+        <!-- Task Name -->
+        <div class="daily-reminder-task-container">
+          <div class="daily-reminder-task-label">Your current task:</div>
+          <div class="daily-reminder-task-name" id="dailyReminderTaskName">
+            Complete your current task
+          </div>
+        </div>
+
+        <!-- Call to Action -->
+        <div class="daily-reminder-cta">
+          Complete it to keep your momentum going! 💪
+        </div>
+
+        <!-- Close Button -->
+        <button class="daily-reminder-close" onclick="closeDailyReminder()">
+          <i class='bx bx-x'></i>
+        </button>
+      </div>
     </div>
 
     <!-- External Dashboard Script (Optimized) -->

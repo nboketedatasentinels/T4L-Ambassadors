@@ -5815,6 +5815,386 @@ app.get(
 );
 
 // ============================================
+// Journey Completion Notification Endpoint
+// ============================================
+app.post(
+  "/api/journey/complete",
+  requireAuth,
+  requireRole("ambassador"),
+  async (req, res) => {
+    try {
+      const userId = req.auth.userId;
+      
+      console.log('🎉 Journey completion notification request from user:', userId);
+      
+      // Get ambassador details
+      const ambassador = await getUserById(userId, "ambassador");
+      
+      if (!ambassador) {
+        return res.status(404).json({ error: 'Ambassador not found' });
+      }
+      
+      const ambassadorName = `${ambassador.first_name || ""} ${ambassador.last_name || ""}`.trim() || "An ambassador";
+      
+      // Notify the user (ambassador)
+      try {
+        await createNotification(
+          userId,
+          "ambassador",
+          "journey_completed",
+          "🎉 Journey Completed!",
+          "Congratulations! You've completed your 12-month transformation journey!",
+          "/journey.html",
+          null,
+          null,
+          null
+        );
+        console.log("✅ User notification sent");
+      } catch (userNotifError) {
+        console.error("⚠️ Failed to notify user:", userNotifError.message);
+      }
+      
+      // Notify all admins
+      try {
+        const { data: admins } = await supabase.from("admins").select("user_id");
+        if (admins && admins.length > 0) {
+          for (const admin of admins) {
+            await createNotification(
+              admin.user_id,
+              "admin",
+              "journey_completed",
+              "🎉 Ambassador Journey Completed",
+              `${ambassadorName} has completed their 12-month transformation journey!`,
+              "/admin-dashboard.html",
+              null,
+              null,
+              null
+            );
+          }
+          console.log("✅ Admin notifications sent to", admins.length, "admins");
+        }
+      } catch (adminNotifError) {
+        console.error("⚠️ Failed to notify admins:", adminNotifError.message);
+      }
+      
+      return res.json({
+        success: true,
+        message: "Notifications sent successfully"
+      });
+    } catch (error) {
+      console.error('❌ Journey completion notification error:', error);
+      return res.status(500).json({ 
+        error: "Failed to send completion notifications",
+        details: error.message 
+      });
+    }
+  }
+);
+
+// ============================================
+// Daily Journey Reminder System
+// ============================================
+
+// Function to send daily reminder to an ambassador
+async function sendDailyJourneyReminder(ambassador) {
+  try {
+    const ambassadorId = ambassador.ambassador_id || ambassador.id;
+    const userId = ambassador.user_id;
+    
+    if (!userId) {
+      console.warn('⚠️ No user_id for ambassador, skipping reminder:', ambassadorId);
+      return;
+    }
+    
+    // Get journey progress
+    const progress = await getJourneyProgress(ambassadorId);
+    if (!progress) {
+      console.log('📭 No journey progress found for ambassador:', ambassadorId);
+      return;
+    }
+    
+    const currentMonth = progress.current_month || 1;
+    const completedTasks = progress.completed_tasks || {};
+    
+    // Get current month data
+    const currentMonthData = JOURNEY_MONTHS.find(m => m.month === currentMonth);
+    if (!currentMonthData) {
+      return;
+    }
+    
+    // Find incomplete tasks for current month
+    const incompleteTasks = currentMonthData.tasks.filter(task => {
+      const taskKey = `${currentMonth}-${task.id}`;
+      return !completedTasks[taskKey];
+    });
+    
+    if (incompleteTasks.length === 0) {
+      // All tasks completed for current month
+      return;
+    }
+    
+    // Get the first incomplete task (or a critical one if available)
+    const nextTask = incompleteTasks.find(t => t.critical) || incompleteTasks[0];
+    const taskName = nextTask.text;
+    
+    // Motivational messages
+    const motivationalMessages = [
+      "💪 Keep pushing forward!",
+      "🚀 You've got this!",
+      "⭐ Don't give up - you're making progress!",
+      "🌟 Every step counts - keep going!",
+      "🔥 Stay focused and keep moving forward!",
+      "✨ You're doing amazing - don't stop now!",
+      "💫 Remember why you started - keep pushing!",
+      "🎯 You're closer than you think - keep going!",
+      "💎 Your transformation is happening - stay committed!",
+      "🏆 Consistency is key - you've got this!"
+    ];
+    
+    const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
+    
+    // Create notification
+    const notificationTitle = "📅 Daily Journey Reminder";
+    const notificationMessage = `${randomMessage}\n\nYour current task: ${taskName}\n\nComplete it to keep your momentum going! 💪`;
+    
+    await createNotification(
+      userId,
+      "ambassador",
+      "daily_reminder",
+      notificationTitle,
+      notificationMessage,
+      "/journey.html",
+      null,
+      null,
+      null
+    );
+    
+    console.log(`✅ Daily reminder sent to ambassador ${ambassadorId}: ${taskName}`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Failed to send daily reminder to ambassador:`, error);
+    return false;
+  }
+}
+
+// Function to send daily reminders to all active ambassadors
+async function sendDailyRemindersToAllAmbassadors() {
+  try {
+    console.log('📬 Starting daily journey reminders...');
+    
+    // Get all active ambassadors (with no limit to get all)
+    const { items: ambassadors } = await listUsers("ambassador", { 
+      status: "active",
+      limit: 1000  // Get all active ambassadors
+    });
+    
+    if (!ambassadors || ambassadors.length === 0) {
+      console.log('📭 No active ambassadors found');
+      return;
+    }
+    
+    if (!ambassadors || ambassadors.length === 0) {
+      console.log('📭 No active ambassadors found');
+      return;
+    }
+    
+    console.log(`📧 Sending reminders to ${ambassadors.length} active ambassadors...`);
+    
+    let successCount = 0;
+    let failCount = 0;
+    
+    // Send reminders to each ambassador
+    for (const ambassador of ambassadors) {
+      try {
+        const sent = await sendDailyJourneyReminder(ambassador);
+        if (sent) {
+          successCount++;
+        }
+        // Small delay to avoid overwhelming the system
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error(`❌ Error sending reminder to ${ambassador.ambassador_id}:`, error);
+        failCount++;
+      }
+    }
+    
+    console.log(`✅ Daily reminders completed: ${successCount} sent, ${failCount} failed`);
+  } catch (error) {
+    console.error('❌ Error in daily reminder system:', error);
+  }
+}
+
+// Endpoint to manually trigger daily reminders (for testing/admin use)
+app.post(
+  "/admin/api/journey/send-daily-reminders",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      await sendDailyRemindersToAllAmbassadors();
+      return res.json({
+        success: true,
+        message: "Daily reminders sent to all ambassadors"
+      });
+    } catch (error) {
+      console.error('❌ Error sending daily reminders:', error);
+      return res.status(500).json({
+        error: "Failed to send daily reminders",
+        details: error.message
+      });
+    }
+  }
+);
+
+// Endpoint for ambassadors to get their daily reminder (called on dashboard/journey page load)
+app.get(
+  "/api/journey/daily-reminder",
+  requireAuth,
+  requireRole("ambassador"),
+  async (req, res) => {
+    try {
+      const userId = req.auth.userId;
+      
+      // Get ambassador details
+      const ambassador = await getUserById(userId, "ambassador");
+      if (!ambassador) {
+        return res.status(404).json({ error: 'Ambassador not found' });
+      }
+      
+      const ambassadorId = ambassador.ambassador_id || ambassador.id;
+      
+      // Get journey progress
+      const progress = await getJourneyProgress(ambassadorId);
+      if (!progress) {
+        return res.json({
+          hasReminder: false,
+          message: "No journey progress found"
+        });
+      }
+      
+      const currentMonth = progress.current_month || 1;
+      const completedTasks = progress.completed_tasks || {};
+      
+      // Get current month data
+      const currentMonthData = JOURNEY_MONTHS.find(m => m.month === currentMonth);
+      if (!currentMonthData) {
+        return res.json({
+          hasReminder: false,
+          message: "No current month data"
+        });
+      }
+      
+      // Find incomplete tasks for current month
+      // Ensure we only check tasks from the current month's data
+      const incompleteTasks = currentMonthData.tasks.filter(task => {
+        const taskKey = `${currentMonth}-${task.id}`;
+        const isCompleted = completedTasks[taskKey] === true || completedTasks[taskKey] === 'true';
+        return !isCompleted;
+      });
+      
+      if (incompleteTasks.length === 0) {
+        // All tasks completed for current month
+        return res.json({
+          hasReminder: false,
+          message: "All tasks completed for current month"
+        });
+      }
+      
+      // Get the first incomplete task (prioritize critical tasks, then by order in array)
+      // This ensures we show tasks in the order they appear in the journey
+      const criticalTasks = incompleteTasks.filter(t => t.critical);
+      const nextTask = criticalTasks.length > 0 ? criticalTasks[0] : incompleteTasks[0];
+      
+      if (!nextTask) {
+        return res.json({
+          hasReminder: false,
+          message: "No valid task found"
+        });
+      }
+      
+      const taskName = nextTask.text;
+      
+      // Log for debugging
+      console.log(`📋 Daily reminder - Month ${currentMonth}, Task: ${taskName}, Task ID: ${nextTask.id}`);
+      
+      // Motivational messages
+      const motivationalMessages = [
+        "💪 Keep pushing forward!",
+        "🚀 You've got this!",
+        "⭐ Don't give up - you're making progress!",
+        "🌟 Every step counts - keep going!",
+        "🔥 Stay focused and keep moving forward!",
+        "✨ You're doing amazing - don't stop now!",
+        "💫 Remember why you started - keep pushing!",
+        "🎯 You're closer than you think - keep going!",
+      ];
+      
+      const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
+      
+      // Check if reminder notification was sent today
+      const { data: recentNotifications } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("recipient_id", userId)
+        .eq("recipient_type", "ambassador")
+        .eq("type", "daily_reminder")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      
+      const lastReminder = recentNotifications && recentNotifications[0];
+      const today = new Date().toDateString();
+      const lastReminderDate = lastReminder ? new Date(lastReminder.created_at).toDateString() : null;
+      
+      // If no reminder notification sent today, send one
+      if (lastReminderDate !== today) {
+        await sendDailyJourneyReminder(ambassador);
+      }
+      
+      return res.json({
+        hasReminder: true,
+        motivationalMessage: randomMessage,
+        taskName: taskName,
+        currentMonth: currentMonth,
+        monthTitle: currentMonthData.title
+      });
+    } catch (error) {
+      console.error('❌ Error getting daily reminder:', error);
+      return res.status(500).json({
+        error: "Failed to get daily reminder",
+        details: error.message
+      });
+    }
+  }
+);
+
+// Schedule daily reminders (runs once per day at 9 AM)
+function scheduleDailyReminders() {
+  // Calculate milliseconds until next 9 AM
+  const now = new Date();
+  const next9AM = new Date();
+  next9AM.setHours(9, 0, 0, 0);
+  
+  // If it's already past 9 AM today, schedule for tomorrow
+  if (now.getTime() > next9AM.getTime()) {
+    next9AM.setDate(next9AM.getDate() + 1);
+  }
+  
+  const msUntil9AM = next9AM.getTime() - now.getTime();
+  
+  console.log(`⏰ Daily reminders scheduled for ${next9AM.toLocaleString()}`);
+  
+  // Set initial timeout
+  setTimeout(() => {
+    sendDailyRemindersToAllAmbassadors();
+    
+    // Then schedule to run every 24 hours
+    setInterval(() => {
+      sendDailyRemindersToAllAmbassadors();
+    }, 24 * 60 * 60 * 1000); // 24 hours
+  }, msUntil9AM);
+}
+
+// ============================================
 // ADDITIONAL FIX: Clear any localStorage conflicts
 // ============================================
 
@@ -6156,13 +6536,22 @@ app.get(
   requireRole("admin"),
   async (req, res) => {
     try {
-      const progress = (await getJourneyProgress(req.params.id)) || {
+      const ambassadorId = req.params.id;
+      console.log('📡 Fetching journey for ambassador:', ambassadorId);
+      
+      const progress = (await getJourneyProgress(ambassadorId)) || {
         current_month: 1,
         completed_tasks: {},
         start_date: new Date().toISOString(),
         month_start_dates: { 1: new Date().toISOString() },
         last_updated: new Date().toISOString(),
       };
+
+      console.log('📊 Journey progress data:', {
+        current_month: progress.current_month,
+        completed_tasks_count: Object.keys(progress.completed_tasks || {}).length,
+        start_date: progress.start_date
+      });
 
       // Calculate statistics
       const totalTasks = JOURNEY_MONTHS.reduce(
@@ -6177,15 +6566,16 @@ app.get(
         totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
 
       // Get current month info
+      const currentMonth = progress.current_month || 1;
       const currentMonthData = JOURNEY_MONTHS.find(
-        (m) => m.month === progress.current_month
+        (m) => m.month === currentMonth
       );
       const currentMonthTasks = currentMonthData
         ? currentMonthData.tasks.length
         : 0;
       const currentMonthCompleted = currentMonthData
         ? currentMonthData.tasks.filter(
-            (task) => completedTasks[`${progress.current_month}-${task.id}`]
+            (task) => completedTasks[`${currentMonth}-${task.id}`]
           ).length
         : 0;
       const currentMonthProgress =
@@ -6193,9 +6583,9 @@ app.get(
           ? Math.round((currentMonthCompleted / currentMonthTasks) * 100)
           : 0;
 
-      return res.json({
-        ambassadorId: req.params.id,
-        currentMonth: progress.current_month,
+      const response = {
+        ambassadorId: ambassadorId,
+        currentMonth: currentMonth,
         completedTasks: completedTasks,
         startDate: progress.start_date,
         lastUpdated: progress.last_updated,
@@ -6227,8 +6617,8 @@ app.get(
             totalTasks: month.tasks.length,
             completedTasks: monthCompleted,
             progress: monthProgress,
-            isCurrentMonth: month.month === progress.current_month,
-            isCompleted: month.month < progress.current_month,
+            isCurrentMonth: month.month === currentMonth,
+            isCompleted: month.month < currentMonth,
             tasks: month.tasks.map((task) => ({
               id: task.id,
               text: task.text,
@@ -6239,10 +6629,21 @@ app.get(
             })),
           };
         }),
+      };
+      
+      console.log('✅ Journey response:', {
+        ambassadorId: response.ambassadorId,
+        currentMonth: response.currentMonth,
+        overallProgress: response.statistics.overallProgress,
+        completedCount: response.statistics.completedCount,
+        totalTasks: response.statistics.totalTasks,
+        monthsCount: response.months.length
       });
+
+      return res.json(response);
     } catch (error) {
-      console.error("Error fetching ambassador journey:", error);
-      return res.status(500).json({ error: "Internal server error" });
+      console.error("❌ Error fetching ambassador journey:", error);
+      return res.status(500).json({ error: "Internal server error", details: error.message });
     }
   }
 );
@@ -8708,6 +9109,19 @@ app.post(
           .json({ error: "Title and content are required" });
       }
 
+      // ✅ Require location and deadline (applicants need to know where and when)
+      if (!location || location.trim() === '') {
+        return res
+          .status(400)
+          .json({ error: "Location is required. Applicants need to know where the opportunity is located." });
+      }
+
+      if (!deadline) {
+        return res
+          .status(400)
+          .json({ error: "Deadline is required. Applicants need to know the application deadline." });
+      }
+
       // ✅ FIX: Get the partner_id from the partners table using user_id
       const { data: partner, error: partnerError } = await supabase
         .from("partners")
@@ -8727,10 +9141,14 @@ app.post(
 
       const postData = {
         post_id: postId,
-        title: title,
-        content: content,
+        title: title.trim(),
+        content: content.trim(),
         category: category || "general",
         partner_id: partner.partner_id, // ✅ Use the correct partner_id
+        location: location.trim(), // ✅ Required: Applicants need to know location
+        deadline: deadline, // ✅ Required: Applicants need to know deadline
+        format: format || null,
+        lift_pillars: liftPillars || null,
       };
 
       console.log(
@@ -9284,10 +9702,10 @@ app.post("/api/logout", async (req, res) => {
 // MEDIA LIBRARY API ENDPOINTS
 // ============================================
 
-// Get all media for current user
-app.get("/api/media", requireAuth, async (req, res) => {
+// Get all media for current user (Paid ambassadors only)
+app.get("/api/media", requireAuth, requireRole("ambassador"), requireSubscription("media-kit"), async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.auth.userId;
     console.log(`📦 Fetching media for user: ${userId}`);
     
     // Get media from database (stored in memory for now)
@@ -9306,10 +9724,10 @@ app.get("/api/media", requireAuth, async (req, res) => {
   }
 });
 
-// Add new media
-app.post("/api/media", requireAuth, async (req, res) => {
+// Add new media (Paid ambassadors only)
+app.post("/api/media", requireAuth, requireRole("ambassador"), requireSubscription("media-kit"), async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.auth.userId;
     const { title, type, url, description } = req.body;
     
     // Validate required fields
@@ -9356,10 +9774,10 @@ app.post("/api/media", requireAuth, async (req, res) => {
   }
 });
 
-// Delete media
-app.delete("/api/media/:id", requireAuth, async (req, res) => {
+// Delete media (Paid ambassadors only)
+app.delete("/api/media/:id", requireAuth, requireRole("ambassador"), requireSubscription("media-kit"), async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.auth.userId;
     const mediaId = req.params.id;
     
     // Find and remove media
@@ -9384,10 +9802,10 @@ app.delete("/api/media/:id", requireAuth, async (req, res) => {
   }
 });
 
-// Update media
-app.put("/api/media/:id", requireAuth, async (req, res) => {
+// Update media (Paid ambassadors only)
+app.put("/api/media/:id", requireAuth, requireRole("ambassador"), requireSubscription("media-kit"), async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.auth.userId;
     const mediaId = req.params.id;
     const { title, description } = req.body;
     
@@ -9449,6 +9867,11 @@ loadJourneyFromDisk();
 // ------------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  
+  // Start daily reminder scheduler
+  scheduleDailyReminders();
+  console.log('✅ Daily journey reminder system initialized');
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(
     `[journey] Journey progress tracking ENABLED with REAL-TIME updates`

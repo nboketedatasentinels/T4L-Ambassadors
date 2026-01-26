@@ -566,6 +566,36 @@ async function initializeDashboard() {
     console.log('📊 Step 3: Loading dashboard stats...');
     await loadDashboardStats();
     
+    // ✅ STEP 3.5: Check and show daily reminder (with rate limiting)
+    try {
+      // Check if reminder was shown recently (within last 2 hours)
+      const lastReminderTime = localStorage.getItem('dailyReminderLastShown');
+      const now = Date.now();
+      const twoHoursInMs = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+      
+      if (lastReminderTime && (now - parseInt(lastReminderTime)) < twoHoursInMs) {
+        console.log('⏰ Daily reminder skipped - shown recently');
+        return; // Skip showing reminder if it was shown within last 2 hours
+      }
+      
+      const reminderResponse = await fetch('/api/journey/daily-reminder', {
+        credentials: 'include'
+      });
+      if (reminderResponse.ok) {
+        const reminderData = await reminderResponse.json();
+        if (reminderData.hasReminder) {
+          // Show the reminder popup after a short delay
+          setTimeout(() => {
+            showDailyReminder(reminderData.motivationalMessage, reminderData.taskName);
+            // Store the time when reminder was shown
+            localStorage.setItem('dailyReminderLastShown', now.toString());
+          }, 1500);
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to check daily reminder:', error);
+    }
+    
     // ✅ STEP 4: Load partner calls
     console.log('💼 Step 4: Loading partner calls...');
     loadPartnerCalls();
@@ -587,6 +617,54 @@ async function initializeDashboard() {
     }
   }
 }
+
+// Daily Reminder Functions
+function showDailyReminder(motivationalMessage, taskName) {
+  const popup = document.getElementById('dailyReminderPopup');
+  const messageEl = document.getElementById('dailyReminderMessage');
+  const taskEl = document.getElementById('dailyReminderTaskName');
+  
+  if (!popup) return;
+  
+  // Set the content
+  if (messageEl) messageEl.textContent = motivationalMessage;
+  if (taskEl) taskEl.textContent = taskName;
+  
+  // Show the popup
+  popup.classList.remove('hidden');
+  popup.classList.add('active');
+  document.body.style.overflow = 'hidden';
+  
+  console.log('✅ Daily reminder shown:', { motivationalMessage, taskName });
+}
+
+function closeDailyReminder() {
+  const popup = document.getElementById('dailyReminderPopup');
+  if (!popup) return;
+  
+  popup.classList.remove('active');
+  popup.classList.add('hidden');
+  document.body.style.overflow = 'auto';
+  document.documentElement.style.overflow = 'auto';
+  
+  // Store that reminder was seen today
+  const today = new Date().toDateString();
+  localStorage.setItem('dailyReminderSeen', today);
+  // Also update the last shown timestamp
+  localStorage.setItem('dailyReminderLastShown', Date.now().toString());
+}
+
+// Close reminder when clicking outside
+document.addEventListener('DOMContentLoaded', function() {
+  const popup = document.getElementById('dailyReminderPopup');
+  if (popup) {
+    popup.addEventListener('click', (e) => {
+      if (e.target === popup) {
+        closeDailyReminder();
+      }
+    });
+  }
+});
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {

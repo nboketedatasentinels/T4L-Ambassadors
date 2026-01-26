@@ -135,26 +135,36 @@ async function createNotification(
       .select()
       .single();
 
-    // ✅ FIX: If constraint error (23514) and certificate_id was included, retry without it
-    if (error && error.code === '23514' && certificateId) {
-      console.warn("⚠️ Constraint violation with certificate_id, retrying without it...");
-      // Remove certificate_id and retry
-      delete notificationData.certificate_id;
-      const retryData = { ...notificationData };
-      
-      const retryResult = await supabase
-        .from("notifications")
-        .insert([retryData])
-        .select()
-        .single();
-      
-      if (retryResult.error) {
-        console.error("❌ Notification creation failed even without certificate_id:", retryResult.error);
-        return null;
+    // ✅ FIX: Handle constraint errors
+    if (error && error.code === '23514') {
+      // If constraint error and certificate_id was included, retry without it
+      if (certificateId) {
+        console.warn("⚠️ Constraint violation with certificate_id, retrying without it...");
+        delete notificationData.certificate_id;
+        const retryData = { ...notificationData };
+        
+        const retryResult = await supabase
+          .from("notifications")
+          .insert([retryData])
+          .select()
+          .single();
+        
+        if (retryResult.error) {
+          console.error("❌ Notification creation failed even without certificate_id:", retryResult.error);
+          return null;
+        }
+        
+        console.log("✅ Notification created (without certificate_id due to constraint):", retryResult.data);
+        return retryResult.data;
       }
       
-      console.log("✅ Notification created (without certificate_id due to constraint):", retryResult.data);
-      return retryResult.data;
+      // If constraint error for notifications without references (like journey_completed)
+      // This means the database constraint needs to be updated - log a warning
+      console.error("❌ Notification creation failed due to constraint violation.");
+      console.error("   This notification type may not require reference fields.");
+      console.error("   Please run the migration: migrations/fix-notifications-constraint.sql");
+      console.error("   Or update the constraint to allow all-null references for this notification type.");
+      return null;
     }
 
     if (error) {
@@ -1260,6 +1270,7 @@ async function getLinkedInAudits(filters = {}) {
 }
 
 module.exports = {
+  supabase, // Export supabase client
   supabase,
   getUserByEmail,
   getUserById,

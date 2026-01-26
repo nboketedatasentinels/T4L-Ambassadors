@@ -1149,6 +1149,10 @@
                 <div class="flex items-center gap-3">
                     <h3 id="journeyAmbassadorName" class="text-xl font-semibold text-gray-900">Ambassador Journey</h3>
                     <span id="journeyCurrentMonth" class="px-3 py-1 rounded-lg text-xs font-semibold bg-purple-100 text-purple-700">Month 1</span>
+                    <span id="journeyRealtimeIndicator" class="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold hidden">
+                        <i class="bx bx-circle text-xs mr-1 animate-pulse"></i>Live
+                    </span>
+                    <span id="journeyLastUpdated" class="text-xs text-gray-500"></span>
                 </div>
                 <button id="closeJourneyDetail" class="text-gray-600 hover:text-gray-900">
                     <i class="bx bx-x text-2xl"></i>
@@ -1156,34 +1160,66 @@
             </div>
             
             <div id="journeyDetailContent" class="flex-1 overflow-y-auto p-6">
-                <!-- Progress Overview -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <div class="bg-purple-50 rounded-xl p-4 border border-purple-200">
-                        <div class="text-sm text-purple-600 font-semibold mb-1">Overall Progress</div>
-                        <div class="text-3xl font-bold text-purple-700" id="journeyOverallProgress">0%</div>
+                <!-- Progress Overview Cards (Similar to Ambassador Dashboard) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white border border-purple-300 shadow-md rounded-xl p-5 text-center hover:shadow-lg transition-all">
+                        <i class="bx bx-trending-up text-3xl text-purple-600 mx-auto mb-2"></i>
+                        <div class="text-3xl font-bold text-gray-900 mb-1" id="journeyOverallProgress">0%</div>
+                        <div class="text-sm text-gray-600 mb-1">Journey Progress</div>
+                        <div class="text-xs text-gray-500" id="journeyMonthText">Month 1 of 12</div>
                     </div>
-                    <div class="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                        <div class="text-sm text-blue-600 font-semibold mb-1">Current Month</div>
-                        <div class="text-3xl font-bold text-blue-700" id="journeyCurrentMonthProgress">0%</div>
+                    <div class="bg-white border border-green-300 shadow-md rounded-xl p-5 text-center hover:shadow-lg transition-all">
+                        <i class="bx bx-check-circle text-3xl text-green-600 mx-auto mb-2"></i>
+                        <div class="text-3xl font-bold text-gray-900 mb-1" id="journeyCompletedCount">0/0</div>
+                        <div class="text-sm text-gray-600 mb-1">Completed Tasks</div>
+                        <div class="text-xs text-gray-500" id="journeyRemainingTasks">0 remaining</div>
                     </div>
-                    <div class="bg-green-50 rounded-xl p-4 border border-green-200">
-                        <div class="text-sm text-green-600 font-semibold mb-1">Tasks Completed</div>
-                        <div class="text-3xl font-bold text-green-700" id="journeyCompletedCount">0/0</div>
+                    <div class="bg-white border border-blue-300 shadow-md rounded-xl p-5 text-center hover:shadow-lg transition-all">
+                        <i class="bx bx-edit text-3xl text-blue-600 mx-auto mb-2"></i>
+                        <div class="text-3xl font-bold text-gray-900 mb-1" id="journeyArticlesCount">-</div>
+                        <div class="text-sm text-gray-600 mb-1">Articles</div>
+                        <div class="text-xs text-gray-500" id="journeyArticlesStatus">Loading...</div>
                     </div>
-                    <div class="bg-orange-50 rounded-xl p-4 border border-orange-200">
-                        <div class="text-sm text-orange-600 font-semibold mb-1">Started</div>
-                        <div class="text-sm font-semibold text-orange-700" id="journeyStartDate">-</div>
+                    <div class="bg-white border border-orange-300 shadow-md rounded-xl p-5 text-center hover:shadow-lg transition-all">
+                        <i class="bx bx-calendar text-3xl text-orange-600 mx-auto mb-2"></i>
+                        <div class="text-lg font-bold text-gray-900 mb-1" id="journeyStartDate">-</div>
+                        <div class="text-sm text-gray-600 mb-1">Started</div>
+                        <div class="text-xs text-gray-500" id="journeyDaysActive">- days active</div>
                     </div>
                 </div>
 
                 <!-- Current Month Highlight -->
-                <div id="journeyCurrentMonthInfo" class="bg-gradient-to-r from-purple-600 to-purple-800 text-white rounded-xl p-4 mb-6">
-                    <div class="text-sm font-medium opacity-90 mb-1">Current Focus</div>
-                    <h2 class="text-2xl font-bold" id="journeyCurrentMonthTitle">Month X: Title</h2>
-                    <p class="text-sm opacity-90 mt-2" id="journeyCurrentMonthMilestone">Milestone</p>
+                <div id="journeyCurrentMonthInfo" class="bg-gradient-to-r from-purple-600 to-purple-800 text-white rounded-xl p-6 mb-6 shadow-lg">
+                    <div class="text-sm font-medium opacity-90 mb-2">Current Focus</div>
+                    <h2 class="text-2xl font-bold mb-2" id="journeyCurrentMonthTitle">Month X: Title</h2>
+                    <p class="text-sm opacity-90 mb-3" id="journeyCurrentMonthMilestone">Milestone</p>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm opacity-90">Progress:</span>
+                            <span class="text-lg font-bold" id="journeyCurrentMonthProgress">0%</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm opacity-90">Tasks:</span>
+                            <span class="text-lg font-bold" id="journeyCurrentMonthTasks">0/0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Activity Section -->
+                <div class="bg-white border-2 border-purple-200 rounded-xl p-5 mb-6 shadow-sm">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <i class="bx bx-time-five text-purple-600"></i>
+                        Current Activity
+                    </h3>
+                    <div id="journeyCurrentActivity" class="space-y-3">
+                        <div class="text-gray-500 text-sm">Loading activity...</div>
+                    </div>
                 </div>
 
                 <!-- Month-by-Month Progress -->
+                <div class="mb-4">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Journey Timeline</h3>
+                </div>
                 <div id="journeyMonthsList" class="space-y-4">
                     <!-- Months will be rendered here -->
                 </div>
@@ -1242,6 +1278,8 @@
         let pollingInterval = null;
         let notificationPollingInterval = null;
         let currentAmbassadorForSubmission = null; // NEW: Track current ambassador for submissions
+        let journeyDetailPollingInterval = null; // Track polling for journey detail modal
+        let currentJourneyAmbassadorId = null; // Track which ambassador's journey is being viewed
 
         // ============================================
         // NOTIFICATION SYSTEM (EXISTING - UNCHANGED)
@@ -3489,89 +3527,402 @@ async function markAllNotificationsRead() {
         }
 
         function openJourneyDetail(ambassadorId) {
+            currentJourneyAmbassadorId = ambassadorId;
+            
+            // Load initial data
             fetch(`/admin/api/ambassadors/${ambassadorId}/journey`, { credentials: 'include' })
-                .then(r => { if (!r.ok) throw new Error('load'); return r.json(); })
+                .then(r => { 
+                    if (!r.ok) {
+                        console.error('Journey API error:', r.status, r.statusText);
+                        throw new Error('load'); 
+                    }
+                    return r.json(); 
+                })
                 .then(data => {
+                    console.log('Journey data received:', data);
+                    // Verify data structure
+                    if (!data || !data.statistics || !data.months) {
+                        console.error('Invalid journey data structure:', data);
+                        showToast('Invalid journey data received', true);
+                        return;
+                    }
                     renderJourneyDetail(data);
                     const modal = document.getElementById('journeyDetailModal');
                     modal.classList.remove('hidden');
                     modal.classList.add('flex');
+                    
+                    // Start real-time polling for this journey
+                    startJourneyDetailPolling(ambassadorId);
                 })
-                .catch(() => {
+                .catch((err) => {
+                    console.error('Failed to load journey details:', err);
                     showToast('Failed to load journey details', true);
                 });
         }
 
-        function renderJourneyDetail(data) {
-            fetch(`/admin/api/ambassadors/${data.ambassadorId}`, { credentials: 'include' })
-                .then(r => r.json())
-                .then(ambassador => {
-                    document.getElementById('journeyAmbassadorName').textContent = 
-                        `${ambassador.name || ambassador.email}'s Journey`;
-                })
-                .catch(() => {});
+        // Start real-time polling for journey detail modal
+        function startJourneyDetailPolling(ambassadorId) {
+            // Stop any existing polling
+            stopJourneyDetailPolling();
             
-            document.getElementById('journeyCurrentMonth').textContent = `Month ${data.currentMonth}`;
-            document.getElementById('journeyOverallProgress').textContent = `${data.statistics.overallProgress}%`;
-            document.getElementById('journeyCurrentMonthProgress').textContent = `${data.statistics.currentMonthProgress}%`;
-            document.getElementById('journeyCompletedCount').textContent = 
-                `${data.statistics.completedCount}/${data.statistics.totalTasks}`;
+            // Poll every 3 seconds for real-time updates
+            journeyDetailPollingInterval = setInterval(() => {
+                if (currentJourneyAmbassadorId === ambassadorId) {
+                    fetch(`/admin/api/ambassadors/${ambassadorId}/journey`, { credentials: 'include' })
+                        .then(r => { if (!r.ok) throw new Error('update'); return r.json(); })
+                        .then(data => {
+                            renderJourneyDetail(data);
+                        })
+                        .catch(err => {
+                            console.warn('Failed to update journey details:', err);
+                        });
+                }
+            }, 3000);
             
-            const startDate = data.startDate ? new Date(data.startDate).toLocaleDateString() : '-';
-            document.getElementById('journeyStartDate').textContent = startDate;
+            console.log(`✅ Real-time journey detail polling started for ambassador ${ambassadorId}`);
+        }
+
+        // Stop real-time polling for journey detail modal
+        function stopJourneyDetailPolling() {
+            if (journeyDetailPollingInterval) {
+                clearInterval(journeyDetailPollingInterval);
+                journeyDetailPollingInterval = null;
+            }
+            currentJourneyAmbassadorId = null;
             
-            document.getElementById('journeyCurrentMonthTitle').textContent = 
-                `Month ${data.currentMonth}: ${data.statistics.currentMonthTitle}`;
-            document.getElementById('journeyCurrentMonthMilestone').textContent = 
-                data.statistics.currentMonthMilestone;
+            // Hide real-time indicator
+            const realtimeIndicator = document.getElementById('journeyRealtimeIndicator');
+            if (realtimeIndicator) {
+                realtimeIndicator.classList.add('hidden');
+            }
             
+            console.log('⏸ Real-time journey detail polling stopped');
+        }
+
+        async function renderJourneyDetail(data) {
+            console.log('Rendering journey detail with data:', data);
+            
+            // Validate data structure
+            if (!data || !data.statistics || !data.months) {
+                console.error('Invalid data structure:', data);
+                showToast('Invalid journey data', true);
+                return;
+            }
+            
+            // Fetch ambassador details
+            try {
+                const ambassadorRes = await fetch(`/admin/api/ambassadors/${data.ambassadorId}`, { credentials: 'include' });
+                if (ambassadorRes.ok) {
+                    const ambassador = await ambassadorRes.json();
+                    const ambassadorName = ambassador.name || ambassador.first_name || ambassador.email || 'Ambassador';
+                    document.getElementById('journeyAmbassadorName').textContent = `${ambassadorName}'s Journey`;
+                }
+            } catch (e) {
+                console.warn('Failed to load ambassador details:', e);
+                document.getElementById('journeyAmbassadorName').textContent = `Ambassador's Journey`;
+            }
+            
+            // Fetch articles count for this ambassador
+            try {
+                // Fetch all articles and filter by ambassador_id client-side
+                const articlesRes = await fetch(`/admin/api/articles`, { credentials: 'include' });
+                if (articlesRes.ok) {
+                    const articlesData = await articlesRes.json();
+                    const allArticles = articlesData.items || articlesData.articles || [];
+                    // Filter articles for this specific ambassador - need to match by ambassador_id
+                    const ambassadorArticles = allArticles.filter(a => {
+                        // Check multiple possible field names
+                        return a.ambassador_id === data.ambassadorId || 
+                               a.ambassadorId === data.ambassadorId ||
+                               (a.ambassador && (a.ambassador.ambassador_id === data.ambassadorId || a.ambassador.id === data.ambassadorId));
+                    });
+                    const pending = ambassadorArticles.filter(a => a.status === 'pending' || a.status === 'needs_update').length;
+                    const published = ambassadorArticles.filter(a => a.status === 'published').length;
+                    document.getElementById('journeyArticlesCount').textContent = pending;
+                    document.getElementById('journeyArticlesStatus').textContent = `${published} published`;
+                } else {
+                    // Fallback: set to 0 if unable to fetch
+                    document.getElementById('journeyArticlesCount').textContent = '0';
+                    document.getElementById('journeyArticlesStatus').textContent = 'Check articles tab';
+                }
+            } catch (e) {
+                console.warn('Failed to load articles:', e);
+                document.getElementById('journeyArticlesCount').textContent = '-';
+                document.getElementById('journeyArticlesStatus').textContent = 'Unable to load';
+            }
+            
+            // Show real-time indicator
+            const realtimeIndicator = document.getElementById('journeyRealtimeIndicator');
+            if (realtimeIndicator) {
+                realtimeIndicator.classList.remove('hidden');
+            }
+            
+            // Update last updated timestamp
+            const lastUpdatedEl = document.getElementById('journeyLastUpdated');
+            if (lastUpdatedEl) {
+                const now = new Date();
+                lastUpdatedEl.textContent = `Updated: ${now.toLocaleTimeString()}`;
+            }
+            
+            // Update progress cards - ensure we have valid data
+            const currentMonth = data.currentMonth || 1;
+            const stats = data.statistics || {};
+            
+            const overallProgressEl = document.getElementById('journeyOverallProgress');
+            if (overallProgressEl) overallProgressEl.textContent = `${stats.overallProgress || 0}%`;
+            
+            const currentMonthEl = document.getElementById('journeyCurrentMonth');
+            if (currentMonthEl) currentMonthEl.textContent = `Month ${currentMonth}`;
+            
+            const monthTextEl = document.getElementById('journeyMonthText');
+            if (monthTextEl) monthTextEl.textContent = `Month ${currentMonth} of 12`;
+            
+            const currentMonthProgressEl = document.getElementById('journeyCurrentMonthProgress');
+            if (currentMonthProgressEl) currentMonthProgressEl.textContent = `${stats.currentMonthProgress || 0}%`;
+            
+            const completedCountEl = document.getElementById('journeyCompletedCount');
+            if (completedCountEl) {
+                completedCountEl.textContent = `${stats.completedCount || 0}/${stats.totalTasks || 0}`;
+            }
+            
+            const remaining = (stats.totalTasks || 0) - (stats.completedCount || 0);
+            const remainingTasksEl = document.getElementById('journeyRemainingTasks');
+            if (remainingTasksEl) remainingTasksEl.textContent = `${remaining} remaining`;
+            
+            const startDate = data.startDate ? new Date(data.startDate) : new Date();
+            const startDateEl = document.getElementById('journeyStartDate');
+            if (startDateEl) startDateEl.textContent = startDate.toLocaleDateString();
+            
+            const daysActive = Math.floor((new Date() - startDate) / (1000 * 60 * 60 * 24));
+            const daysActiveEl = document.getElementById('journeyDaysActive');
+            if (daysActiveEl) daysActiveEl.textContent = `${daysActive} days active`;
+            
+            const currentMonthTitleEl = document.getElementById('journeyCurrentMonthTitle');
+            if (currentMonthTitleEl) {
+                currentMonthTitleEl.textContent = `Month ${currentMonth}: ${stats.currentMonthTitle || 'Unknown'}`;
+            }
+            
+            const currentMonthMilestoneEl = document.getElementById('journeyCurrentMonthMilestone');
+            if (currentMonthMilestoneEl) {
+                currentMonthMilestoneEl.textContent = stats.currentMonthMilestone || '';
+            }
+            
+            // Update current month tasks count
+            const currentMonthData = data.months && data.months.find(m => m.isCurrentMonth);
+            if (currentMonthData) {
+                const currentMonthTasksEl = document.getElementById('journeyCurrentMonthTasks');
+                if (currentMonthTasksEl) {
+                    currentMonthTasksEl.textContent = `${currentMonthData.completedTasks || 0}/${currentMonthData.totalTasks || 0}`;
+                }
+            }
+            
+            // Render current activity
+            renderCurrentActivity(data);
+            
+            // Render months list
             const monthsList = document.getElementById('journeyMonthsList');
+            if (!monthsList) {
+                console.error('journeyMonthsList element not found');
+                return;
+            }
+            
+            if (!data.months || !Array.isArray(data.months) || data.months.length === 0) {
+                console.error('Invalid months data:', data.months);
+                monthsList.innerHTML = '<div class="text-red-500 p-4">Error: No months data available</div>';
+                return;
+            }
+            
             monthsList.innerHTML = data.months.map(month => {
-                const statusColor = month.isCompleted ? 'bg-green-50 border-green-200' :
-                                   month.isCurrentMonth ? 'bg-purple-50 border-purple-200' :
-                                   'bg-gray-50 border-gray-200';
-                
-                const statusBadge = month.isCompleted ? 
-                    '<span class="px-2 py-1 rounded-lg bg-green-100 text-green-700 text-xs font-semibold">✓ Completed</span>' :
-                    month.isCurrentMonth ? 
-                    '<span class="px-2 py-1 rounded-lg bg-purple-100 text-purple-700 text-xs font-semibold">→ Current</span>' :
-                    '<span class="px-2 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-semibold">⏳ Upcoming</span>';
+                // Ensure all required fields exist
+                const monthNum = month.month || 0;
+                const monthTitle = month.title || 'Unknown';
+                const monthMilestone = month.milestone || '';
+                const totalTasks = month.totalTasks || 0;
+                const completedTasks = month.completedTasks || 0;
+                const progress = month.progress || 0;
+                const isCurrentMonth = month.isCurrentMonth || false;
+                const isCompleted = month.isCompleted || false;
+                const tasks = month.tasks || [];
+                const statusConfig = month.isCompleted ? {
+                    bg: 'bg-green-50',
+                    border: 'border-green-300',
+                    badge: 'bg-green-100 text-green-700',
+                    label: '✓ Completed',
+                    icon: 'bx-check-circle',
+                    iconColor: 'text-green-600',
+                    progressColor: 'bg-green-500'
+                } : month.isCurrentMonth ? {
+                    bg: 'bg-purple-50',
+                    border: 'border-purple-300',
+                    badge: 'bg-purple-100 text-purple-700',
+                    label: '→ Current',
+                    icon: 'bx-circle',
+                    iconColor: 'text-purple-600',
+                    progressColor: 'bg-purple-600'
+                } : {
+                    bg: 'bg-gray-50',
+                    border: 'border-gray-200',
+                    badge: 'bg-gray-100 text-gray-600',
+                    label: '⏳ Upcoming',
+                    icon: 'bx-lock-alt',
+                    iconColor: 'text-gray-400',
+                    progressColor: 'bg-gray-400'
+                };
                 
                 return `
-                    <div class="border-2 ${statusColor} rounded-xl p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <div>
-                                <h4 class="font-bold text-gray-900">Month ${month.month}: ${month.title}</h4>
-                                <p class="text-sm text-gray-600 mt-1">${month.milestone}</p>
-                            </div>
-                            ${statusBadge}
-                        </div>
-                        
-                        <div class="mb-3">
-                            <div class="flex items-center justify-between text-sm mb-1">
-                                <span class="text-gray-600">Progress: ${month.completedTasks}/${month.totalTasks} tasks</span>
-                                <span class="font-semibold">${month.progress}%</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div class="bg-purple-600 h-2 rounded-full transition-all" style="width: ${month.progress}%"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="space-y-2">
-                            ${month.tasks.map(task => `
-                                <div class="flex items-start gap-2 text-sm">
-                                    <i class="bx ${task.completed ? 'bx-check-circle text-green-600' : 'bx-circle text-gray-400'} text-lg flex-shrink-0"></i>
-                                    <span class="${task.completed ? 'text-gray-600 line-through' : 'text-gray-900'}">
-                                        ${task.text}
-                                        ${task.critical ? '<span class="ml-2 px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded font-semibold">CRITICAL</span>' : ''}
-                                        ${task.time ? `<span class="ml-2 text-gray-500">⏱ ${task.time}</span>` : ''}
-                                    </span>
+                    <div class="border-2 ${statusConfig.border} ${statusConfig.bg} rounded-xl p-5 shadow-sm hover:shadow-md transition-all">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="${statusConfig.iconColor} text-2xl">
+                                    <i class="bx ${statusConfig.icon}"></i>
                                 </div>
-                            `).join('')}
+                                <div>
+                                    <h4 class="font-bold text-gray-900 text-lg">Month ${monthNum}: ${monthTitle}</h4>
+                                    <p class="text-sm text-gray-600 mt-1">${monthMilestone}</p>
+                                </div>
+                            </div>
+                            <span class="px-3 py-1 ${statusConfig.badge} rounded-lg text-xs font-semibold whitespace-nowrap">
+                                ${statusConfig.label}
+                            </span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="flex items-center justify-between text-sm mb-2">
+                                <span class="text-gray-700 font-medium">Progress: ${completedTasks}/${totalTasks} tasks</span>
+                                <span class="font-bold text-gray-900">${progress}%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                <div class="${statusConfig.progressColor} h-3 rounded-full transition-all duration-500" style="width: ${Math.min(progress, 100)}%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2.5">
+                            ${tasks.length > 0 ? tasks.map(task => {
+                                const taskCompleted = task.completed || false;
+                                const taskText = task.text || 'Unknown task';
+                                const taskCritical = task.critical || false;
+                                const taskTime = task.time || '';
+                                
+                                const taskStatus = taskCompleted ? {
+                                    icon: 'bx-check-circle',
+                                    color: 'text-green-600',
+                                    textColor: 'text-gray-600 line-through'
+                                } : {
+                                    icon: 'bx-circle',
+                                    color: 'text-gray-400',
+                                    textColor: 'text-gray-900'
+                                };
+                                
+                                return `
+                                    <div class="flex items-start gap-3 p-2 rounded-lg hover:bg-white/50 transition-colors">
+                                        <i class="bx ${taskStatus.icon} ${taskStatus.color} text-xl flex-shrink-0 mt-0.5"></i>
+                                        <div class="flex-1">
+                                            <span class="${taskStatus.textColor} text-sm">
+                                                ${taskText}
+                                            </span>
+                                            <div class="flex items-center gap-2 mt-1">
+                                                ${taskCritical ? '<span class="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded font-semibold">CRITICAL</span>' : ''}
+                                                ${taskTime ? `<span class="text-gray-500 text-xs flex items-center gap-1"><i class="bx bx-time"></i> ${taskTime}</span>` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('') : '<div class="text-gray-500 text-sm p-2">No tasks available</div>'}
                         </div>
                     </div>
                 `;
             }).join('');
+        }
+
+        // Render current activity section
+        function renderCurrentActivity(data) {
+            const activityContainer = document.getElementById('journeyCurrentActivity');
+            if (!activityContainer) {
+                console.warn('journeyCurrentActivity element not found');
+                return;
+            }
+            
+            if (!data || !data.months || !Array.isArray(data.months)) {
+                activityContainer.innerHTML = '<div class="text-gray-500 text-sm">No activity data available</div>';
+                return;
+            }
+            
+            const currentMonthData = data.months.find(m => m.isCurrentMonth);
+            if (!currentMonthData) {
+                activityContainer.innerHTML = '<div class="text-gray-500 text-sm">No current month activity</div>';
+                return;
+            }
+            
+            // Get incomplete tasks (what they're working on)
+            const allTasks = currentMonthData.tasks || [];
+            const incompleteTasks = allTasks.filter(t => !t.completed);
+            const completedTasks = allTasks.filter(t => t.completed);
+            const criticalTasks = incompleteTasks.filter(t => t.critical);
+            
+            let activityHTML = '';
+            
+            if (incompleteTasks.length > 0) {
+                activityHTML += `
+                    <div class="mb-4">
+                        <h4 class="text-sm font-semibold text-gray-700 mb-2">Currently Working On (${incompleteTasks.length} tasks):</h4>
+                        <div class="space-y-2">
+                            ${incompleteTasks.slice(0, 5).map(task => {
+                                const taskText = task.text || 'Unknown task';
+                                const taskCritical = task.critical || false;
+                                const taskTime = task.time || '';
+                                return `
+                                <div class="flex items-start gap-2 text-sm p-2 bg-purple-50 rounded-lg border border-purple-200">
+                                    <i class="bx bx-circle text-purple-600 text-lg flex-shrink-0 mt-0.5"></i>
+                                    <div class="flex-1">
+                                        <span class="text-gray-900">${taskText}</span>
+                                        ${taskCritical ? '<span class="ml-2 px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded font-semibold">CRITICAL</span>' : ''}
+                                        ${taskTime ? `<span class="ml-2 text-gray-500 text-xs">⏱ ${taskTime}</span>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                            }).join('')}
+                            ${incompleteTasks.length > 5 ? `<div class="text-xs text-gray-500 pl-7">+ ${incompleteTasks.length - 5} more tasks</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (criticalTasks.length > 0) {
+                activityHTML += `
+                    <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div class="flex items-center gap-2 mb-2">
+                            <i class="bx bx-error-circle text-red-600"></i>
+                            <span class="text-sm font-semibold text-red-700">${criticalTasks.length} Critical Task${criticalTasks.length > 1 ? 's' : ''} Pending</span>
+                        </div>
+                        <div class="text-xs text-red-600">These tasks must be completed to progress</div>
+                    </div>
+                `;
+            }
+            
+            if (completedTasks.length > 0) {
+                activityHTML += `
+                    <div>
+                        <h4 class="text-sm font-semibold text-gray-700 mb-2">Recently Completed (${completedTasks.length} tasks):</h4>
+                        <div class="space-y-1">
+                            ${completedTasks.slice(-3).reverse().map(task => {
+                                const taskText = task.text || 'Unknown task';
+                                return `
+                                <div class="flex items-center gap-2 text-sm text-gray-600">
+                                    <i class="bx bx-check-circle text-green-600"></i>
+                                    <span class="line-through">${taskText}</span>
+                                </div>
+                            `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (!activityHTML) {
+                activityHTML = '<div class="text-gray-500 text-sm">No current activity to display</div>';
+            }
+            
+            activityContainer.innerHTML = activityHTML;
         }
 
         // ============================================
@@ -4547,6 +4898,20 @@ async function markAllNotificationsRead() {
                     if (modal) {
                         modal.classList.add('hidden');
                         modal.classList.remove('flex');
+                        // Stop real-time polling when modal closes
+                        stopJourneyDetailPolling();
+                    }
+                });
+            }
+            
+            // Also close modal when clicking outside
+            const journeyModal = document.getElementById('journeyDetailModal');
+            if (journeyModal) {
+                journeyModal.addEventListener('click', (e) => {
+                    if (e.target === journeyModal) {
+                        journeyModal.classList.add('hidden');
+                        journeyModal.classList.remove('flex');
+                        stopJourneyDetailPolling();
                     }
                 });
             }
