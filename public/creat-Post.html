@@ -119,9 +119,9 @@
       }
       
       .error-highlight {
-        border: 3px solid #ef4444 !important;
-        background-color: #fef2f2 !important;
-        animation: pulse 0.5s ease-in-out 3;
+        border: 2px solid #f59e0b !important;
+        background-color: #fffbeb !important;
+        animation: pulse 0.5s ease-in-out 2;
       }
 
       /* Custom date picker styling */
@@ -467,7 +467,8 @@
                   </svg>
                 </div>
                 <span class="font-semibold text-sm md:text-base text-gray-900">Speaking</span>
-                <input type="radio" name="postType" value="speaking" class="hidden" required>
+                <!-- Removed required: we'll validate postType via custom JS -->
+                <input type="radio" name="postType" value="speaking" class="hidden">
               </div>
 
               <!-- Podcast Card -->
@@ -479,7 +480,7 @@
                   </svg>
                 </div>
                 <span class="font-semibold text-sm md:text-base text-gray-900">Podcast</span>
-                <input type="radio" name="postType" value="podcast" class="hidden" required>
+                <input type="radio" name="postType" value="podcast" class="hidden">
               </div>
 
               <!-- Webinar Card -->
@@ -491,7 +492,7 @@
                   </svg>
                 </div>
                 <span class="font-semibold text-sm md:text-base text-gray-900">Webinar</span>
-                <input type="radio" name="postType" value="webinar" class="hidden" required>
+                <input type="radio" name="postType" value="webinar" class="hidden">
               </div>
 
               <!-- Volunteering Card -->
@@ -502,7 +503,7 @@
                   </svg>
                 </div>
                 <span class="font-semibold text-sm md:text-base text-gray-900">Volunteering</span>
-                <input type="radio" name="postType" value="volunteering" class="hidden" required>
+                <input type="radio" name="postType" value="volunteering" class="hidden">
               </div>
             </div>
           </div>
@@ -750,20 +751,40 @@
         }
       }
 
+      // Post Type selection: ensure radio state matches the visual card state
       function selectPostType(element, type) {
+        console.log('🎯 Post type clicked:', type);
+        
+        // Remove active class from ALL cards and uncheck ALL radios
         document.querySelectorAll('.post-type-card').forEach(card => {
           card.classList.remove('active');
+          const radio = card.querySelector('input[type="radio"]');
+          if (radio) {
+            radio.checked = false;
+          }
         });
         
+        // Add active class to THIS card
         element.classList.add('active');
         selectedPostType = type;
         
+        // Check THIS radio button
         const radioInput = element.querySelector('input[type="radio"]');
         if (radioInput) {
           radioInput.checked = true;
+          console.log('✅ Radio checked:', radioInput.value, 'Checked?', radioInput.checked);
+        } else {
+          console.error('❌ Radio button not found in post-type card!');
         }
-
+        
+        // Clear any existing error UI
         clearPostTypeError();
+        
+        // Debug verification to be sure a radio is checked
+        setTimeout(() => {
+          const checked = document.querySelector('input[name="postType"]:checked');
+          console.log('🔍 Verification:', checked ? `✅ ${checked.value}` : '❌ NOT CHECKED');
+        }, 50);
       }
 
       function toggleLift(element) {
@@ -838,67 +859,9 @@
       }
 
       function showErrorNotification(message) {
-        console.log('🔴 Showing error notification:', message);
-        
-        // Remove any existing error notifications first
-        const existingNotifications = document.querySelectorAll('.error-notification-popup');
-        existingNotifications.forEach(n => n.remove());
-        
-        const notification = document.createElement('div');
-        notification.className = 'error-notification-popup fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-50 border-4 border-red-600 rounded-2xl shadow-2xl p-6 max-w-2xl w-[90%] z-[9999]';
-        notification.style.animation = 'slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
-        notification.style.boxShadow = '0 25px 50px -12px rgba(239, 68, 68, 0.5), 0 0 0 1px rgba(239, 68, 68, 0.1)';
-        notification.style.backgroundColor = '#fef2f2';
-        notification.innerHTML = `
-          <div class="flex items-start gap-4">
-            <div class="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center flex-shrink-0 animate-pulse">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            <div class="flex-1">
-              <h4 class="font-bold text-red-900 text-2xl mb-3">🚨 Required Field Missing!</h4>
-              <p class="text-red-800 text-lg leading-relaxed whitespace-pre-line font-semibold">${message}</p>
-            </div>
-            <button onclick="this.closest('.error-notification-popup').remove()" class="text-red-400 hover:text-red-700 transition-colors flex-shrink-0 p-1">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        `;
-        
-        document.body.appendChild(notification);
-        console.log('✅ Error notification added to DOM:', notification);
-        console.log('📍 Notification position:', notification.getBoundingClientRect());
-        
-        // Force visibility
-        notification.style.display = 'block';
-        notification.style.visibility = 'visible';
-        notification.style.opacity = '1';
-        
-        // Scroll to top to ensure user sees it
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        
-        // Verify it's actually in the DOM after a brief delay
-        setTimeout(() => {
-          const isInDOM = document.body.contains(notification);
-          console.log('✅ Notification still in DOM?', isInDOM);
-          if (!isInDOM) {
-            console.error('❌ Notification was removed! Re-adding...');
-            document.body.appendChild(notification);
-          }
-        }, 100);
-        
-        // Make it stay longer for important errors
-        setTimeout(() => {
-          notification.style.animation = 'fadeOut 0.3s ease-out';
-          setTimeout(() => {
-            if (notification.parentElement) {
-              notification.remove();
-            }
-          }, 300);
-        }, 10000); // Show for 10 seconds
+        // Popup disabled - inline error messages are shown instead
+        console.log('Error (popup disabled):', message);
+        return;
       }
 
       function validateForm() {
@@ -924,12 +887,12 @@
         clearErrorHighlights();
 
         if (!postType) {
-            console.log('❌ Post Type is missing!');
-            errors.push('⚠️ Post Type is REQUIRED - Please select a post type (Speaking, Podcast, Webinar, or Volunteering)');
+            console.log('Post Type is missing!');
+            errors.push('Post type is required');
             highlightPostTypeError();
             isValid = false;
         } else {
-            console.log('✅ Post Type selected:', postType);
+            console.log('Post Type selected:', postType);
         }
 
         if (!title) {
@@ -1012,8 +975,8 @@
           const postTypeCards = document.querySelectorAll('.post-type-card');
           postTypeCards.forEach(card => {
               card.classList.add('error-highlight');
-              card.style.border = '3px solid #ef4444';
-              card.style.backgroundColor = '#fef2f2';
+              card.style.border = '2px solid #f59e0b';
+              card.style.backgroundColor = '#fffbeb';
           });
           
           // Find the post type section - look for the label containing "Post Type"
@@ -1033,12 +996,12 @@
               let errorElement = postTypeSection.querySelector('.field-error');
               if (!errorElement) {
                   errorElement = document.createElement('div');
-                  errorElement.className = 'field-error text-red-600 text-base mt-3 p-3 bg-red-50 border-2 border-red-500 rounded-lg flex items-center gap-2';
+                  errorElement.className = 'field-error text-gray-700 text-sm mt-2 p-2 bg-amber-50 border border-amber-200 rounded flex items-center gap-2';
                   errorElement.innerHTML = `
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                           <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                       </svg>
-                      <span class="font-bold text-red-700 text-base">⚠️ POST TYPE IS REQUIRED - Please select one of the options above (Speaking, Podcast, Webinar, or Volunteering)</span>
+                      <span class="text-gray-700 text-sm">Please select a post type</span>
                   `;
                   postTypeSection.appendChild(errorElement);
                   console.log('✅ Error message added below post type section');
@@ -1124,23 +1087,22 @@
       }
 
       function showValidationErrors(errors) {
-          // Check if post type error is in the list - make it more prominent
+          // Check if post type error is in the list
           const hasPostTypeError = errors.some(err => err.toLowerCase().includes('post type'));
           
           let errorMessage;
           if (hasPostTypeError && errors.length === 1) {
-              // If only post type is missing, show a focused, prominent message
-              errorMessage = '🚨 POST TYPE IS REQUIRED!\n\nYou must select a post type before submitting.\n\nPlease choose one:\n• Speaking\n• Podcast\n• Webinar\n• Volunteering';
+              // One-liner for post type only
+              errorMessage = 'Select a post type.';
           } else if (hasPostTypeError) {
-              // Post type is missing along with other errors - highlight it first
-              const postTypeError = errors.find(err => err.toLowerCase().includes('post type'));
+              // Post type + other errors - concise
               const otherErrors = errors.filter(err => !err.toLowerCase().includes('post type'));
-              
-              errorMessage = `🚨 POST TYPE IS REQUIRED!\n\n${postTypeError}\n\n${otherErrors.length > 0 ? 'Other errors:\n' + otherErrors.map(e => `• ${e}`).join('\n') : ''}`;
+              const otherText = otherErrors.length > 0 ? ` Also: ${otherErrors.map(e => e.replace(/⚠️\s*/g, '').split('.')[0]).join(', ')}.` : '';
+              errorMessage = `Select a post type.${otherText}`;
           } else {
-              // No post type error, show all errors normally
-              const errorList = errors.map(error => `• ${error}`).join('\n');
-              errorMessage = `Please fix the following errors:\n\n${errorList}`;
+              // Other errors only - concise
+              const errorList = errors.map(error => error.replace(/⚠️\s*/g, '').split('.')[0]).join(', ');
+              errorMessage = `Please fix: ${errorList}.`;
           }
           
           showErrorNotification(errorMessage);
@@ -1224,15 +1186,19 @@
           });
         }
       });
-
-      // Ensure form exists before attaching handler
-      const postForm = document.getElementById('postForm');
-      if (!postForm) {
-        console.error('❌ Form not found!');
-        return;
-      }
       
-      postForm.addEventListener('submit', async function(e) {
+      // Attach form submit handler - ensure it runs after DOM is ready
+      function attachFormHandler() {
+        const postForm = document.getElementById('postForm');
+        if (!postForm) {
+          console.error('❌ Form not found! Retrying...');
+          setTimeout(attachFormHandler, 100);
+          return;
+        }
+        
+        console.log('✅ Form found, attaching submit handler...');
+        
+        postForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         e.stopPropagation();
         
@@ -1244,8 +1210,9 @@
         
         if (!postType) {
           console.log('❌ Post Type is missing - showing error immediately');
-          // Show error immediately without going through validateForm
-          showErrorNotification('🚨 POST TYPE IS REQUIRED!\n\nYou must select a post type before submitting.\n\nPlease choose one:\n• Speaking\n• Podcast\n• Webinar\n• Volunteering');
+          
+          // Show professional notification
+          showErrorNotification('Please select a post type before submitting.');
           highlightPostTypeError();
           window.scrollTo({ top: 0, behavior: 'smooth' });
           return false;
@@ -1362,6 +1329,14 @@
           submitButton.innerHTML = originalText;
         }
       });
+      }
+      
+      // Call immediately and also on DOMContentLoaded as backup
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachFormHandler);
+      } else {
+        attachFormHandler();
+      }
 
       // Logout functionality
       const logoutBtn = document.getElementById('logoutBtn');

@@ -38,6 +38,7 @@ function normalizeAmbassadorData(userData, ambassadorData) {
     professional_summary: ambassadorData.professional_summary,
     profile_completion_percentage: ambassadorData.profile_completion_percentage,
     subscription_type: ambassadorData.subscription_type || 'free', // ✅ NEW: Subscription type
+    generated_password: ambassadorData.generated_password || '', // ✅ Include password for admin reference
     created_at: userData.created_at,
     updated_at: userData.updated_at,
     last_login: userData.last_login,
@@ -62,6 +63,7 @@ function normalizePartnerData(userData, partnerData) {
     phone_number: partnerData.phone_number,
     location: partnerData.location,
     partner_type: partnerData.partner_type,
+    generated_password: partnerData.generated_password || '', // ✅ Include password for admin reference
     created_at: userData.created_at,
     updated_at: userData.updated_at,
     last_login: userData.last_login,

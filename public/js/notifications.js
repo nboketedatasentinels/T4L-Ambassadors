@@ -684,7 +684,11 @@
         
         // Attach click handlers to notification items
         listContainer.querySelectorAll('.notification-item').forEach(item => {
-          item.addEventListener('click', () => handleNotificationClick(item.dataset.id, item.dataset.link));
+          item.addEventListener('click', () => handleNotificationClick(
+            item.dataset.id, 
+            item.dataset.link,
+            item.dataset.type
+          ));
         });
       }
 
@@ -712,7 +716,8 @@
     return `
       <div class="notification-item ${isUnread ? 'unread' : ''}" 
            data-id="${notif.notification_id}" 
-           data-link="${notif.link || ''}">
+           data-link="${notif.link || ''}"
+           data-type="${notif.type || ''}">
         <div class="notification-icon ${iconClass}">
           <i class="bx ${icon}"></i>
         </div>
@@ -818,7 +823,7 @@
   // ============================================
   // HANDLE NOTIFICATION CLICK
   // ============================================
-  async function handleNotificationClick(notificationId, link) {
+  async function handleNotificationClick(notificationId, link, notificationType) {
     // Mark as read
     try {
       await fetch(`/api/notifications/${notificationId}/read`, {
@@ -841,10 +846,26 @@
       console.error('Error marking notification as read:', error);
     }
     
-    // Navigate to link if provided
-    if (link) {
+    // Determine redirect URL
+    let redirectUrl = link;
+    
+    // If this is a partner application notification for an ambassador, redirect to Partner-Calls.html
+    // Also handle new partner post notifications to prevent redirecting to partner-dashboard.html
+    if (currentUserRole === 'ambassador') {
+      if (notificationType === 'application_status_change' || 
+          notificationType === 'new_partner_post') {
+        redirectUrl = '/Partner-Calls.html';
+      }
+      // Also prevent any accidental redirects to partner-dashboard.html
+      if (redirectUrl && redirectUrl.includes('partner-dashboard.html')) {
+        redirectUrl = '/Partner-Calls.html';
+      }
+    }
+    
+    // Navigate to redirect URL if provided
+    if (redirectUrl) {
       hideNotificationPanel();
-      window.location.href = link;
+      window.location.href = redirectUrl;
     }
   }
 

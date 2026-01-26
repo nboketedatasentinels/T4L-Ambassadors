@@ -866,6 +866,12 @@
                 </div>
                 
                 <div class="form-group">
+                    <label class="form-label" for="editPassword">Password</label>
+                    <input type="text" id="editPassword" class="form-input bg-gray-50" readonly placeholder="Password will appear here">
+                    <p class="text-xs text-gray-500 mt-1">This is the password set when the user was created. It cannot be changed here.</p>
+                </div>
+                
+                <div class="form-group">
                     <label class="form-label" for="editStatus">Status</label>
                     <select id="editStatus" class="form-input">
                         <option value="active">Active</option>
@@ -4176,6 +4182,7 @@ async function markAllNotificationsRead() {
                 // Populate common fields
                 document.getElementById('editEmail').value = user.email || '';
                 document.getElementById('editAccessCode').value = user.access_code || '';
+                document.getElementById('editPassword').value = user.password || user.generated_password || 'Not available';
                 document.getElementById('editStatus').value = user.status || 'active';
                 
             } catch (error) {

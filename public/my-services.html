@@ -73,6 +73,66 @@
         -webkit-box-orient: vertical;
         -webkit-line-clamp: 2;
       }
+      
+      /* Ensure text wrapping to prevent horizontal overflow */
+      .service-description {
+        word-wrap: break-word;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        max-width: 100%;
+      }
+      
+      /* Table cell text wrapping */
+      table td {
+        word-wrap: break-word;
+        word-break: break-word;
+        overflow-wrap: break-word;
+      }
+      
+      /* Service column specific styling */
+      table td:first-child {
+        max-width: 300px;
+        min-width: 200px;
+      }
+      
+      /* Ensure table doesn't overflow */
+      .overflow-x-auto {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      /* Prevent horizontal overflow */
+      html, body {
+        overflow-x: hidden;
+        max-width: 100vw;
+      }
+      
+      /* Ensure main container doesn't overflow */
+      main {
+        overflow-x: hidden;
+        width: 100%;
+        max-width: 100%;
+      }
+      
+      /* Table container constraints */
+      .table-container {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      /* Ensure table doesn't exceed container */
+      #servicesTable {
+        min-width: 100%;
+        table-layout: auto;
+      }
+      
+      /* Responsive table cells */
+      @media (max-width: 768px) {
+        #servicesTable {
+          min-width: 600px;
+        }
+      }
     </style>
   </head>
   <body class="bg-gray-50 font-sans">
@@ -86,7 +146,7 @@
     
     <div class="overlay" id="overlay"></div>
     
-    <div class="flex min-h-screen">
+    <div class="flex min-h-screen overflow-x-hidden">
       <aside class="sidebar w-20 bg-white shadow-md flex flex-col items-center py-6 space-y-6 z-40">
         <div class="mb-4">
           <div class="bg-[#4b0d7f] text-white px-3 py-2 rounded-xl font-semibold text-sm">T4L</div>
@@ -96,31 +156,27 @@
             <i class="bx bxs-home text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Home</span>
           </a>
-          <a href="/services.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg bg-purple-50">
+          <a href="/services-partner.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg bg-purple-50">
             <i class="bx bx-briefcase-alt-2 text-2xl text-[#4b0d9f] group-hover:scale-110 transition-transform duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-[#4b0d9f] transition-colors duration-200">Services</span>
           </a>
-          <a href="/article-amb.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
-            <i class="bx bx-edit-alt text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
-            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Publishing</span>
-          </a>
-          <a href="/journey.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <a href="/impactlog-partner.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
             <i class="bx bx-line-chart text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Impact Log</span>
           </a>
-          <a href="/Partner-Calls.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
-            <i class="bx bx-briefcase text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
-            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Partners</span>
+          <a href="/chat-pillar-partner.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bxs-group text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Partners Community</span>
           </a>
-          <a href="https://www.t4leader.com/event" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <a href="https://www.t4leader.com/event" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50" target="_blank" rel="noopener noreferrer">
             <i class="bx bx-calendar-event text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Events</span>
           </a>
-          <a href="/profile.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <a href="/profile-partner.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
             <i class="bx bx-user text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Profile</span>
           </a>
-          <a href="/profile.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <a href="/profile-partner.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
             <i class="bx bx-cog text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Settings</span>
           </a>
@@ -131,7 +187,7 @@
         </nav>
       </aside>
 
-      <main class="flex-1 p-4 md:p-6 lg:p-6">
+      <main class="flex-1 p-4 md:p-6 lg:p-6 overflow-x-hidden">
         <header class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
           <div>
             <h1 class="text-2xl font-bold text-gray-900">My Services</h1>
@@ -141,10 +197,6 @@
             <a href="/create-service.html" class="bg-[#4b0d7f] hover:bg-[#3a0a66] text-white px-4 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors">
               <i class="bx bx-plus"></i>
               Create New Service
-            </a>
-            <a href="/services.html" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors">
-              <i class="bx bx-grid-alt"></i>
-              Browse All
             </a>
             <div class="flex items-center space-x-2">
               <i class="bx bx-bell text-2xl text-gray-900"></i>
@@ -222,11 +274,11 @@
           </div>
 
           <div class="p-6">
-            <div class="overflow-x-auto">
+            <div class="table-container">
               <table class="w-full" id="servicesTable">
                 <thead>
                   <tr class="border-b border-gray-200">
-                    <th class="text-left py-3 px-4 text-sm font-medium text-gray-700">Service</th>
+                    <th class="text-left py-3 px-4 text-sm font-medium text-gray-700" style="min-width: 200px; max-width: 300px;">Service</th>
                     <th class="text-left py-3 px-4 text-sm font-medium text-gray-700">Type</th>
                     <th class="text-left py-3 px-4 text-sm font-medium text-gray-700">Status</th>
                     <th class="text-left py-3 px-4 text-sm font-medium text-gray-700">Requests</th>
@@ -705,7 +757,7 @@
               <td class="py-4 px-4">
                 <div>
                   <p class="font-medium text-gray-900">${service.title}</p>
-                  <p class="text-sm text-gray-500 line-clamp-1">${service.description}</p>
+                  <p class="text-sm text-gray-500 line-clamp-1 service-description">${service.description}</p>
                 </div>
               </td>
               <td class="py-4 px-4">

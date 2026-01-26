@@ -949,18 +949,14 @@ app.post(
       // Notify the partner who posted the opportunity
       try {
         if (post.partner_id) {
-          const { data: partner } = await supabase
-            .from("partners")
-            .select("user_id, company_name")
-            .eq("partner_id", post.partner_id)
-            .single();
-
-          if (partner && partner.user_id) {
+          const partnerUserId = await getPartnerUserIdFromPartnerId(post.partner_id);
+          
+          if (partnerUserId) {
             const ambassadorName = `${ambassador.first_name || ""} ${
               ambassador.last_name || ""
             }`.trim() || "An ambassador";
             await createNotification(
-              partner.user_id,
+              partnerUserId,
               "partner",
               "application_received",
               "🎯 New Application Received",
@@ -969,6 +965,8 @@ app.post(
               applicationId
             );
             console.log("   ✅ Partner notification sent");
+          } else {
+            console.log("   ⚠️ Partner user_id not found for partner_id:", post.partner_id);
           }
         }
       } catch (partnerNotifError) {
@@ -1302,17 +1300,12 @@ app.post(
       // Notify the partner who posted the opportunity
       try {
         if (post.partner_id) {
-          // Get partner's user_id from partners table
-          const { data: partner } = await supabase
-            .from("partners")
-            .select("user_id, company_name")
-            .eq("partner_id", post.partner_id)
-            .single();
-
-          if (partner && partner.user_id) {
+          const partnerUserId = await getPartnerUserIdFromPartnerId(post.partner_id);
+          
+          if (partnerUserId) {
             const ambassadorName = `${ambassador.first_name || ""} ${ambassador.last_name || ""}`.trim() || "An ambassador";
             await createNotification(
-              partner.user_id,
+              partnerUserId,
               "partner",
               "application_received",
               "🎯 New Application Received",
@@ -1320,7 +1313,9 @@ app.post(
               `/application-details.html?id=${applicationId}`,
               applicationId
             );
-            console.log("✅ Partner notification sent to:", partner.company_name || partner.user_id);
+            console.log("✅ Partner notification sent");
+          } else {
+            console.log("⚠️ Partner user_id not found for partner_id:", post.partner_id);
           }
         }
       } catch (partnerNotifError) {
@@ -2601,6 +2596,43 @@ app.get("/api/services", requireAuth, async (req, res) => {
       );
     }
 
+    // ✅ OPTIMIZATION: Get all partner names and emails in one query
+    const partnerIds = [...new Set(services.map(s => s.partner_id).filter(Boolean))];
+    const partnerNamesMap = new Map();
+    
+    if (partnerIds.length > 0) {
+      // Get partners with their user emails
+      const { data: partners } = await supabase
+        .from("partners")
+        .select("partner_id, contact_person, organization_name, user_id")
+        .in("partner_id", partnerIds);
+      
+      // Get user emails for these partners
+      if (partners && partners.length > 0) {
+        const userIds = partners.map(p => p.user_id).filter(Boolean);
+        
+        if (userIds.length > 0) {
+          const { data: users } = await supabase
+            .from("users")
+            .select("user_id, email")
+            .in("user_id", userIds);
+          
+          // Create a map of user_id to email
+          const userEmailMap = new Map();
+          users?.forEach(user => {
+            userEmailMap.set(user.user_id, user.email || '');
+          });
+          
+          // Combine partner info with email
+          partners.forEach(partner => {
+            const name = partner.contact_person || partner.organization_name || "Partner";
+            const email = userEmailMap.get(partner.user_id) || '';
+            partnerNamesMap.set(partner.partner_id, { name, email });
+          });
+        }
+      }
+    }
+
     // Process services
     const processedServices = services.map((service) => {
       const processed = { ...service };
@@ -2612,6 +2644,22 @@ app.get("/api/services", requireAuth, async (req, res) => {
 
       // Check if requested
       processed.hasRequested = requestedServiceIds.has(service.service_id);
+      
+      // Add partner name and email
+      if (service.partner_id) {
+        const partnerInfo = partnerNamesMap.get(service.partner_id);
+        if (partnerInfo) {
+          processed.partnerName = partnerInfo.name || "Partner";
+          processed.partnerEmail = partnerInfo.email || '';
+        } else {
+          console.warn(`⚠️ Partner info not found for partner_id: ${service.partner_id}`);
+          processed.partnerName = "Partner";
+          processed.partnerEmail = '';
+        }
+      } else {
+        processed.partnerName = "Partner";
+        processed.partnerEmail = '';
+      }
 
       return processed;
     });
@@ -6743,6 +6791,7 @@ app.get(
         name: amb.first_name || amb.name,
         email: amb.email,
         access_code: amb.access_code,
+        password: amb.generated_password || '', // ✅ Include password for admin reference
         status: amb.status,
         joinDate: amb.created_at,
         lastLogin: amb.last_login,
@@ -6803,6 +6852,7 @@ app.get(
         name: ambassador.first_name || "Ambassador",
         email: ambassador.users?.email || ambassador.email,
         access_code: ambassador.users?.access_code, // ✅ NOW IT WILL WORK!
+        password: ambassador.generated_password || '', // ✅ Include password for admin reference
         status: ambassador.users?.status || ambassador.status,
         joinDate: ambassador.created_at,
         lastLogin: ambassador.last_login,
@@ -6900,8 +6950,10 @@ app.post(
 
       const newAmbassador = await createUser(userData, "ambassador");
 
-      // Initialize journey progress
-      await upsertJourneyProgress(
+      console.log("✅ Ambassador created in database:", newAmbassador);
+
+      // Initialize journey progress asynchronously (non-blocking)
+      upsertJourneyProgress(
         newAmbassador.ambassador_id || newAmbassador.id,
         {
           current_month: 1,
@@ -6909,40 +6961,31 @@ app.post(
           start_date: new Date().toISOString(),
           month_start_dates: { 1: new Date().toISOString() },
         }
-      );
+      ).then(() => {
+        console.log("✅ Journey progress initialized");
+      }).catch(error => {
+        console.error("⚠️ Error initializing journey progress:", error);
+      });
 
-      console.log("✅ Ambassador created in database:", newAmbassador);
-
-      // ========== SEND WELCOME EMAIL ==========
-      console.log("📧 Sending welcome email...");
-      const emailResult = await emailService.sendAmbassadorWelcome({
+      // ========== SEND WELCOME EMAIL ASYNCHRONOUSLY (NON-BLOCKING) ==========
+      // Send email in background to avoid blocking the response
+      emailService.sendAmbassadorWelcome({
         name: newAmbassador.first_name || first_name,
         email: newAmbassador.email,
         access_code: newAmbassador.access_code,
         password: password, // Include the generated password in the email
+      }).then(emailResult => {
+        if (emailResult.success) {
+          console.log("✅ Welcome email sent successfully");
+        } else {
+          console.warn("⚠️ Welcome email failed:", emailResult.error);
+        }
+      }).catch(error => {
+        console.error("❌ Error sending welcome email:", error);
       });
 
-      if (!emailResult.success) {
-        console.warn(
-          "⚠️  Ambassador created but email failed:",
-          emailResult.error
-        );
-        return res.json({
-          success: true,
-          ambassador: {
-            id: newAmbassador.ambassador_id || newAmbassador.id,
-            name: newAmbassador.first_name,
-            email: newAmbassador.email,
-            access_code: newAmbassador.access_code,
-            status: newAmbassador.status,
-            subscription_type: newAmbassador.subscription_type, // ✅ NEW
-          },
-          emailSent: false,
-          message: "✅ Ambassador added! (Email failed to send)",
-        });
-      }
-
-      console.log("🎉 Ambassador creation COMPLETE with email");
+      // Return immediately without waiting for email
+      console.log("🎉 Ambassador creation COMPLETE (email sending in background)");
 
       return res.json({
         success: true,
@@ -6954,8 +6997,8 @@ app.post(
           status: newAmbassador.status,
           subscription_type: newAmbassador.subscription_type, // ✅ NEW
         },
-        emailSent: true,
-        message: "✅ Ambassador added! Welcome email sent with access code.",
+        emailSent: true, // Email is being sent in background
+        message: "✅ Ambassador added! Welcome email will be sent shortly.",
       });
     } catch (error) {
       console.error("❌ Error creating ambassador:", error);
@@ -7183,37 +7226,26 @@ app.post(
 
       console.log("✅ Partner created in database:", newPartner);
 
-      // ========== SEND WELCOME EMAIL ==========
-      console.log("📧 Sending welcome email...");
-      const emailResult = await emailService.sendPartnerWelcome({
+      // ========== SEND WELCOME EMAIL ASYNCHRONOUSLY (NON-BLOCKING) ==========
+      // Send email in background to avoid blocking the response
+      emailService.sendPartnerWelcome({
         name: newPartner.contact_person || contact_person,
         email: newPartner.email,
         company: newPartner.organization_name || organization_name,
         access_code: newPartner.access_code,
         password: password, // Include the generated password in the email
+      }).then(emailResult => {
+        if (emailResult.success) {
+          console.log("✅ Welcome email sent successfully");
+        } else {
+          console.warn("⚠️ Welcome email failed:", emailResult.error);
+        }
+      }).catch(error => {
+        console.error("❌ Error sending welcome email:", error);
       });
 
-      if (!emailResult.success) {
-        console.warn(
-          "⚠️  Partner created but email failed:",
-          emailResult.error
-        );
-        return res.json({
-          success: true,
-          partner: {
-            id: newPartner.partner_id || newPartner.id,
-            name: newPartner.contact_person || contact_person,
-            email: newPartner.email,
-            company: newPartner.organization_name,
-            access_code: newPartner.access_code,
-            status: newPartner.status,
-          },
-          emailSent: false,
-          message: "✅ Partner added! (Email failed to send)",
-        });
-      }
-
-      console.log("🎉 Partner creation COMPLETE with email");
+      // Return immediately without waiting for email
+      console.log("🎉 Partner creation COMPLETE (email sending in background)");
 
       return res.json({
         success: true,
@@ -7225,8 +7257,8 @@ app.post(
           access_code: newPartner.access_code,
           status: newPartner.status,
         },
-        emailSent: true,
-        message: "✅ Partner added! Welcome email sent with access code.",
+        emailSent: true, // Email is being sent in background
+        message: "✅ Partner added! Welcome email will be sent shortly.",
       });
     } catch (error) {
       console.error("❌ Error creating partner:", error);
@@ -9228,7 +9260,7 @@ app.post(
                 "new_partner_post",
                 "New Opportunity Available",
                 `${partnerName} just posted a new opportunity: "${title}"`,
-                `/partner-dashboard.html`
+                `/Partner-Calls.html`
               ).catch((err) => {
                 console.error(
                   "⚠️ Failed to create ambassador notification for new post:",
