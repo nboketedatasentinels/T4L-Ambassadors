@@ -97,10 +97,7 @@
             <i class="bx bx-user text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Profile</span>
           </a>
-          <a href="/profile-partner.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
-            <i class="bx bx-cog text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
-            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Settings</span>
-          </a>
+          
           <div id="logoutBtn" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-red-50">
             <i class="bx bx-log-out text-2xl text-gray-600 group-hover:text-red-600 group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-red-600 transition-colors duration-200">Logout</span>
@@ -605,6 +602,14 @@
       }
 
       init();
+    </script>
+    
+    <!-- Frontend auth guard: redirect if no valid session -->
+    <script src="/signin.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        requireAuth('/partner-signin');
+      });
     </script>
   </body>
 </html>

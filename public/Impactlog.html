@@ -212,5 +212,12 @@
         </div>
       </main>
     </div>
+  <!-- Frontend auth guard: redirect if no valid session -->
+  <script src="/signin.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      requireAuth('/signin');
+    });
+  </script>
 </body>
 </html>

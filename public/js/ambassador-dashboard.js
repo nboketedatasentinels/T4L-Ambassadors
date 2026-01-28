@@ -81,6 +81,40 @@ function validateAndFixVideoUrl(url) {
 // Global variable to store journey data (single source of truth)
 let CURRENT_JOURNEY_DATA = null;
 
+/**
+ * Build a simple `{ "month-taskIdentifier": true }` map from
+ * the taskCompletions array returned by `/api/journey/progress`.
+ *
+ * This lets the dashboard cards use **database truth** (what the
+ * ambassador has actually completed) while still relying on
+ * `MONTH_DATA` for the canonical list of tasks per month.
+ */
+function buildCompletedTasksMapFromApi(apiData) {
+  const completions = Array.isArray(apiData?.taskCompletions)
+    ? apiData.taskCompletions
+    : [];
+
+  const completedTasks = {};
+
+  completions.forEach((tc) => {
+    const jt = tc?.journey_tasks;
+    const identifier = jt?.task_identifier;
+    if (!identifier) return;
+
+    // Find the month for this task from MONTH_DATA
+    const monthFromConfig = MONTH_DATA.find((m) =>
+      Array.isArray(m.tasks) && m.tasks.includes(identifier)
+    )?.month;
+
+    // Fallback to API currentMonth if we can't resolve from config
+    const monthNum = monthFromConfig || apiData.currentMonth || 1;
+    const key = `${monthNum}-${identifier}`;
+    completedTasks[key] = true;
+  });
+
+  return completedTasks;
+}
+
 // ✅ Fetch journey data ONCE and store it
 async function fetchJourneyData() {
   try {
@@ -98,16 +132,17 @@ async function fetchJourneyData() {
     if (!response.ok || apiData.success === false) {
       throw new Error(apiData.error || 'Failed to load journey data');
     }
+
+    const completedTasks = buildCompletedTasksMapFromApi(apiData);
     
     CURRENT_JOURNEY_DATA = {
       currentMonth: apiData.currentMonth || 1,
-      // For now we only need month for video; completedTasks can be synthesized later if needed
-      completedTasks: {},
+      completedTasks,
       startDate: apiData.currentProgress?.started_at || new Date().toISOString()
     };
     console.log('✅ Journey data loaded:', {
       currentMonth: CURRENT_JOURNEY_DATA.currentMonth,
-      completedTasks: Object.keys(CURRENT_JOURNEY_DATA.completedTasks || {}).length
+      completedTaskCount: Object.keys(CURRENT_JOURNEY_DATA.completedTasks || {}).length
     });
     
     return CURRENT_JOURNEY_DATA;
@@ -569,7 +604,7 @@ async function initializeDashboard() {
     
     const journeyData = {
       currentMonth: journeyApiData.currentMonth || 1,
-      completedTasks: {},
+      completedTasks: buildCompletedTasksMapFromApi(journeyApiData),
       startDate: journeyApiData.currentProgress?.started_at || new Date().toISOString()
     };
     console.log('✅ Journey data received:', {
@@ -696,23 +731,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-  // Mobile sidebar toggle
-  const sidebarToggle = document.getElementById('sidebarToggle');
-  const sidebar = document.querySelector('.sidebar');
-  const overlay = document.getElementById('overlay');
-  
-  if (sidebarToggle && sidebar && overlay) {
-    sidebarToggle.addEventListener('click', function() {
-      sidebar.classList.toggle('active');
-      overlay.classList.toggle('active');
-    });
-    
-    overlay.addEventListener('click', function() {
-      sidebar.classList.remove('active');
-      overlay.classList.remove('active');
-    });
-  }
-
   // Fetch user data - NO REDIRECTS on page load, just update UI if available
   fetch('/api/me', { 
     credentials: 'include',

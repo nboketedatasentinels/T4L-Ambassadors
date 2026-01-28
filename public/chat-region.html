@@ -462,5 +462,12 @@
             });
         }
     </script>
+  <!-- Frontend auth guard: redirect if no valid session -->
+  <script src="/signin.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      requireAuth('/partner-signin');
+    });
+  </script>
 </body>
 </html>

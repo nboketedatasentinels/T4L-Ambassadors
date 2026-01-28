@@ -402,11 +402,7 @@
             <span>Profile</span>
           </a>
 
-          <a href="/profile.html" class="sidebar-link">
-            <i class="bx bx-cog"></i>
-            <span>Settings</span>
-          </a>
-
+          
           <div id="logoutBtn" class="sidebar-link sidebar-logout">
             <i class="bx bx-log-out"></i>
             <span>Logout</span>
@@ -1357,5 +1353,12 @@
     </script>
     <!-- Global Partner Sidebar -->
     <script src="/js/partner-sidebar.js"></script>
-  </body>
+  <!-- Frontend auth guard: redirect if no valid session -->
+  <script src="/signin.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      requireAuth('/partner-signin');
+    });
+  </script>
+</body>
 </html>

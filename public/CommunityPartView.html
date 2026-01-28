@@ -874,5 +874,13 @@
             });
         }
     </script>
+  <!-- Frontend auth guard: redirect if no valid session -->
+  <script src="/signin.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Route can be hit by both ambassadors and partners; default to generic signin
+      requireAuth('/signin');
+    });
+  </script>
 </body>
 </html>

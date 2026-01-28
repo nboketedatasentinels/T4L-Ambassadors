@@ -435,6 +435,14 @@
       });
     </script>
     
+    <!-- Frontend auth guard: redirect if no valid session -->
+    <script src="/signin.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        requireAuth('/signin');
+      });
+    </script>
+    
     <!-- ✅ Subscription Manager -->
     <script src="/js/subscription-manager.js"></script>
   </body>

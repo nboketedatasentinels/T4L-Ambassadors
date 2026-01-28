@@ -334,10 +334,6 @@
             <i class="bx bx-user"></i>
             <span>Profile</span>
           </a>
-          <a href="/profile-partner.html" class="partner-nav-link">
-            <i class="bx bx-cog"></i>
-            <span>Settings</span>
-          </a>
           
           <div class="partner-nav-spacer"></div>
           
@@ -1066,6 +1062,15 @@
       window.viewApplication = viewApplication;
       window.viewPostApplications = viewPostApplications;
       window.loadPosts = loadPosts;
+    </script>
+    
+    <!-- Frontend auth guard: redirect if no valid session -->
+    <script src="/signin.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        // If not authenticated (no valid session), this will immediately redirect to /partner-signin
+        requireAuth('/partner-signin');
+      });
     </script>
   </body>
 </html>

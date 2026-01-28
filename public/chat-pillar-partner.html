@@ -268,10 +268,6 @@
                     <i class="bx bx-user"></i>
                     <span>Profile</span>
                 </a>
-                <a href="/profile-partner.html" class="partner-nav-link">
-                    <i class="bx bx-cog"></i>
-                    <span>Settings</span>
-                </a>
                 
                 <div class="partner-nav-spacer"></div>
                 
@@ -531,5 +527,12 @@
             });
         });
     </script>
+  <!-- Frontend auth guard: redirect if no valid session -->
+  <script src="/signin.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      requireAuth('/partner-signin');
+    });
+  </script>
 </body>
 </html>
