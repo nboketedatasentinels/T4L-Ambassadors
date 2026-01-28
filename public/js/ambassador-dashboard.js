@@ -84,14 +84,27 @@ let CURRENT_JOURNEY_DATA = null;
 // ✅ Fetch journey data ONCE and store it
 async function fetchJourneyData() {
   try {
-    console.log('🔄 Fetching journey data from API...');
-    const response = await fetch('/api/journey');
+    console.log('🔄 Fetching journey data from API (/api/journey/progress)...');
+    const response = await fetch('/api/journey/progress', {
+      credentials: 'include'
+    });
     
     if (!response.ok) {
       throw new Error('Failed to load journey data');
     }
     
-    CURRENT_JOURNEY_DATA = await response.json();
+    const apiData = await response.json();
+    
+    if (!response.ok || apiData.success === false) {
+      throw new Error(apiData.error || 'Failed to load journey data');
+    }
+    
+    CURRENT_JOURNEY_DATA = {
+      currentMonth: apiData.currentMonth || 1,
+      // For now we only need month for video; completedTasks can be synthesized later if needed
+      completedTasks: {},
+      startDate: apiData.currentProgress?.started_at || new Date().toISOString()
+    };
     console.log('✅ Journey data loaded:', {
       currentMonth: CURRENT_JOURNEY_DATA.currentMonth,
       completedTasks: Object.keys(CURRENT_JOURNEY_DATA.completedTasks || {}).length
@@ -204,8 +217,8 @@ async function loadCurrentMonthVideo() {
     console.log('🎥 ========== VIDEO LOADING START ==========');
     
     // ✅ STEP 1: Get FRESH journey data from API (NOT localStorage)
-    console.log('📡 Fetching fresh journey data from /api/journey...');
-    const response = await fetch('/api/journey', {
+    console.log('📡 Fetching fresh journey data from /api/journey/progress...');
+    const response = await fetch('/api/journey/progress', {
       credentials: 'include',
       headers: {
         'Cache-Control': 'no-cache',
@@ -535,8 +548,8 @@ async function initializeDashboard() {
     if (journeyMonth) journeyMonth.textContent = 'Loading...';
     
     // ✅ STEP 1: Fetch journey data FIRST
-    console.log('📡 Step 1: Fetching journey data...');
-    const journeyResponse = await fetch('/api/journey', {
+    console.log('📡 Step 1: Fetching journey data from /api/journey/progress...');
+    const journeyResponse = await fetch('/api/journey/progress', {
       credentials: 'include',
       headers: {
         'Cache-Control': 'no-cache',
@@ -548,7 +561,17 @@ async function initializeDashboard() {
       throw new Error('Failed to fetch journey data');
     }
     
-    const journeyData = await journeyResponse.json();
+    const journeyApiData = await journeyResponse.json();
+    
+    if (!journeyResponse.ok || journeyApiData.success === false) {
+      throw new Error(journeyApiData.error || 'Failed to fetch journey data');
+    }
+    
+    const journeyData = {
+      currentMonth: journeyApiData.currentMonth || 1,
+      completedTasks: {},
+      startDate: journeyApiData.currentProgress?.started_at || new Date().toISOString()
+    };
     console.log('✅ Journey data received:', {
       currentMonth: journeyData.currentMonth,
       completedTasks: Object.keys(journeyData.completedTasks || {}).length
@@ -828,13 +851,15 @@ async function debugJourneyMonth() {
     
     // 2. Check what the API returns
     console.log('\n🌐 API Data:');
-    const response = await fetch('/api/journey');
-    const journeyData = await response.json();
+    const response = await fetch('/api/journey/progress', {
+      credentials: 'include'
+    });
+    const journeyApiData = await response.json();
     
-    console.log('  - Status:', response.ok ? '✅ OK' : '❌ FAILED');
-    console.log('  - Current Month:', journeyData.currentMonth);
-    console.log('  - Completed Tasks:', Object.keys(journeyData.completedTasks || {}).length);
-    console.log('  - Start Date:', journeyData.startDate);
+    console.log('  - Status:', response.ok && journeyApiData.success !== false ? '✅ OK' : '❌ FAILED');
+    console.log('  - Current Month:', journeyApiData.currentMonth);
+    console.log('  - TaskCompletions:', (journeyApiData.taskCompletions || []).length);
+    console.log('  - Progress Records:', (journeyApiData.allProgress || []).length);
     
     // 3. Check current video
     console.log('\n🎥 Video State:');
@@ -848,9 +873,9 @@ async function debugJourneyMonth() {
     console.log('  - Month 3 exists:', !!VIDEO_CONFIG.find(v => v.month === 3));
     
     // 5. CRITICAL CHECK: What video SHOULD be playing?
-    const expectedVideo = VIDEO_CONFIG.find(v => v.month === journeyData.currentMonth);
+    const expectedVideo = VIDEO_CONFIG.find(v => v.month === (journeyApiData.currentMonth || 1));
     console.log('\n✅ EXPECTED VIDEO:');
-    console.log('  - Month:', journeyData.currentMonth);
+    console.log('  - Month:', journeyApiData.currentMonth || 1);
     console.log('  - Title:', expectedVideo?.title || 'NOT FOUND');
     console.log('  - URL exists:', !!expectedVideo?.url);
     
@@ -861,10 +886,11 @@ async function debugJourneyMonth() {
     
     // 7. Final comparison
     console.log('\n🔍 COMPARISON:');
-    console.log('  - API says month:', journeyData.currentMonth);
+    console.log('  - API says month:', journeyApiData.currentMonth || 1);
     console.log('  - Expected video:', expectedVideo?.title);
     console.log('  - Page shows:', videoTitle);
-    console.log('  - MATCH?', videoTitle?.includes(`Month ${journeyData.currentMonth}`) ? '✅ YES' : '❌ NO');
+    const apiMonth = journeyApiData.currentMonth || 1;
+    console.log('  - MATCH?', videoTitle?.includes(`Month ${apiMonth}`) ? '✅ YES' : '❌ NO');
     
     console.log('\n========== DEBUG COMPLETE ==========');
     
@@ -901,10 +927,12 @@ async function forceVideoRefresh() {
   console.log('🔄 Force refreshing video...');
   
   try {
-    // Get CURRENT month from API
-    const response = await fetch('/api/journey');
-    const data = await response.json();
-    const currentMonth = data.currentMonth;
+    // Get CURRENT month from API (new journey progress endpoint)
+    const response = await fetch('/api/journey/progress', {
+      credentials: 'include'
+    });
+    const apiData = await response.json();
+    const currentMonth = apiData.currentMonth || 1;
     
     console.log('📍 API says you are in Month:', currentMonth);
     

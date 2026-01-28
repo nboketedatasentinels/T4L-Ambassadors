@@ -6387,15 +6387,21 @@ app.post(
   }
 );
 
-// NEW: Lightweight progress polling endpoint
+// LEGACY: Lightweight progress polling endpoint (using old journey_progress table)
+// NOTE: This endpoint is kept for backward compatibility but may be deprecated
 app.get(
-  "/api/journey/progress",
+  "/api/journey/progress/legacy",
   requireAuth,
   requireRole("ambassador"),
   async (req, res) => {
     try {
       const userId = req.auth.userId;
-      const progress = await getJourneyProgress(userId);
+      const ambassador = await getUserById(userId, "ambassador");
+      if (!ambassador) {
+        return res.status(404).json({ error: "Ambassador not found" });
+      }
+      const ambassadorId = ambassador.ambassador_id || ambassador.id;
+      const progress = await getJourneyProgress(ambassadorId);
 
       if (!progress) {
         return res.json({
@@ -6555,6 +6561,576 @@ app.get(
     }
   }
 );
+
+// ============================================
+// NEW: Supabase Journey Progress API Endpoints
+// ============================================
+
+// GET current journey progress for ambassador (using new tables)
+app.get('/api/journey/progress', requireAuth, requireRole('ambassador'), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    
+    console.log('📡 ========== /api/journey/progress (NEW) REQUEST ==========');
+    console.log('   User ID from session:', userId);
+    
+    // Get ambassador
+    const ambassador = await getUserById(userId, 'ambassador');
+    if (!ambassador) {
+      console.error('❌ Ambassador not found for user_id:', userId);
+      return res.status(404).json({ error: 'Ambassador not found' });
+    }
+    const ambassadorId = ambassador.ambassador_id || ambassador.id;
+    console.log('✅ Found ambassador_id:', ambassadorId);
+
+    // Get current month progress
+    const { data: currentProgress, error: progressError } = await supabase
+      .from('ambassador_journey_progress')
+      .select(`
+        *,
+        journey_months (
+          month_id,
+          month_number,
+          month_name,
+          description
+        )
+      `)
+      .eq('ambassador_id', ambassadorId)
+      .eq('current_month', true)
+      .maybeSingle();
+
+    if (progressError) {
+      console.error('❌ Error fetching current progress:', progressError);
+      throw progressError;
+    }
+
+    // Get all month progress
+    const { data: allProgress, error: allProgressError } = await supabase
+      .from('ambassador_journey_progress')
+      .select('*')
+      .eq('ambassador_id', ambassadorId)
+      .order('started_at', { ascending: true });
+
+    if (allProgressError) {
+      console.error('❌ Error fetching all progress:', allProgressError);
+      throw allProgressError;
+    }
+
+    // Get task completion status
+    // journey_tasks uses task_name, task_description (NOT title/description)
+    let taskCompletions = [];
+    const { data: taskData, error: taskError } = await supabase
+      .from('ambassador_task_completion')
+      .select(`
+        *,
+        journey_tasks (
+          task_id,
+          task_identifier,
+          month_id,
+          task_name,
+          task_description
+        )
+      `)
+      .eq('ambassador_id', ambassadorId);
+
+    if (taskError) {
+      console.error('❌ Error fetching task completions:', taskError.message);
+      // Fallback: try minimal columns in case schema uses different names
+      if (taskError.message && (taskError.message.includes('title') || taskError.message.includes('description') || taskError.message.includes('does not exist'))) {
+        console.log('⚠️ Retrying with minimal journey_tasks columns (task_id, task_identifier, month_id)...');
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('ambassador_task_completion')
+          .select(`
+            *,
+            journey_tasks (
+              task_id,
+              task_identifier,
+              month_id
+            )
+          `)
+          .eq('ambassador_id', ambassadorId);
+        if (!fallbackError && fallbackData) {
+          taskCompletions = fallbackData;
+          console.log('✅ Fallback succeeded, task completions loaded');
+        }
+      }
+      if (taskCompletions.length === 0 && taskError) {
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to fetch task completions',
+          details: taskError.message,
+          hint: 'Ensure journey_tasks has task_name, task_description (not title, description)',
+          currentMonth: currentProgress && currentProgress.journey_months ? currentProgress.journey_months.month_number : 1,
+          taskCompletions: []
+        });
+      }
+    } else {
+      taskCompletions = taskData || [];
+    }
+
+    const currentMonth = currentProgress && currentProgress.journey_months 
+      ? currentProgress.journey_months.month_number 
+      : 1;
+
+    console.log('✅ Journey progress loaded:', {
+      currentMonth,
+      progressRecords: allProgress?.length || 0,
+      taskCompletions: taskCompletions?.length || 0
+    });
+
+    return res.json({
+      success: true,
+      currentMonth,
+      currentProgress,
+      allProgress: allProgress || [],
+      taskCompletions: taskCompletions || []
+    });
+  } catch (error) {
+    console.error('❌ Error fetching journey progress:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to fetch journey progress',
+      details: error.message 
+    });
+  }
+});
+
+// POST - Initialize or update current month
+app.post('/api/journey/progress/month', requireAuth, requireRole('ambassador'), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const { monthNumber } = req.body;
+
+    console.log('📡 ========== /api/journey/progress/month REQUEST ==========');
+    console.log('   User ID:', userId, 'Month:', monthNumber);
+
+    if (!monthNumber || monthNumber < 1 || monthNumber > 12) {
+      return res.status(400).json({ error: 'Invalid month number' });
+    }
+
+    // Get ambassador
+    const ambassador = await getUserById(userId, 'ambassador');
+    if (!ambassador) {
+      return res.status(404).json({ error: 'Ambassador not found' });
+    }
+    const ambassadorId = ambassador.ambassador_id || ambassador.id;
+
+    // Get month_id from journey_months table
+    const { data: month, error: monthError } = await supabase
+      .from('journey_months')
+      .select('month_id')
+      .eq('month_number', monthNumber)
+      .single();
+
+    if (monthError || !month) {
+      console.error('❌ Month not found:', monthNumber, monthError);
+      return res.status(404).json({ error: 'Month not found' });
+    }
+
+    // Set all other months to not current
+    await supabase
+      .from('ambassador_journey_progress')
+      .update({ current_month: false, updated_at: new Date().toISOString() })
+      .eq('ambassador_id', ambassadorId);
+
+    // Check if progress record exists for this month
+    const { data: existing, error: existingError } = await supabase
+      .from('ambassador_journey_progress')
+      .select('*')
+      .eq('ambassador_id', ambassadorId)
+      .eq('month_id', month.month_id)
+      .maybeSingle();
+
+    let progressRecord;
+    const now = new Date().toISOString();
+
+    if (existing) {
+      // Update existing record
+      const { data, error } = await supabase
+        .from('ambassador_journey_progress')
+        .update({ 
+          current_month: true,
+          updated_at: now
+        })
+        .eq('progress_id', existing.progress_id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      progressRecord = data;
+      console.log('✅ Updated existing progress record');
+    } else {
+      // Create new record
+      const { data, error } = await supabase
+        .from('ambassador_journey_progress')
+        .insert([{
+          ambassador_id: ambassadorId,
+          month_id: month.month_id,
+          current_month: true,
+          started_at: now,
+          created_at: now,
+          updated_at: now
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      progressRecord = data;
+      console.log('✅ Created new progress record');
+    }
+
+    return res.json({
+      success: true,
+      progress: progressRecord
+    });
+  } catch (error) {
+    console.error('❌ Error updating month progress:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to update month progress',
+      details: error.message 
+    });
+  }
+});
+
+// POST - Toggle task completion
+app.post('/api/journey/tasks/toggle', requireAuth, requireRole('ambassador'), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const { taskIdentifier, monthNumber, completed } = req.body;
+
+    console.log('🔄 Toggle task:', { taskIdentifier, monthNumber, completed });
+
+    // Get ambassador
+    const ambassador = await getUserById(userId, 'ambassador');
+    if (!ambassador) {
+      return res.status(404).json({ error: 'Ambassador not found' });
+    }
+    const ambassadorId = ambassador.ambassador_id || ambassador.id;
+
+    // Get task_id from journey_tasks table
+    const { data: task, error: taskError } = await supabase
+      .from('journey_tasks')
+      .select('task_id, month_id, task_name')
+      .eq('task_identifier', taskIdentifier)
+      .maybeSingle();
+
+    if (taskError) {
+      console.error('❌ Database error looking up task:', taskIdentifier, taskError);
+      return res.status(500).json({ 
+        error: 'Database error',
+        details: taskError.message 
+      });
+    }
+
+    if (!task) {
+      console.error('❌ Task not found in database:', taskIdentifier);
+      console.error('   Searched for task_identifier:', taskIdentifier);
+      console.error('   Month number:', monthNumber);
+      
+      // Helpful error message
+      return res.status(404).json({ 
+        error: 'Task not found',
+        taskIdentifier,
+        monthNumber,
+        hint: 'This task may not exist in the journey_tasks table. Run the migration script to add missing tasks.'
+      });
+    }
+
+    console.log('✅ Task found:', taskIdentifier, '->', task.task_name || 'unnamed');
+
+    // Get or create progress record for this month
+    const { data: progressRecord, error: progressError } = await supabase
+      .from('ambassador_journey_progress')
+      .select('progress_id')
+      .eq('ambassador_id', ambassadorId)
+      .eq('month_id', task.month_id)
+      .maybeSingle();
+
+    let progressId;
+    if (!progressRecord) {
+      // Create progress record if it doesn't exist
+      const { data: newProgress, error: createError } = await supabase
+        .from('ambassador_journey_progress')
+        .insert([{
+          ambassador_id: ambassadorId,
+          month_id: task.month_id,
+          current_month: false,
+          started_at: new Date().toISOString()
+        }])
+        .select('progress_id')
+        .single();
+
+      if (createError) throw createError;
+      progressId = newProgress.progress_id;
+      console.log('✅ Created progress record for month');
+    } else {
+      progressId = progressRecord.progress_id;
+    }
+
+    // Check if task completion record exists
+    const { data: existing, error: existingError } = await supabase
+      .from('ambassador_task_completion')
+      .select('*')
+      .eq('ambassador_id', ambassadorId)
+      .eq('task_id', task.task_id)
+      .maybeSingle();
+
+    const now = new Date().toISOString();
+    let taskCompletion;
+
+    if (existing) {
+      // Update existing record
+      const updateData = {
+        status: completed ? 'completed' : 'not_started',
+        updated_at: now
+      };
+
+      if (completed) {
+        updateData.completed_at = now;
+        if (!existing.started_at) {
+          updateData.started_at = now;
+        }
+      } else {
+        updateData.completed_at = null;
+      }
+
+      const { data, error } = await supabase
+        .from('ambassador_task_completion')
+        .update(updateData)
+        .eq('completion_id', existing.completion_id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      taskCompletion = data;
+      console.log('✅ Updated task completion');
+    } else {
+      // Create new record
+      const { data, error } = await supabase
+        .from('ambassador_task_completion')
+        .insert([{
+          ambassador_id: ambassadorId,
+          task_id: task.task_id,
+          progress_id: progressId,
+          status: completed ? 'completed' : 'not_started',
+          started_at: completed ? now : null,
+          completed_at: completed ? now : null,
+          created_at: now,
+          updated_at: now
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      taskCompletion = data;
+      console.log('✅ Created task completion');
+    }
+
+    return res.json({
+      success: true,
+      taskCompletion
+    });
+  } catch (error) {
+    console.error('❌ Error toggling task:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to toggle task',
+      details: error.message 
+    });
+  }
+});
+
+// POST - Bulk update tasks (for migration from localStorage)
+app.post('/api/journey/tasks/bulk-update', requireAuth, requireRole('ambassador'), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const { tasks, currentMonth } = req.body;
+
+    console.log('🔄 Bulk update tasks:', { taskCount: Object.keys(tasks || {}).length, currentMonth });
+
+    // Get ambassador
+    const ambassador = await getUserById(userId, 'ambassador');
+    if (!ambassador) {
+      return res.status(404).json({ error: 'Ambassador not found' });
+    }
+    const ambassadorId = ambassador.ambassador_id || ambassador.id;
+
+    const results = [];
+    
+    // Process each task from localStorage format
+    // Format: { "1-linkedin_course": true, "2-submit_article_1": true, ... }
+    if (tasks && typeof tasks === 'object') {
+      for (const [taskKey, isCompleted] of Object.entries(tasks)) {
+        if (!isCompleted) continue; // Only migrate completed tasks
+        
+        try {
+          // Parse task key: "1-linkedin_course" -> month: 1, taskId: "linkedin_course"
+          const [monthStr, taskIdentifier] = taskKey.split('-');
+          const monthNumber = parseInt(monthStr);
+          
+          if (!monthNumber || !taskIdentifier) {
+            console.warn('⚠️ Invalid task key format:', taskKey);
+            continue;
+          }
+
+          // Get task_id from journey_tasks table
+          const { data: task, error: taskError } = await supabase
+            .from('journey_tasks')
+            .select('task_id, month_id')
+            .eq('task_identifier', taskIdentifier)
+            .maybeSingle();
+
+          if (taskError || !task) {
+            console.warn('⚠️ Task not found:', taskIdentifier);
+            results.push({ taskKey, success: false, error: 'Task not found' });
+            continue;
+          }
+
+          // Get or create progress record for this month
+          const { data: progressRecord, error: progressError } = await supabase
+            .from('ambassador_journey_progress')
+            .select('progress_id')
+            .eq('ambassador_id', ambassadorId)
+            .eq('month_id', task.month_id)
+            .maybeSingle();
+
+          let progressId;
+          if (!progressRecord) {
+            const { data: newProgress, error: createError } = await supabase
+              .from('ambassador_journey_progress')
+              .insert([{
+                ambassador_id: ambassadorId,
+                month_id: task.month_id,
+                current_month: false,
+                started_at: new Date().toISOString()
+              }])
+              .select('progress_id')
+              .single();
+
+            if (createError) throw createError;
+            progressId = newProgress.progress_id;
+          } else {
+            progressId = progressRecord.progress_id;
+          }
+
+          // Check if task completion record exists
+          const { data: existing, error: existingError } = await supabase
+            .from('ambassador_task_completion')
+            .select('*')
+            .eq('ambassador_id', ambassadorId)
+            .eq('task_id', task.task_id)
+            .maybeSingle();
+
+          const now = new Date().toISOString();
+
+          if (existing) {
+            // Update existing record
+            const { error: updateError } = await supabase
+              .from('ambassador_task_completion')
+              .update({
+                status: 'completed',
+                completed_at: now,
+                updated_at: now
+              })
+              .eq('completion_id', existing.completion_id);
+
+            if (updateError) throw updateError;
+          } else {
+            // Create new record
+            const { error: insertError } = await supabase
+              .from('ambassador_task_completion')
+              .insert([{
+                ambassador_id: ambassadorId,
+                task_id: task.task_id,
+                progress_id: progressId,
+                status: 'completed',
+                started_at: now,
+                completed_at: now,
+                created_at: now,
+                updated_at: now
+              }]);
+
+            if (insertError) throw insertError;
+          }
+
+          results.push({ taskKey, success: true });
+        } catch (error) {
+          console.error(`❌ Failed to migrate task ${taskKey}:`, error);
+          results.push({ taskKey, success: false, error: error.message });
+        }
+      }
+    }
+
+    // Update current month if provided
+    if (currentMonth) {
+      try {
+        // Get month_id from journey_months table
+        const { data: month, error: monthError } = await supabase
+          .from('journey_months')
+          .select('month_id')
+          .eq('month_number', currentMonth)
+          .single();
+
+        if (!monthError && month) {
+          // Set all other months to not current
+          await supabase
+            .from('ambassador_journey_progress')
+            .update({ current_month: false, updated_at: new Date().toISOString() })
+            .eq('ambassador_id', ambassadorId);
+
+          // Check if progress record exists for this month
+          const { data: existing, error: existingError } = await supabase
+            .from('ambassador_journey_progress')
+            .select('*')
+            .eq('ambassador_id', ambassadorId)
+            .eq('month_id', month.month_id)
+            .maybeSingle();
+
+          const now = new Date().toISOString();
+
+          if (existing) {
+            await supabase
+              .from('ambassador_journey_progress')
+              .update({ 
+                current_month: true,
+                updated_at: now
+              })
+              .eq('progress_id', existing.progress_id);
+          } else {
+            await supabase
+              .from('ambassador_journey_progress')
+              .insert([{
+                ambassador_id: ambassadorId,
+                month_id: month.month_id,
+                current_month: true,
+                started_at: now,
+                created_at: now,
+                updated_at: now
+              }]);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error updating current month:', error);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: 'Bulk update completed',
+      results,
+      migrated: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length
+    });
+  } catch (error) {
+    console.error('❌ Error in bulk update:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to bulk update tasks',
+      details: error.message 
+    });
+  }
+});
 
 // ------------------------
 // ADMIN Journey Progress APIs

@@ -3289,12 +3289,36 @@ Best,
             })}
           </div>
 
-
+          {/* Journey progression guidance and actions */}
           {isCurrent && !allCriticalDone && (
             <div className="mt-4 p-3 bg-gray-100 border border-gray-300 rounded-lg">
               <p className="text-sm text-gray-700">
-                ⚠️ Complete all critical tasks to proceed to the next month.
+                ⚠️ Complete all <span className="font-semibold">critical</span> tasks to unlock the next month.
               </p>
+            </div>
+          )}
+
+          {isCurrent && allCriticalDone && monthIndex < 12 && (
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={onNextMonth}
+                className="inline-flex items-center px-4 py-2 bg-[#4b0d7f] hover:bg-[#3a0a63] text-white text-sm font-semibold rounded-lg shadow-md hover:shadow-lg transition-colors"
+              >
+                Move to Month {monthIndex + 1} →
+              </button>
+            </div>
+          )}
+
+          {isCurrent && allCriticalDone && monthIndex === 12 && (
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={onNextMonth}
+                className="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg shadow-md hover:shadow-lg transition-colors"
+              >
+                🎉 Finish My 12‑Month Journey
+              </button>
             </div>
           )}
         </div>
@@ -3564,20 +3588,151 @@ Best,
         return null;
       }, []);
 
-      // Load saved tasks and current month from localStorage when component mounts
+      // Load journey progress and tasks from database (migrated from localStorage)
       useEffect(() => {
-        // Fetch user info first
-        const fetchUser = async () => {
+        const loadJourneyData = async () => {
           try {
-            // In a real app, you would fetch the actual user ID
-            // For now, we'll use a default user ID
-            const userId = 'default';
+            setLoading(true);
+            setError(null);
+            console.log('📥 Loading journey data from database...');
+
+            const response = await fetch('/api/journey/progress', {
+              credentials: 'include'
+            });
+
+            if (!response.ok) {
+              throw new Error('Failed to load journey data');
+            }
+
+            const data = await response.json();
+            console.log('✅ Journey data loaded:', data);
+
+            // Update current month
+            if (data.currentMonth) {
+              setJourneyData(prev => ({
+                ...prev,
+                currentMonth: data.currentMonth
+              }));
+            }
+
+            // Convert task completions to completedTasks state format
+            // Format: { "1-linkedin_course": true, "2-submit_article_1": true, ... }
+            if (data.taskCompletions && data.taskCompletions.length > 0) {
+              setJourneyData(prev => {
+                const completedTasks = {};
+
+                data.taskCompletions.forEach(completion => {
+                  if (completion.status === 'completed' && completion.journey_tasks) {
+                    const task = completion.journey_tasks;
+                    // Find which month this task belongs to using the months from state
+                    const monthData = prev.months.find(m => {
+                      return m.tasks.some(t => t.id === task.task_identifier);
+                    });
+                    
+                    if (monthData) {
+                      const taskKey = `${monthData.month}-${task.task_identifier}`;
+                      completedTasks[taskKey] = true;
+                    }
+                  }
+                });
+
+                if (Object.keys(completedTasks).length > 0) {
+                  console.log('✅ Loaded completed tasks from database:', completedTasks);
+                  return {
+                    ...prev,
+                    completedTasks
+                  };
+                }
+                return prev;
+              });
+            }
+
+            // Check for localStorage data and migrate if exists
+            const localStorageTasks = loadTasksFromLocalStorage('default');
+            const localStorageMonth = loadCurrentMonthFromLocalStorage('default');
             
-            // Load saved tasks from localStorage
-            const savedTasks = loadTasksFromLocalStorage(userId);
+            if (Object.keys(localStorageTasks).length > 0 || localStorageMonth) {
+              console.log('📦 Found localStorage data, migrating to database...');
+              
+              try {
+                // Migrate to database
+                const migrateResponse = await fetch('/api/journey/tasks/bulk-update', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    tasks: localStorageTasks,
+                    currentMonth: localStorageMonth || data.currentMonth || 1
+                  })
+                });
+
+                if (migrateResponse.ok) {
+                  const migrateData = await migrateResponse.json();
+                  console.log('✅ Migration completed:', migrateData);
+                  
+                  // Remove from localStorage after successful migration
+                  localStorage.removeItem(getStorageKey('default'));
+                  localStorage.removeItem(`journey_current_month_default`);
+                  console.log('✅ localStorage cleared after migration');
+
+                  // Reload data from database to get migrated tasks
+                  const reloadResponse = await fetch('/api/journey/progress', {
+                    credentials: 'include'
+                  });
+                  
+                  if (reloadResponse.ok) {
+                    const reloadData = await reloadResponse.json();
+                    
+                    if (reloadData.currentMonth) {
+                      setJourneyData(prev => ({
+                        ...prev,
+                        currentMonth: reloadData.currentMonth
+                      }));
+                    }
+
+                    // Update completed tasks
+                    if (reloadData.taskCompletions && reloadData.taskCompletions.length > 0) {
+                      setJourneyData(prev => {
+                        const completedTasks = {};
+                        reloadData.taskCompletions.forEach(completion => {
+                          if (completion.status === 'completed' && completion.journey_tasks) {
+                            const task = completion.journey_tasks;
+                            const monthData = prev.months.find(m => {
+                              return m.tasks.some(t => t.id === task.task_identifier);
+                            });
+                            if (monthData) {
+                              const taskKey = `${monthData.month}-${task.task_identifier}`;
+                              completedTasks[taskKey] = true;
+                            }
+                          }
+                        });
+                        
+                        if (Object.keys(completedTasks).length > 0) {
+                          return {
+                            ...prev,
+                            completedTasks
+                          };
+                        }
+                        return prev;
+                      });
+                    }
+                  }
+                } else {
+                  console.warn('⚠️ Migration failed, keeping localStorage data');
+                }
+              } catch (migrateError) {
+                console.error('❌ Error during migration:', migrateError);
+                // Keep localStorage data if migration fails
+              }
+            }
+          } catch (error) {
+            console.error('❌ Error loading journey data:', error);
+            setError(error.message || 'Failed to load journey progress');
+            showToast('Failed to load journey progress', 'error');
             
-            // Load saved current month from localStorage
-            const savedCurrentMonth = loadCurrentMonthFromLocalStorage(userId);
+            // Fallback to localStorage if API fails
+            const savedTasks = loadTasksFromLocalStorage('default');
+            const savedCurrentMonth = loadCurrentMonthFromLocalStorage('default');
             
             if (Object.keys(savedTasks).length > 0 || savedCurrentMonth) {
               setJourneyData(prev => ({
@@ -3585,17 +3740,14 @@ Best,
                 completedTasks: savedTasks,
                 currentMonth: savedCurrentMonth ? savedCurrentMonth : prev.currentMonth
               }));
-              console.log('Restored journey data from localStorage:', {
-                tasks: savedTasks,
-                currentMonth: savedCurrentMonth
-              });
+              console.log('⚠️ Fallback: Restored journey data from localStorage');
             }
-          } catch (err) {
-            console.error('Failed to load user data:', err);
+          } finally {
+            setLoading(false);
           }
         };
 
-        fetchUser();
+        loadJourneyData();
 
         // Load existing certificates for this ambassador
         const fetchCertificates = async () => {
@@ -3659,32 +3811,74 @@ Best,
       }, [loadTasksFromLocalStorage, loadCurrentMonthFromLocalStorage]);
 
       const handleToggleTask = useCallback(async (monthIndex, taskId) => {
+        const taskKey = `${monthIndex}-${taskId}`;
+        const currentTaskState = journeyData.completedTasks[taskKey];
+        const newCompletedState = !currentTaskState;
+
         try {
-          const newCompletedTasks = { ...journeyData.completedTasks };
-          const taskKey = `${monthIndex}-${taskId}`;
+          console.log('🔄 Toggling task:', { monthIndex, taskId, newState: newCompletedState });
 
-          if (newCompletedTasks[taskKey]) {
-            delete newCompletedTasks[taskKey];
-          } else {
-            newCompletedTasks[taskKey] = true;
-          }
-
+          // Optimistic update (update UI immediately)
           setJourneyData(prev => ({
             ...prev,
-            completedTasks: newCompletedTasks
+            completedTasks: {
+              ...prev.completedTasks,
+              [taskKey]: newCompletedState ? true : undefined
+            }
           }));
 
-          // Save to localStorage
-          saveTasksToLocalStorage(newCompletedTasks, 'default');
+          // Save to database
+          const response = await fetch('/api/journey/tasks/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              taskIdentifier: taskId,
+              monthNumber: monthIndex,
+              completed: newCompletedState
+            })
+          });
 
-          const isCompleted = newCompletedTasks[taskKey];
-          showToast(isCompleted ? 'Task completed! ✅' : 'Task unchecked', 'success');
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to save task status');
+          }
+
+          const data = await response.json();
+          console.log('✅ Task saved to database:', data);
+
+          // Update state with actual data from server
+          if (newCompletedState) {
+            setJourneyData(prev => ({
+              ...prev,
+              completedTasks: {
+                ...prev.completedTasks,
+                [taskKey]: true
+              }
+            }));
+          } else {
+            const newCompletedTasks = { ...journeyData.completedTasks };
+            delete newCompletedTasks[taskKey];
+            setJourneyData(prev => ({
+              ...prev,
+              completedTasks: newCompletedTasks
+            }));
+          }
+
+          showToast(newCompletedState ? 'Task completed! ✅' : 'Task unchecked', 'success');
 
           // Check if Month 12 is now fully completed
           if (monthIndex === 12) {
             const month12Tasks = journeyData.months[11].tasks;
+            const updatedCompletedTasks = newCompletedState 
+              ? { ...journeyData.completedTasks, [taskKey]: true }
+              : { ...journeyData.completedTasks };
+            if (!newCompletedState) {
+              delete updatedCompletedTasks[taskKey];
+            }
+            
             const allMonth12TasksCompleted = month12Tasks.every(task =>
-              newCompletedTasks[`12-${task.id}`]
+              updatedCompletedTasks[`12-${task.id}`]
             );
 
             if (allMonth12TasksCompleted) {
@@ -3710,64 +3904,114 @@ Best,
               }, 1500);
             }
           }
-        } catch (err) {
-          showToast('Failed to update task', 'error');
+        } catch (error) {
+          console.error('❌ Error toggling task:', error);
+          
+          // Rollback optimistic update on error
+          setJourneyData(prev => ({
+            ...prev,
+            completedTasks: {
+              ...prev.completedTasks,
+              [taskKey]: currentTaskState ? true : undefined
+            }
+          }));
+
+          showToast('Failed to save task status. Please try again.', 'error');
         }
-      }, [journeyData.completedTasks, journeyData.months, saveTasksToLocalStorage, showToast]);
+      }, [journeyData.completedTasks, journeyData.months, showToast]);
 
       const handleNextMonth = useCallback(async () => {
         const { currentMonth, completedTasks, months } = journeyData;
 
-        // Check if this is the completion of Month 12
+        // Prevent going past Month 12 and enforce Month 12 completion rules
         if (currentMonth === 12) {
           const month12Tasks = months[11].tasks; // Month 12 is index 11
           const allMonth12TasksCompleted = month12Tasks.every(task =>
             completedTasks[`12-${task.id}`]
           );
 
-          if (allMonth12TasksCompleted) {
-            // Send completion notifications to user and admins
-            fetch('/api/journey/complete', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              credentials: 'include'
-            }).then(response => {
-              if (response.ok) {
-                console.log('✅ Journey completion notifications sent');
-              } else {
-                console.error('⚠️ Failed to send completion notifications');
-              }
-            }).catch(error => {
-              console.error('⚠️ Error sending completion notifications:', error);
-            });
-            
-            // Show completion celebration
-            setTimeout(() => {
-              openCompletionCelebration();
-            }, 1000);
+          if (!allMonth12TasksCompleted) {
+            showToast('Please complete all Month 12 tasks to finish your journey.', 'error');
+            return;
           }
+
+          // Send completion notifications to user and admins
+          fetch('/api/journey/complete', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+          }).then(response => {
+            if (response.ok) {
+              console.log('✅ Journey completion notifications sent');
+            } else {
+              console.error('⚠️ Failed to send completion notifications');
+            }
+          }).catch(error => {
+            console.error('⚠️ Error sending completion notifications:', error);
+          });
+          
+          // Show completion celebration
+          setTimeout(() => {
+            openCompletionCelebration();
+          }, 1000);
+
+          // Stay on Month 12 (no Month 13)
+          return;
         }
 
-        // Original next month logic
+        // Enforce rule: must complete all critical tasks for the current month
+        const currentMonthDef = months[currentMonth - 1];
+        const allCriticalDone = currentMonthDef.tasks
+          .filter(task => task.critical)
+          .every(task => completedTasks[`${currentMonth}-${task.id}`]);
+
+        if (!allCriticalDone) {
+          showToast('Please complete all critical tasks before moving to the next month.', 'error');
+          return;
+        }
+
         if (!confirm('Move to the next month? This action cannot be undone.')) return;
 
         try {
           const newMonth = journeyData.currentMonth + 1;
+          
+          // Optimistic update
           setJourneyData(prev => ({
             ...prev,
             currentMonth: newMonth
           }));
 
-          // Save current month to localStorage
-          saveCurrentMonthToLocalStorage(newMonth, 'default');
+          // Save to database
+          const response = await fetch('/api/journey/progress/month', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ monthNumber: newMonth })
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to save month progress');
+          }
+
+          const data = await response.json();
+          console.log('✅ Month progress saved to database:', data);
 
           showToast(`Advanced to Month ${newMonth}! 🎉`, 'success');
-        } catch (err) {
-          showToast('Failed to advance month', 'error');
+        } catch (error) {
+          console.error('❌ Error saving month progress:', error);
+          
+          // Rollback on error
+          setJourneyData(prev => ({
+            ...prev,
+            currentMonth: journeyData.currentMonth
+          }));
+          
+          showToast('Failed to advance month. Please try again.', 'error');
         }
-      }, [journeyData.currentMonth, journeyData.completedTasks, journeyData.months, showToast, saveCurrentMonthToLocalStorage]);
+      }, [journeyData.currentMonth, journeyData.completedTasks, journeyData.months, showToast]);
 
       const handleRequestCertificateUpload = useCallback((taskId) => {
         const taskToCourseType = {
@@ -3952,6 +4196,22 @@ Best,
                 <div className="skeleton h-32 rounded-2xl"></div>
                 <div className="skeleton h-32 rounded-2xl"></div>
                 <div className="skeleton h-32 rounded-2xl"></div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      if (loading) {
+        return (
+          <div className="flex min-h-screen">
+            <Sidebar />
+            <div className="flex-1 p-8 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-10 h-10 border-4 border-[#4b0d7f] border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-sm text-gray-600 font-medium">
+                  Loading your journey progress...
+                </p>
               </div>
             </div>
           </div>
