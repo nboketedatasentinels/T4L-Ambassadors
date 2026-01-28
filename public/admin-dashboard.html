@@ -4131,9 +4131,11 @@ async function markAllNotificationsRead() {
             const titleEl = document.getElementById('editModalTitle');
             const ambassadorFields = document.getElementById('ambassadorFields');
             const partnerFields = document.getElementById('partnerFields');
+            const statusSelect = document.getElementById('editStatus');
+            const statusLabel = document.querySelector('label[for="editStatus"]');
             
             // Determine user type based on current tab
-            const userType = state.tab === 'partners' ? 'partner' : 'ambassador';
+            let userType = state.tab === 'partners' ? 'partner' : 'ambassador';
             document.getElementById('editUserType').value = userType;
             document.getElementById('editUserId').value = id;
             
@@ -4160,6 +4162,12 @@ async function markAllNotificationsRead() {
                 if (!user) {
                     throw new Error('User not found');
                 }
+
+                // Safety: if the loaded user has a subscription_type field, treat as ambassador
+                if (user.subscription_type !== undefined && userType !== 'ambassador') {
+                    userType = 'ambassador';
+                    document.getElementById('editUserType').value = userType;
+                }
                 
                 // Configure modal based on user type
                 if (userType === 'partner') {
@@ -4170,6 +4178,20 @@ async function markAllNotificationsRead() {
                     // Populate partner fields
                     document.getElementById('editContactPerson').value = user.contact_person || '';
                     document.getElementById('editOrganizationName').value = user.organization_name || '';
+
+                    // Partner status uses account status values
+                    if (statusSelect) {
+                        statusSelect.innerHTML = `
+                            <option value="active">Active</option>
+                            <option value="approved">Approved</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="pending">Pending</option>
+                        `;
+                        statusSelect.value = user.status || 'active';
+                    }
+                    if (statusLabel) {
+                        statusLabel.textContent = 'Status';
+                    }
                 } else {
                     titleEl.textContent = 'Edit Ambassador';
                     ambassadorFields.classList.remove('hidden');
@@ -4177,13 +4199,25 @@ async function markAllNotificationsRead() {
                     
                     // Populate ambassador fields
                     document.getElementById('editName').value = user.name || user.first_name || '';
+
+                    // Ambassador "status" controls subscription (free/paid)
+                    const subscriptionType = user.subscription_type || user.subscription || 'free';
+                    if (statusSelect) {
+                        statusSelect.innerHTML = `
+                            <option value="free">Free</option>
+                            <option value="paid">Paid</option>
+                        `;
+                        statusSelect.value = subscriptionType;
+                    }
+                    if (statusLabel) {
+                        statusLabel.textContent = 'Status';
+                    }
                 }
                 
                 // Populate common fields
                 document.getElementById('editEmail').value = user.email || '';
                 document.getElementById('editAccessCode').value = user.access_code || '';
                 document.getElementById('editPassword').value = user.password || user.generated_password || 'Not available';
-                document.getElementById('editStatus').value = user.status || 'active';
                 
             } catch (error) {
                 console.error('Error loading user for edit:', error);
@@ -4248,7 +4282,8 @@ async function markAllNotificationsRead() {
                         name: document.getElementById('editName').value.trim(),
                         email: document.getElementById('editEmail').value.trim(),
                         access_code: document.getElementById('editAccessCode').value.trim(),
-                        status: document.getElementById('editStatus').value
+                        // For ambassadors, this dropdown controls subscription (free/paid)
+                        subscription_type: document.getElementById('editStatus').value
                     };
                 }
                 

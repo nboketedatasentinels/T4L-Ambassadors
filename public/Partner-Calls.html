@@ -322,7 +322,7 @@
 
       <!-- Hero Section -->
       <section class="bg-gradient-to-r from-[#4b0d7f] to-[#a36737] text-white p-4 md:p-6 rounded-2xl mb-6 shadow-md">
-        <h2 id="heroWelcome" class="text-xl md:text-2xl font-semibold mb-2">Welcome back, Ambassador!</h2>
+        <h2 id="heroWelcome" class="text-xl md:text-2xl font-semibold mb-2">Welcome, Ambassador!</h2>
       </section>
 
       <!-- LIFT Pillar Section -->
@@ -606,7 +606,7 @@
       const heroHeading = document.getElementById('heroWelcome');
       if (heroHeading && userData.name) {
         const firstName = userData.name.split(' ')[0];
-        heroHeading.textContent = `Welcome back, ${firstName}!`;
+        heroHeading.textContent = `Welcome, ${firstName}!`;
       }
     }
 

@@ -3434,10 +3434,6 @@ app.get("/partner-signin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "partner-signin.html"));
 });
 
-app.get("/signup", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "signup.html"));
-});
-
 app.get("/partner-signup", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "partner-signup.html"));
 });
@@ -4355,6 +4351,58 @@ async function checkStorageHealth() {
   }
 }
 
+// Ensure the Supabase Storage bucket for certificates exists (runs on startup)
+async function initializeSupabaseStorage() {
+  try {
+    console.log("🔧 Initializing Supabase Storage...");
+
+    if (!supabase || !supabase.storage) {
+      console.error("❌ Supabase storage not initialized - skipping bucket setup");
+      return;
+    }
+
+    // List existing buckets
+    const { data: buckets, error } = await supabase.storage.listBuckets();
+
+    if (error) {
+      console.error("❌ Error listing buckets:", error);
+      return;
+    }
+
+    // Check if certificates bucket exists
+    const certificatesBucket = buckets?.find((b) => b.name === "certificates");
+
+    if (!certificatesBucket) {
+      console.log("📦 Creating 'certificates' bucket...");
+
+      // Create bucket with proper settings
+      const { error: createError } = await supabase.storage.createBucket(
+        "certificates",
+        {
+          public: false,
+          fileSizeLimit: 10 * 1024 * 1024, // 10MB
+          allowedMimeTypes: [
+            "image/jpeg",
+            "image/png",
+            "image/jpg",
+            "application/pdf",
+          ],
+        }
+      );
+
+      if (createError) {
+        console.error("❌ Error creating 'certificates' bucket:", createError);
+      } else {
+        console.log("✅ 'certificates' bucket created successfully");
+      }
+    } else {
+      console.log("✅ 'certificates' bucket already exists");
+    }
+  } catch (error) {
+    console.error("❌ Storage initialization error:", error);
+  }
+}
+
 // ✅ Use memory storage instead of disk storage (required for Vercel)
 const certificateStorage = multer.memoryStorage();
 
@@ -4380,15 +4428,58 @@ const certificateUpload = multer({
   },
 });
 
+// Debug endpoint to check storage setup
+app.get('/api/certificates/check-storage', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    console.log('🔍 Checking Supabase Storage setup...');
+    
+    // List buckets
+    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+    
+    if (listError) {
+      return res.json({
+        success: false,
+        error: 'Failed to list buckets',
+        details: listError
+      });
+    }
+    
+    const certificatesBucket = buckets?.find(b => b.name === 'certificates');
+    
+    if (!certificatesBucket) {
+      return res.json({
+        success: false,
+        error: 'Certificates bucket not found',
+        availableBuckets: buckets?.map(b => b.name) || []
+      });
+    }
+    
+    return res.json({
+      success: true,
+      bucket: certificatesBucket,
+      message: 'Certificates bucket exists'
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Ambassador: upload certificate for a specific course
 app.post(
   "/api/certificates/upload",
   requireAuth,
   requireRole("ambassador"),
   (req, res, next) => {
+    console.log('📤 Certificate upload request received');
+    console.log('   User:', req.auth.userId);
+    console.log('   Role:', req.auth.role);
+    
     certificateUpload.single("certificate")(req, res, (err) => {
       if (err) {
-        console.error("❌ Certificate upload error:", err.message);
+        console.error("❌ Multer error:", err.message);
         if (err.code === "LIMIT_FILE_SIZE") {
           return res.status(400).json({
             success: false,
@@ -4402,18 +4493,30 @@ app.post(
           details: err.message,
         });
       }
+      
+      console.log('✅ Multer completed');
+      console.log('   File:', req.file ? req.file.filename : 'No file');
       next();
     });
   },
   async (req, res) => {
-    let uploadedFilename = null; // Track uploaded file for cleanup on failure
+    console.log('🔄 Processing certificate upload...');
     
     try {
       const userId = req.auth.userId;
       const { courseType } = req.body;
 
-      // ✅ Validate inputs
+      console.log('📋 Upload details:', {
+        userId,
+        courseType,
+        hasFile: !!req.file,
+        fileSize: req.file?.size,
+        fileType: req.file?.mimetype
+      });
+
+      // Validate inputs
       if (!userId) {
+        console.error('❌ No userId');
         return res.status(401).json({
           success: false,
           error: "Authentication required",
@@ -4428,6 +4531,7 @@ app.post(
       ];
 
       if (!courseType || !validCourseTypes.includes(courseType)) {
+        console.error('❌ Invalid course type:', courseType);
         return res.status(400).json({
           success: false,
           error: "Invalid course type",
@@ -4436,234 +4540,110 @@ app.post(
       }
 
       if (!req.file || !req.file.buffer) {
+        console.error('❌ No file buffer');
         return res.status(400).json({ 
           success: false, 
           error: "No file uploaded or file buffer is missing" 
         });
       }
 
-      // ✅ Validate file buffer
-      if (!Buffer.isBuffer(req.file.buffer) || req.file.buffer.length === 0) {
-        return res.status(400).json({
-          success: false,
-          error: "Invalid file data",
-        });
-      }
-
-      // ✅ Get ambassador with retry
-      const ambassador = await retryOperation(
-        () => getUserById(userId, "ambassador"),
-        3,
-        500
-      );
+      // Get ambassador
+      console.log('🔍 Looking up ambassador...');
+      const ambassador = await getUserById(userId, "ambassador");
 
       if (!ambassador) {
+        console.error('❌ Ambassador not found');
         return res.status(404).json({ error: "Ambassador not found" });
       }
 
       const ambassadorId = ambassador.ambassador_id || ambassador.id;
+      console.log('✅ Found ambassador:', ambassadorId);
 
-      // ✅ Generate unique filename with better collision prevention
+      // Generate unique filename
       const fileExt = path.extname(req.file.originalname) || '.pdf';
       const timestamp = Date.now();
       const randomSuffix = crypto.randomBytes(4).toString('hex');
       const uniqueFilename = `cert_${ambassadorId}_${courseType}_${timestamp}_${randomSuffix}${fileExt}`;
-      uploadedFilename = uniqueFilename; // Track for cleanup
 
       console.log("📤 Uploading to Supabase Storage:", uniqueFilename);
 
-      // ✅ Verify Supabase is available
-      if (!supabase || !supabase.storage) {
-        console.error("❌ Supabase storage not initialized");
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("certificates")
+        .upload(uniqueFilename, req.file.buffer, {
+          contentType: req.file.mimetype || 'application/octet-stream',
+          upsert: false,
+        });
+      
+      if (uploadError) {
+        console.error("❌ Supabase upload error:", uploadError);
         return res.status(500).json({
           success: false,
-          error: "Storage service unavailable. Please contact support.",
+          error: "Storage upload failed",
+          details: uploadError.message
         });
       }
 
-      // ✅ Quick storage health check (non-blocking, just for logging)
-      const storageHealthy = await checkStorageHealth().catch(() => false);
-      if (!storageHealthy) {
-        console.error("⚠️ Storage health check failed - proceeding anyway but may fail");
-      }
-
-      // ✅ Upload to Supabase Storage with retry and comprehensive error handling
-      const uploadData = await retryOperation(
-        async () => {
-          try {
-            const { data, error } = await supabase.storage
-              .from("certificates")
-              .upload(uniqueFilename, req.file.buffer, {
-                contentType: req.file.mimetype || 'application/octet-stream',
-                upsert: false, // Don't overwrite - we use unique names
-              });
-            
-            if (error) {
-              // Handle specific Supabase errors
-              const errorMsg = error.message || String(error);
-              
-              // Check if bucket doesn't exist or permission denied
-              if (errorMsg.includes('Bucket not found') || errorMsg.includes('not found') || errorMsg.includes('permission')) {
-                console.error("❌ Supabase bucket error:", errorMsg);
-                throw new Error("Storage bucket configuration error. Please contact support.");
-              }
-              
-              // Check if it's a duplicate (which shouldn't happen with unique names)
-              if (errorMsg.includes('already exists') || errorMsg.includes('duplicate')) {
-                // Generate new unique name and retry once
-                const newTimestamp = Date.now();
-                const newRandomSuffix = crypto.randomBytes(4).toString('hex');
-                uploadedFilename = `cert_${ambassadorId}_${courseType}_${newTimestamp}_${newRandomSuffix}${fileExt}`;
-                console.log("🔄 Retrying with new filename:", uploadedFilename);
-                
-                const { data: retryData, error: retryError } = await supabase.storage
-                  .from("certificates")
-                  .upload(uploadedFilename, req.file.buffer, {
-                    contentType: req.file.mimetype || 'application/octet-stream',
-                    upsert: false,
-                  });
-                if (retryError) {
-                  const retryErrorMsg = retryError.message || String(retryError);
-                  if (retryErrorMsg.includes('Bucket not found') || retryErrorMsg.includes('permission')) {
-                    throw new Error("Storage bucket configuration error. Please contact support.");
-                  }
-                  throw retryError;
-                }
-                return retryData;
-              }
-              
-              // Handle quota/rate limit errors
-              if (errorMsg.includes('quota') || errorMsg.includes('rate limit') || errorMsg.includes('too many')) {
-                throw new Error("Storage quota exceeded. Please try again later or contact support.");
-              }
-              
-              // Generic error
-              console.error("❌ Supabase upload error:", errorMsg);
-              throw error;
-            }
-            
-            if (!data) {
-              throw new Error("Upload succeeded but no data returned");
-            }
-            
-            return data;
-          } catch (uploadError) {
-            // Re-throw with better context
-            if (uploadError.message && uploadError.message.includes('contact support')) {
-              throw uploadError; // Already has good message
-            }
-            const errorMsg = uploadError.message || String(uploadError);
-            if (errorMsg.includes('network') || errorMsg.includes('timeout') || errorMsg.includes('ECONNREFUSED')) {
-              throw new Error("Network error connecting to storage. Please check your connection and try again.");
-            }
-            throw uploadError;
-          }
-        },
-        3,
-        1000
-      );
-
       console.log("✅ File uploaded to Supabase:", uploadData.path);
 
-      // ✅ Get public URL
+      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from("certificates")
-        .getPublicUrl(uploadedFilename);
+        .getPublicUrl(uniqueFilename);
 
-      // ✅ Check for existing certificate with retry
-      const existingCert = await retryOperation(
-        async () => {
-          const { data, error } = await supabase
-            .from("certificates")
-            .select("*")
-            .eq("ambassador_id", ambassadorId)
-            .eq("course_type", courseType)
-            .maybeSingle();
-          
-          if (error) throw error;
-          return data;
-        },
-        3,
-        500
-      );
+      // Check for existing certificate
+      const existingCert = await supabase
+        .from("certificates")
+        .select("*")
+        .eq("ambassador_id", ambassadorId)
+        .eq("course_type", courseType)
+        .maybeSingle();
 
-      // ✅ Delete old file from storage if it exists (with error handling)
-      if (existingCert && existingCert.filename) {
+      // Delete old file if exists
+      if (existingCert.data && existingCert.data.filename) {
         try {
-          await retryOperation(
-            async () => {
-              const { error } = await supabase.storage
-                .from("certificates")
-                .remove([existingCert.filename]);
-              if (error && !error.message.includes('not found')) {
-                throw error;
-              }
-            },
-            2,
-            500
-          );
-          console.log("✅ Old certificate file removed:", existingCert.filename);
+          await supabase.storage
+            .from("certificates")
+            .remove([existingCert.data.filename]);
+          console.log("✅ Old certificate file removed");
         } catch (deleteError) {
-          console.warn("⚠️ Failed to delete old certificate file (non-critical):", deleteError.message);
-          // Continue - this is not critical
+          console.warn("⚠️ Failed to delete old file:", deleteError);
         }
       }
 
       const now = new Date().toISOString();
       const certificateData = {
-        certificate_id: existingCert?.certificate_id || uuidv4(),
+        certificate_id: existingCert.data?.certificate_id || uuidv4(),
         ambassador_id: ambassadorId,
         course_type: courseType,
-        filename: uploadedFilename,
+        filename: uniqueFilename,
         original_name: req.file.originalname,
         file_size: req.file.size,
         upload_date: now,
-        verified: existingCert?.verified || false,
-        verified_by: existingCert?.verified_by || null,
-        verified_at: existingCert?.verified_at || null,
-        created_at: existingCert?.created_at || now,
+        verified: existingCert.data?.verified || false,
+        created_at: existingCert.data?.created_at || now,
         updated_at: now,
       };
 
-      // ✅ Save certificate to database with retry
+      // Save to database
       let savedCert;
-      try {
-        savedCert = await retryOperation(
-          async () => {
-            if (existingCert) {
-              const { data, error } = await supabase
-                .from("certificates")
-                .update(certificateData)
-                .eq("certificate_id", existingCert.certificate_id)
-                .select()
-                .single();
-              if (error) throw error;
-              return data;
-            } else {
-              const { data, error } = await supabase
-                .from("certificates")
-                .insert([certificateData])
-                .select()
-                .single();
-              if (error) throw error;
-              return data;
-            }
-          },
-          3,
-          1000
-        );
-      } catch (dbError) {
-        // ✅ Rollback: Delete uploaded file if database save fails
-        console.error("❌ Database save failed, cleaning up uploaded file...");
-        try {
-          await supabase.storage
-            .from("certificates")
-            .remove([uploadedFilename]);
-          console.log("✅ Cleaned up uploaded file after database failure");
-        } catch (cleanupError) {
-          console.error("❌ Failed to cleanup file after database failure:", cleanupError);
-        }
-        throw dbError;
+      if (existingCert.data) {
+        const { data, error } = await supabase
+          .from("certificates")
+          .update(certificateData)
+          .eq("certificate_id", existingCert.data.certificate_id)
+          .select()
+          .single();
+        if (error) throw error;
+        savedCert = data;
+      } else {
+        const { data, error } = await supabase
+          .from("certificates")
+          .insert([certificateData])
+          .select()
+          .single();
+        if (error) throw error;
+        savedCert = data;
       }
 
       console.log("✅ Certificate saved to database:", savedCert.certificate_id);
@@ -4711,64 +4691,69 @@ app.post(
           verified: savedCert.verified,
           url: publicUrl,
         },
-        message: "Certificate uploaded successfully. Awaiting admin verification.",
+        message: "Certificate uploaded successfully",
       });
     } catch (error) {
       console.error("❌ Unexpected certificate upload error:", error);
-      
-      // ✅ Final cleanup attempt if file was uploaded but something else failed
-      if (uploadedFilename) {
-        try {
-          await supabase.storage
-            .from("certificates")
-            .remove([uploadedFilename]);
-          console.log("✅ Cleaned up uploaded file after error");
-        } catch (cleanupError) {
-          console.error("❌ Failed to cleanup file:", cleanupError);
-        }
-      }
+      return res.status(500).json({
+        success: false,
+        error: "Failed to upload certificate",
+        details: error.message,
+      });
 
       // ✅ Provide helpful error messages based on error type
       let errorMessage = "Failed to upload certificate";
       let errorDetails = error.message || String(error);
       let statusCode = 500;
 
-      // Categorize errors for better user experience
-      if (errorDetails.includes('timeout') || errorDetails.includes('ETIMEDOUT')) {
-        errorMessage = "Upload timed out. Please check your connection and try again.";
+      // Network errors
+      if (
+        errorDetails.includes("timeout") ||
+        errorDetails.includes("ETIMEDOUT")
+      ) {
+        errorMessage = "Upload timed out";
+        errorDetails =
+          "The upload took too long. Please check your connection and try again.";
         statusCode = 408;
-      } else if (errorDetails.includes('network') || errorDetails.includes('ECONNREFUSED') || errorDetails.includes('ENOTFOUND')) {
-        errorMessage = "Network error. Please check your internet connection and try again.";
-        statusCode = 503;
-      } else if (errorDetails.includes('Storage bucket') || errorDetails.includes('bucket configuration')) {
-        errorMessage = "Storage service configuration error. Our team has been notified. Please try again in a few minutes.";
-        statusCode = 503;
-        // Log for admin attention
-        console.error("🚨 CRITICAL: Storage bucket configuration issue detected!");
-      } else if (errorDetails.includes('quota') || errorDetails.includes('rate limit')) {
-        errorMessage = "Storage quota exceeded. Please try again later or contact support.";
-        statusCode = 429;
-      } else if (errorDetails.includes('Authentication') || errorDetails.includes('unauthorized') || errorDetails.includes('401')) {
-        errorMessage = "Authentication error. Please refresh the page and try again.";
-        statusCode = 401;
-      } else if (errorDetails.includes('not found') && errorDetails.includes('Ambassador')) {
-        errorMessage = "User account not found. Please contact support.";
-        statusCode = 404;
-      } else {
-        // Generic error - log full details for debugging
-        console.error("❌ Certificate upload error details:", {
-          message: error.message,
-          stack: error.stack,
-          userId,
-          courseType,
-          filename: uploadedFilename,
-        });
       }
+      // Connection errors
+      else if (
+        errorDetails.includes("network") ||
+        errorDetails.includes("ECONNREFUSED")
+      ) {
+        errorMessage = "Network error";
+        errorDetails =
+          "Cannot connect to storage service. Please check your internet connection.";
+        statusCode = 503;
+      }
+      // Storage errors
+      else if (
+        errorDetails.includes("Storage bucket") ||
+        errorDetails.includes("bucket configuration")
+      ) {
+        errorMessage = "Storage unavailable";
+        errorDetails =
+          "Storage service is temporarily unavailable. Please try again in a few minutes.";
+        statusCode = 503;
+      }
+      // Quota errors
+      else if (
+        errorDetails.includes("quota") ||
+        errorDetails.includes("rate limit")
+      ) {
+        errorMessage = "Upload limit reached";
+        errorDetails =
+          "Too many uploads. Please wait a few minutes before trying again.";
+        statusCode = 429;
+      }
+
+      const responseDetails =
+        process.env.NODE_ENV === "development" ? errorDetails : undefined;
 
       return res.status(statusCode).json({
         success: false,
         error: errorMessage,
-        details: process.env.NODE_ENV === 'development' ? errorDetails : undefined, // Only show details in dev
+        details: responseDetails,
       });
     }
   }
@@ -5993,7 +5978,6 @@ async function sendDailyJourneyReminder(ambassador) {
       "🌟 Every step counts - keep going!",
       "🔥 Stay focused and keep moving forward!",
       "✨ You're doing amazing - don't stop now!",
-      "💫 Remember why you started - keep pushing!",
       "🎯 You're closer than you think - keep going!",
       "💎 Your transformation is happening - stay committed!",
       "🏆 Consistency is key - you've got this!"
@@ -6173,7 +6157,6 @@ app.get(
         "🌟 Every step counts - keep going!",
         "🔥 Stay focused and keep moving forward!",
         "✨ You're doing amazing - don't stop now!",
-        "💫 Remember why you started - keep pushing!",
         "🎯 You're closer than you think - keep going!",
       ];
       
@@ -6791,8 +6774,9 @@ app.get(
         name: amb.first_name || amb.name,
         email: amb.email,
         access_code: amb.access_code,
-        password: amb.generated_password || '', // ✅ Include password for admin reference
+        password: amb.generated_password || "", // ✅ Include password for admin reference
         status: amb.status,
+        subscription_type: amb.subscription_type || "free", // ✅ Expose subscription type for admin UI
         joinDate: amb.created_at,
         lastLogin: amb.last_login,
         profileCompleted: amb.cv_filename ? true : false,
@@ -6852,8 +6836,9 @@ app.get(
         name: ambassador.first_name || "Ambassador",
         email: ambassador.users?.email || ambassador.email,
         access_code: ambassador.users?.access_code, // ✅ NOW IT WILL WORK!
-        password: ambassador.generated_password || '', // ✅ Include password for admin reference
+        password: ambassador.generated_password || "", // ✅ Include password for admin reference
         status: ambassador.users?.status || ambassador.status,
+        subscription_type: ambassador.subscription_type || "free",
         joinDate: ambassador.created_at,
         lastLogin: ambassador.last_login,
         profile: {
@@ -7077,7 +7062,7 @@ app.put(
   requireRole("admin"),
   async (req, res) => {
     try {
-      const { name, email, access_code, status } = req.body;
+      const { name, email, access_code, status, subscription_type } = req.body;
       const ambassador = await getUserById(req.params.id, "ambassador");
 
       if (!ambassador) {
@@ -7107,6 +7092,7 @@ app.put(
 
       if (name) updates.first_name = name;
       if (status) updates.status = status;
+      if (subscription_type) updates.subscription_type = subscription_type;
 
       const updatedAmbassador = await updateUser(
         req.params.id,
@@ -7122,6 +7108,7 @@ app.put(
           email: updatedAmbassador.email,
           access_code: updatedAmbassador.access_code,
           status: updatedAmbassador.status,
+          subscription_type: updatedAmbassador.subscription_type || "free",
         },
       });
     } catch (error) {
@@ -9916,4 +9903,16 @@ app.listen(PORT, () => {
   console.log(
     `[notifications] Notification system ENABLED with helper functions`
   );
+
+  // Initialize Supabase Storage certificates bucket (non-blocking)
+  initializeSupabaseStorage()
+    .then(() => {
+      console.log("✅ Supabase Storage initialization completed");
+    })
+    .catch((err) => {
+      console.error(
+        "❌ Supabase Storage initialization failed:",
+        err?.message || err
+      );
+    });
 });

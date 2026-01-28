@@ -320,20 +320,9 @@
         <section
           class="bg-gradient-to-r from-[#4b0d7f] to-[#a36737] text-white p-4 md:p-6 rounded-2xl mb-6 shadow-md"
         >
-          <h2 class="text-xl md:text-2xl font-semibold mb-2" id="welcomeHeading">Welcome back</h2>
+          <h2 class="text-xl md:text-2xl font-semibold mb-2" id="welcomeHeading">Welcome</h2>
 
           <div class="flex flex-col md:flex-row gap-4 items-stretch">
-            <div
-              class="flex-1 bg-white/20 backdrop-blur-md px-4 md:px-6 py-4 rounded-lg flex flex-col justify-center shadow-sm"
-              id="nextMilestoneCard"
-            >
-              <p class="font-semibold text-sm flex items-center gap-2">
-                <i class="bx bx-target-lock text-xl"></i>
-                Next Milestone
-              </p>
-              <p class="text-base mt-1 font-medium" id="nextMilestoneText">Loading...</p>
-            </div>
-
             <div
               class="flex-1 bg-white/20 backdrop-blur-md px-4 md:px-6 py-4 rounded-lg flex flex-col justify-center shadow-sm"
               id="journeyStatsCard"
@@ -549,7 +538,7 @@
           month: 1, title: "FOUNDATION", 
           milestone: "Foundation Set: Onboarding complete, first course done, profile submitted, connections made",
           tasks: ['linkedin_course', 'submit_profile', 'second_course', 'connect_10', 'post_3x'],
-          url: "https://www.canva.com/design/DAG1M6MU20c/C1-a9vTfy3AOESPfRhyxfQ/watch?embed",
+          url: "https://www.canva.com/design/DAG6j1dS_Uk/Dnd2b9mJCCwSROZIWTDVXA/watch?embed",
           description: "Foundation Set: Onboarding complete, first course done",
           duration: "5:30 mins"
         },
@@ -868,16 +857,12 @@
       */
 
       async function loadPartnerCalls() {
-        try {
-          const response = await fetch('/api/posts');
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-          
-          const { posts = [] } = await response.json();
-          const container = domCache.get('partnerCallsContainer');
-          if (!container) return;
-          
+        const container = domCache.get('partnerCallsContainer');
+        if (!container) return;
+
+        const renderFromPosts = (posts) => {
           const latestPosts = posts.slice(0, 2);
-          
+
           if (latestPosts.length === 0) {
             container.innerHTML = `
               <div class="text-center py-8">
@@ -887,12 +872,15 @@
             `;
             return;
           }
-          
+
           container.innerHTML = latestPosts.map(post => {
-            const formattedDate = utils.formatDate(post.created_at);
-            const icon = utils.getPostTypeIcon(post.category);
+            const createdAt = post.created_at || post.createdAt || post.created_at_iso;
+            const category = post.category || post.postType || 'General';
+            const contentRaw = post.content || post.description || '';
+            const formattedDate = utils.formatDate(createdAt);
+            const icon = utils.getPostTypeIcon(category);
             const title = utils.escapeHtml(post.title || 'Partner Opportunity');
-            const content = utils.escapeHtml(post.content || '');
+            const content = utils.escapeHtml(contentRaw);
             
             return `<a href="/Partner-Calls.html" class="block">
               <div class="border border-gray-200 rounded-2xl p-4 hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer">
@@ -902,16 +890,34 @@
                   </div>
                   <div class="flex-1">
                     <p class="font-semibold text-gray-900 text-sm mb-1 truncate">${title}</p>
-                    <p class="text-xs text-gray-500 mb-1">${formattedDate} • ${post.category || 'General'}</p>
+                    <p class="text-xs text-gray-500 mb-1">${formattedDate} • ${category}</p>
                     <p class="text-xs text-gray-600 line-clamp-2">${content}</p>
                   </div>
                 </div>
               </div>
             </a>`;
           }).join('');
+        };
+
+        try {
+          // Primary: live posts API
+          const response = await fetch('/api/posts');
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          const data = await response.json();
+          const posts = Array.isArray(data) ? data : (data.posts || []);
+          if (!posts.length) throw new Error('No posts from API');
+          renderFromPosts(posts);
         } catch (error) {
-          const container = domCache.get('partnerCallsContainer');
-          if (container) {
+          console.error('Error loading partner calls from API, falling back to local data:', error);
+          try {
+            // Fallback: static JSON used previously
+            const response = await fetch('/data/posts.json');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+            const posts = Array.isArray(data) ? data : (data.posts || []);
+            renderFromPosts(posts);
+          } catch (fallbackError) {
+            console.error('Error loading partner calls from fallback data:', fallbackError);
             container.innerHTML = `
               <div class="text-center py-8">
                 <i class="bx bx-error-circle text-4xl text-red-400 mb-2"></i>
@@ -1056,7 +1062,7 @@
             const avatarElement = domCache.get('userAvatar');
             
             if (welcomeHeading && data.name) {
-              welcomeHeading.textContent = `Welcome back, ${data.name}!`;
+              welcomeHeading.textContent = `Welcome, ${data.name}!`;
             }
             if (avatarElement && data.name) {
               avatarElement.textContent = data.name.split(' ')

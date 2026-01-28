@@ -4,7 +4,7 @@
 
 // Video configuration
 const VIDEO_CONFIG = [
-  { month: 1, title: "FOUNDATION", url: "https://www.canva.com/design/DAG1M6MU20c/C1-a9vTfy3AOESPfRhyxfQ/watch?embed", description: "Foundation Set: Onboarding complete, first course done", duration: "5:30 mins" },
+  { month: 1, title: "FOUNDATION", url: "https://www.canva.com/design/DAG6j1dS_Uk/Dnd2b9mJCCwSROZIWTDVXA/watch?embed", description: "Foundation Set: Onboarding complete, first course done", duration: "5:30 mins" },
   { month: 2, title: "OPTIMIZE", url: "https://www.canva.com/design/DAGymyxxfQs/vtkXrZ8joa0giowAh60-zg/watch?embed", description: "Optimized Presence: Profile updated, first article submitted", duration: "6:15 mins" },
   { month: 3, title: "ENGAGE", url: "https://www.canva.com/design/DAGym0x892o/YmDTuaFm1nNjSaJYa93ePA/watch?embed", description: "Engaged Member: Building relationships, consistent content", duration: "5:45 mins" },
   { month: 4, title: "LEAD", url: "https://www.canva.com/design/DAGymzmB9zo/Oz_eCZ8_EDoXnTeseB6R-A/watch?embed", description: "Leadership Activated: Growing visibility, all courses complete", duration: "7:00 mins" },
@@ -625,6 +625,11 @@ function showDailyReminder(motivationalMessage, taskName) {
   const taskEl = document.getElementById('dailyReminderTaskName');
   
   if (!popup) return;
+
+  // Safety filter: remove deprecated message text if it ever appears
+  if (typeof motivationalMessage === 'string' && motivationalMessage.includes('Remember why you started')) {
+    motivationalMessage = '💪 Keep pushing forward!';
+  }
   
   // Set the content
   if (messageEl) messageEl.textContent = motivationalMessage;
@@ -720,7 +725,7 @@ document.addEventListener('DOMContentLoaded', function() {
             window.localStorage.getItem(storageKey) === 'true';
 
           if (hasLoggedInBefore) {
-            welcomeHeading.textContent = `Welcome back, ${data.name}!`;
+            welcomeHeading.textContent = `Welcome, ${data.name}!`;
           } else {
             welcomeHeading.textContent = `Welcome, ${data.name}!`;
             // Mark that this user has now logged in at least once
@@ -728,7 +733,7 @@ document.addEventListener('DOMContentLoaded', function() {
           }
         } catch (e) {
           // Fallback if localStorage is unavailable
-          welcomeHeading.textContent = `Welcome back, ${data.name}!`;
+          welcomeHeading.textContent = `Welcome, ${data.name}!`;
         }
       }
       

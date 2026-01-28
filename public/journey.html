@@ -2394,6 +2394,11 @@ Thank you,
       const taskEl = document.getElementById('dailyReminderTaskName');
       
       if (!popup) return;
+
+      // Safety filter: remove deprecated message text if it ever appears
+      if (typeof motivationalMessage === 'string' && motivationalMessage.includes('Remember why you started')) {
+        motivationalMessage = '💪 Keep pushing forward!';
+      }
       
       // Set the content
       if (messageEl) messageEl.textContent = motivationalMessage;
@@ -3811,22 +3816,16 @@ Best,
       const handleCertificateUploadSubmit = useCallback(async (event) => {
         event.preventDefault();
         const fileInput = event.target.elements.certificateFile;
+        
         if (!fileInput || !fileInput.files || !fileInput.files[0]) {
           showToast('Please select a certificate file to upload.', 'error');
           return;
         }
         
-        // Validate file size (10 MB = 10 * 1024 * 1024 bytes)
-        const maxFileSize = 10 * 1024 * 1024; // 10 MB
+        const maxFileSize = 10 * 1024 * 1024;
         const selectedFile = fileInput.files[0];
         if (selectedFile.size > maxFileSize) {
-          showToast('File size exceeds the maximum limit of 10 MB. Please choose a smaller file.', 'error');
-          return;
-        }
-        
-        // Validate file is not empty
-        if (selectedFile.size === 0) {
-          showToast('The selected file is empty. Please choose a valid file.', 'error');
+          showToast('File size exceeds the maximum limit of 10 MB.', 'error');
           return;
         }
         
@@ -3834,9 +3833,6 @@ Best,
           showToast('Unknown course type for certificate.', 'error');
           return;
         }
-
-        let uploadAttempt = 0;
-        const maxRetries = 3;
 
         try {
           setIsUploadInProgress(true);
@@ -3846,74 +3842,43 @@ Best,
           formData.append('certificate', selectedFile);
           formData.append('courseType', uploadingCourseType);
 
-          // ✅ Retry upload with exponential backoff
-          let resp;
-          let data;
-          
-          try {
-            resp = await retryFetch('/api/certificates/upload', {
-              method: 'POST',
-              body: formData,
-              credentials: 'include',
-            }, maxRetries, 1000);
+          console.log('📤 Uploading certificate:', {
+            courseType: uploadingCourseType,
+            filename: selectedFile.name,
+            size: selectedFile.size
+          });
 
-            // ✅ Parse response - handle both JSON and text responses
-            const contentType = resp.headers.get('content-type') || '';
-            if (contentType.includes('application/json')) {
-              try {
-                data = await resp.json();
-              } catch (parseError) {
-                throw new Error('Invalid response format from server');
-              }
-            } else {
-              // Not JSON, get text
-              const text = await resp.text();
-              throw new Error(text || 'Server returned an error');
-            }
+          const resp = await fetch('/api/certificates/upload', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include',
+          });
 
-            if (!resp.ok || !data.success) {
-              // Use the error message from server (which is user-friendly)
-              const serverError = data.error || data.details || 'Upload failed';
-              throw new Error(serverError);
-            }
-          } catch (fetchError) {
-            // Provide user-friendly error messages
-            let errorMessage = fetchError.message || 'Failed to upload certificate. ';
-            
-            // Check for specific error types
-            if (errorMessage.includes('timeout') || errorMessage.includes('timed out') || errorMessage.includes('AbortError')) {
-              errorMessage = 'The upload took too long. Please check your internet connection and try again.';
-            } else if (errorMessage.includes('network') || errorMessage.includes('fetch') || errorMessage.includes('Failed to fetch')) {
-              errorMessage = 'Network error. Please check your connection and try again.';
-            } else if (errorMessage.includes('Storage bucket') || errorMessage.includes('bucket configuration')) {
-              errorMessage = 'Storage service is temporarily unavailable. Our team has been notified. Please try again in a few minutes.';
-            } else if (errorMessage.includes('quota') || errorMessage.includes('rate limit')) {
-              errorMessage = 'Storage quota exceeded. Please try again later or contact support.';
-            } else if (errorMessage.includes('Authentication') || errorMessage.includes('unauthorized')) {
-              errorMessage = 'Your session expired. Please refresh the page and try again.';
-            } else if (!errorMessage.startsWith('Failed to upload')) {
-              // Server already provided a good error message, use it
-              // Don't modify it
-            } else {
-              errorMessage += 'Please try again. If the problem persists, contact support.';
-            }
-            
-            throw new Error(errorMessage);
+          console.log('📥 Response status:', resp.status, resp.statusText);
+
+          // Check if response is JSON
+          const contentType = resp.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
+            const textResponse = await resp.text();
+            console.error('❌ Non-JSON response received:', textResponse.substring(0, 500));
+            throw new Error('Server returned HTML instead of JSON. Check server logs.');
           }
 
-          // ✅ Validate response data
-          if (!data.certificate) {
-            throw new Error('Invalid response from server');
+          const data = await resp.json();
+          console.log('📥 Response data:', data);
+
+          if (!resp.ok || !data.success) {
+            throw new Error(data.error || data.details || 'Upload failed');
           }
 
-          const cert = data.certificate;
+          // Update certificate map
           setCertificateMap((prev) => ({
             ...prev,
-            [cert.courseType]: {
-              course_type: cert.courseType,
-              filename: cert.filename,
-              upload_date: cert.uploadDate,
-              verified: cert.verified,
+            [uploadingCourseType]: {
+              course_type: uploadingCourseType,
+              filename: data.certificate.filename,
+              upload_date: data.certificate.uploadDate,
+              verified: data.certificate.verified,
             },
           }));
 
@@ -3922,38 +3887,40 @@ Best,
             'success'
           );
 
-          // ✅ Reset form
-          if (fileInput) {
-            fileInput.value = '';
-          }
+          // Reset form
+          fileInput.value = '';
 
+          // Auto-toggle task after upload
           if (pendingCertTaskId) {
-            // After successful upload, automatically toggle the task as complete
             const courseTaskToMonth = {
               linkedin_course: 1,
               second_course: 1,
               third_course: 2,
               complete_courses: 4,
             };
-            const monthIndex =
-              courseTaskToMonth[pendingCertTaskId] || journeyData.currentMonth;
+            const monthIndex = courseTaskToMonth[pendingCertTaskId] || journeyData.currentMonth;
+
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
             try {
               await handleToggleTask(monthIndex, pendingCertTaskId);
+              console.log("✅ Task auto-toggled successfully");
             } catch (toggleError) {
-              console.warn('Failed to auto-toggle task (non-critical):', toggleError);
+              console.warn("⚠️ Auto-toggle failed:", toggleError.message);
+              showToast(
+                'Certificate uploaded! Please check the task box to mark it complete.',
+                'info'
+              );
             }
           }
 
           setPendingCertTaskId(null);
           setUploadingCourseType(null);
+          setIsUploadingCert(false);
+          
         } catch (err) {
-          console.error('Certificate upload failed:', err);
-          
-          // ✅ Show specific error message
-          const errorMessage = err.message || 'Failed to upload certificate. Please try again.';
-          showToast(errorMessage, 'error');
-          
-          // ✅ Don't clear the form on error so user can retry easily
+          console.error('❌ Certificate upload failed:', err);
+          showToast(err.message || 'Failed to upload certificate', 'error');
         } finally {
           setIsUploadInProgress(false);
         }
