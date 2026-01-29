@@ -3988,6 +3988,12 @@ app.post("/admin-signin", async (req, res) => {
     const emailLower = String(email).toLowerCase().trim();
     const accessCodeUpper = String(accessCode).toUpperCase().trim();
 
+    // Block deprecated test admin account
+    if (emailLower === "admin@test.com") {
+      console.log("❌ Admin sign-in blocked: test account disabled");
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
     console.log("📝 Step 2: Looking up admin:", emailLower);
 
     // ✅ FIXED: Use getUserByEmail which handles the two-table lookup
