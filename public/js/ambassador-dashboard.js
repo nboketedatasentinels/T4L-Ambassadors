@@ -1,6 +1,1558 @@
 // ============================================
-// AMBASSADOR DASHBOARD - OPTIMIZED
+// AMBASSADOR DASHBOARD - VIDEO + REMINDERS (CLEAN)
+// Uses /api/journey/progress for month (same as journey.html)
 // ============================================
+
+// Video configuration by journey month
+const VIDEO_CONFIG = [
+  { month: 1, title: "FOUNDATION", url: "https://www.canva.com/design/DAG6j1dS_Uk/Dnd2b9mJCCwSROZIWTDVXA/watch?embed", description: "Foundation Set: Onboarding complete, first course done", duration: "5:30 mins" },
+  { month: 2, title: "OPTIMIZE", url: "https://www.canva.com/design/DAGymyxxfQs/vtkXrZ8joa0giowAh60-zg/watch?embed", description: "Optimized Presence: Profile updated, first article submitted", duration: "6:15 mins" },
+  { month: 3, title: "ENGAGE", url: "https://www.canva.com/design/DAGym0x892o/YmDTuaFm1nNjSaJYa93ePA/watch?embed", description: "Engaged Member: Building relationships, consistent content", duration: "5:45 mins" },
+  { month: 4, title: "LEAD", url: "https://www.canva.com/design/DAGymzmB9zo/Oz_eCZ8_EDoXnTeseB6R-A/watch?embed", description: "Leadership Activated: Growing visibility, all courses complete", duration: "7:00 mins" },
+  { month: 5, title: "AMPLIFY", url: "https://www.canva.com/design/DAGym1aI8Gw/Sf85oXevN7qOm5zvehr9dQ/watch?embed", description: "Amplified Impact: Leading initiatives, consistent support", duration: "6:30 mins" },
+  { month: 6, title: "MIDPOINT", url: "https://www.canva.com/design/DAGym9YIUZk/OIRe6vWYWkaZjWLuMomzrg/watch?embed", description: "Halfway Strong: Story shared, momentum building", duration: "8:00 mins" },
+  { month: 7, title: "VISIBILITY", url: "https://www.canva.com/design/DAGym2_NkFI/NLk8fNcIBNm7mX3lT5mJGQ/watch?embed", description: "Visible Leader: Podcast prep, strong content cadence", duration: "6:45 mins" },
+  { month: 8, title: "EXPAND", url: "https://www.canva.com/design/DAGzJ0qBXKM/JeRKp6jCYA88iE3RJBUvGA/watch?embed", description: "Expanded Reach: Podcast recorded, portfolio growing", duration: "7:15 mins" },
+  { month: 9, title: "CONNECT", url: "https://www.canva.com/design/DAGynDXe7nM/XwF5fSUo3GJfpJBR4sO4Vg/watch?embed", description: "Connected Leader: Deep relationships, podcast live", duration: "6:00 mins" },
+  { month: 10, title: "ACCELERATE", url: "https://www.canva.com/design/DAGynMCn0XU/-9LPKLzn5Zc6W5bJS8ktXQ/watch?embed", description: "Accelerating: Final articles, opportunities in pipeline", duration: "7:30 mins" },
+  { month: 11, title: "CELEBRATE", url: "https://www.canva.com/design/DAGynKgil_I/FVdnkZFWNsKo1iBsbX7omg/watch?embed", description: "Celebrating: Year documented, impact quantified", duration: "8:15 mins" },
+  { month: 12, title: "RENEW", url: "https://www.canva.com/design/DAGynMcNxQI/INWdK-bvAm30aMLK45OMfw/watch?embed", description: "Transformation Complete: Full year tracked, portfolio built", duration: "9:00 mins" }
+];
+
+// Helpers
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function getPostTypeIcon(postType) {
+  const icons = {
+    speaking: 'bx-microphone',
+    podcast: 'bx-podcast',
+    webinar: 'bx-video',
+    volunteering: 'bx-heart',
+    general: 'bx-briefcase',
+  };
+  return icons[(postType || '').toLowerCase()] || 'bx-briefcase';
+}
+
+function formatDate(dateString) {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return 'Recently';
+  }
+}
+
+function validateAndFixVideoUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  if (!url.includes('canva.com')) return url;
+  if (url.includes('/design/')) {
+    url = url.replace('/view?', '/watch?');
+    if (!url.includes('/watch')) {
+      url = url.replace('/design/', '/design/').replace('?embed', '/watch?embed');
+    }
+  }
+  return url;
+}
+
+// Video handling
+function showVideoError(message) {
+  const videoContainer = document.getElementById('videoContainer');
+  if (!videoContainer) return;
+
+  const errorMessage =
+    message || 'Unable to load video. Please try again or open the video in Canva.';
+
+  videoContainer.innerHTML = `
+    <div class="flex flex-col items-center justify-center p-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl min-h-[16rem]">
+      <i class="bx bx-error-circle text-5xl text-red-500 mb-4"></i>
+      <p class="text-gray-700 font-medium mb-2">Video Loading Error</p>
+      <p class="text-gray-500 text-sm text-center mb-4 max-w-md">${escapeHtml(
+        errorMessage,
+      )}</p>
+      <button onclick="loadCurrentMonthVideo()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center">
+        <i class="bx bx-refresh mr-2"></i> Retry
+      </button>
+    </div>
+  `;
+}
+
+async function loadCurrentMonthVideo() {
+  try {
+    console.log('🎥 Loading journey video based on /api/journey/progress...');
+
+    const response = await fetch('/api/journey/progress', {
+      credentials: 'include',
+      headers: {
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API returned ${response.status}`);
+    }
+
+    const journeyData = await response.json();
+    const currentMonth = journeyData.currentMonth || 1;
+
+    console.log('✅ Journey month for video:', currentMonth);
+
+    const currentVideo = VIDEO_CONFIG.find((v) => v.month === currentMonth);
+    if (!currentVideo) {
+      throw new Error(`No video configured for Month ${currentMonth}`);
+    }
+
+    const validatedUrl = validateAndFixVideoUrl(currentVideo.url);
+    if (!validatedUrl) {
+      throw new Error('Invalid video URL');
+    }
+
+    window.currentVideo = { ...currentVideo, url: validatedUrl };
+
+    const videoTitle = document.getElementById('videoTitle');
+    const videoDescription = document.getElementById('videoDescription');
+    const videoMeta = document.getElementById('videoMeta');
+
+    if (videoTitle) {
+      // Show simple label in header: "Video Month X"
+      videoTitle.textContent = `Video Month ${currentMonth}`;
+    }
+    if (videoDescription) {
+      videoDescription.textContent = currentVideo.description;
+    }
+    if (videoMeta) {
+      videoMeta.textContent = `${currentVideo.duration} • Month ${currentMonth}`;
+    }
+
+    let embedUrl = validatedUrl;
+    if (embedUrl.includes('canva.com')) {
+      const [baseUrl, query = ''] = embedUrl.split('?');
+      const params = new URLSearchParams(query);
+      if (!params.has('embed')) params.append('embed', '');
+      params.set('autoplay', '1');
+      params.delete('muted');
+      embedUrl = `${baseUrl}?${params.toString()}`;
+    }
+
+    const videoContainer = document.getElementById('videoContainer');
+    if (!videoContainer) {
+      console.warn('videoContainer not found');
+      return;
+    }
+
+    videoContainer.innerHTML = `
+      <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl video-preview" style="padding-top: 56.25%; background: #fdf4ff;">
+        <iframe
+          id="canvaVideoFrame"
+          class="absolute top-0 left-0 w-full h-full border-0"
+          src="${embedUrl}"
+          allow="autoplay *; fullscreen; accelerometer; gyroscope; picture-in-picture; clipboard-write; encrypted-media"
+          allowfullscreen
+          frameborder="0"
+          title="Month ${currentMonth}: ${currentVideo.title}"
+          loading="eager"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation allow-autoplay">
+        </iframe>
+      </div>
+    `;
+
+    console.log('✅ Journey video iframe inserted');
+  } catch (error) {
+    console.error('❌ Error loading journey video:', error);
+    showVideoError(error.message || 'Failed to load video');
+  }
+}
+
+// Partner calls
+async function loadPartnerCalls() {
+  try {
+    const response = await fetch('/api/posts');
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+    const data = await response.json();
+    const partnerCallsContainer = document.getElementById('partnerCallsContainer');
+    if (!partnerCallsContainer) return;
+
+    const posts = data.posts || [];
+    const latestPosts = posts.slice(0, 2);
+
+    if (latestPosts.length === 0) {
+      partnerCallsContainer.innerHTML = `
+        <div class="text-center py-8">
+          <i class="bx bx-info-circle text-4xl text-gray-400 mb-2"></i>
+          <p class="text-gray-500 text-sm">No partner opportunities available yet</p>
+        </div>
+      `;
+      return;
+    }
+
+    partnerCallsContainer.innerHTML = latestPosts
+      .map((post) => {
+        const formattedDate = formatDate(post.created_at);
+        const icon = getPostTypeIcon(post.category);
+        const title = escapeHtml(post.title || 'Partner Opportunity');
+        const content = escapeHtml(post.content || '');
+
+        return `
+          <a href="/Partner-Calls.html" class="block">
+            <div class="border border-gray-200 rounded-2xl p-4 hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer">
+              <div class="flex items-start gap-3">
+                <div class="bg-purple-100 rounded-xl p-2 flex-shrink-0">
+                  <i class="bx ${icon} text-purple-600 text-xl"></i>
+                </div>
+                <div class="flex-1">
+                  <p class="font-semibold text-gray-900 text-sm mb-1 truncate">${title}</p>
+                  <p class="text-xs text-gray-500 mb-1">${formattedDate} • ${escapeHtml(
+                    post.category || 'General',
+                  )}</p>
+                  <p class="text-xs text-gray-600 line-clamp-2">${content}</p>
+                </div>
+              </div>
+            </div>
+          </a>
+        `;
+      })
+      .join('');
+  } catch (error) {
+    console.error('Error loading partner calls:', error);
+    const partnerCallsContainer = document.getElementById('partnerCallsContainer');
+    if (partnerCallsContainer) {
+      partnerCallsContainer.innerHTML = `
+        <div class="text-center py-8">
+          <i class="bx bx-error-circle text-4xl text-red-400 mb-2"></i>
+          <p class="text-gray-500 text-sm">Unable to load partner opportunities</p>
+          <button onclick="loadPartnerCalls()" class="mt-2 text-purple-600 text-xs font-medium hover:text-purple-700 transition-colors">
+            Try Again
+          </button>
+        </div>
+      `;
+    }
+  }
+}
+
+// Daily reminder
+function showDailyReminder(motivationalMessage, taskName) {
+  const popup = document.getElementById('dailyReminderPopup');
+  const messageEl = document.getElementById('dailyReminderMessage');
+  const taskEl = document.getElementById('dailyReminderTaskName');
+
+  if (!popup) return;
+
+  if (
+    typeof motivationalMessage === 'string' &&
+    motivationalMessage.includes('Remember why you started')
+  ) {
+    motivationalMessage = '💪 Keep pushing forward!';
+  }
+
+  if (messageEl) messageEl.textContent = motivationalMessage;
+  if (taskEl) taskEl.textContent = taskName;
+
+  popup.classList.remove('hidden');
+  popup.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDailyReminder() {
+  const popup = document.getElementById('dailyReminderPopup');
+  if (!popup) return;
+
+  popup.classList.remove('active');
+  popup.classList.add('hidden');
+  document.body.style.overflow = 'auto';
+  document.documentElement.style.overflow = 'auto';
+
+  const today = new Date().toDateString();
+  localStorage.setItem('dailyReminderSeen', today);
+  localStorage.setItem('dailyReminderLastShown', Date.now().toString());
+}
+
+async function checkDailyReminder() {
+  try {
+    const lastReminderTime = localStorage.getItem('dailyReminderLastShown');
+    const now = Date.now();
+    const twoHoursMs = 2 * 60 * 60 * 1000;
+
+    if (lastReminderTime && now - parseInt(lastReminderTime, 10) < twoHoursMs) {
+      console.log('⏰ Daily reminder skipped (recently shown)');
+      return;
+    }
+
+    const response = await fetch('/api/journey/daily-reminder', {
+      credentials: 'include',
+    });
+    if (!response.ok) return;
+
+    const data = await response.json();
+    if (data.hasReminder) {
+      setTimeout(() => {
+        showDailyReminder(data.motivationalMessage, data.taskName);
+        localStorage.setItem('dailyReminderLastShown', Date.now().toString());
+      }, 1500);
+    }
+  } catch (error) {
+    console.warn('Failed to check daily reminder:', error);
+  }
+}
+
+// Initialization
+async function initializeDashboard() {
+  try {
+    console.log('🚀 Initializing ambassador dashboard (video + partner calls + reminder)...');
+
+    await loadCurrentMonthVideo();
+    loadPartnerCalls();
+    checkDailyReminder();
+  } catch (error) {
+    console.error('Dashboard initialization error:', error);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Basic user info for header
+  fetch('/api/me', {
+    credentials: 'include',
+    headers: { 'Cache-Control': 'no-cache' },
+  })
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data) => {
+      if (!data) return;
+      const welcomeHeading = document.getElementById('welcomeHeading');
+      const avatarElement = document.getElementById('userAvatar');
+      if (welcomeHeading && data.name) {
+        welcomeHeading.textContent = `Welcome, ${data.name}!`;
+      }
+      if (avatarElement && data.name) {
+        const initials = data.name
+          .split(' ')
+          .map((w) => w[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2);
+        avatarElement.textContent = initials;
+      }
+    })
+    .catch(() => {});
+
+  // Logout
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      fetch('/api/logout', { method: 'POST', credentials: 'include' })
+        .then(() => (window.location.href = '/signin'))
+        .catch(() => (window.location.href = '/signin'));
+    });
+  }
+
+  // Close reminder when clicking outside
+  const popup = document.getElementById('dailyReminderPopup');
+  if (popup) {
+    popup.addEventListener('click', (e) => {
+      if (e.target === popup) closeDailyReminder();
+    });
+  }
+
+  initializeDashboard();
+});
+
+// Expose for HTML onclick/debug
+window.loadCurrentMonthVideo = loadCurrentMonthVideo;
+window.loadPartnerCalls = loadPartnerCalls;
+window.closeDailyReminder = closeDailyReminder;
+
+console.log('✅ ambassador-dashboard.js loaded (video from /api/journey/progress)');
+
+// ============================================
+// AMBASSADOR DASHBOARD - CLEAN VIDEO + REMINDERS
+// Works alongside ambassador-dashboard-stats-fix.js
+// ============================================
+
+// Video configuration by journey month
+const VIDEO_CONFIG = [
+  { month: 1, title: "FOUNDATION", url: "https://www.canva.com/design/DAG6j1dS_Uk/Dnd2b9mJCCwSROZIWTDVXA/watch?embed", description: "Foundation Set: Onboarding complete, first course done", duration: "5:30 mins" },
+  { month: 2, title: "OPTIMIZE", url: "https://www.canva.com/design/DAGymyxxfQs/vtkXrZ8joa0giowAh60-zg/watch?embed", description: "Optimized Presence: Profile updated, first article submitted", duration: "6:15 mins" },
+  { month: 3, title: "ENGAGE", url: "https://www.canva.com/design/DAGym0x892o/YmDTuaFm1nNjSaJYa93ePA/watch?embed", description: "Engaged Member: Building relationships, consistent content", duration: "5:45 mins" },
+  { month: 4, title: "LEAD", url: "https://www.canva.com/design/DAGymzmB9zo/Oz_eCZ8_EDoXnTeseB6R-A/watch?embed", description: "Leadership Activated: Growing visibility, all courses complete", duration: "7:00 mins" },
+  { month: 5, title: "AMPLIFY", url: "https://www.canva.com/design/DAGym1aI8Gw/Sf85oXevN7qOm5zvehr9dQ/watch?embed", description: "Amplified Impact: Leading initiatives, consistent support", duration: "6:30 mins" },
+  { month: 6, title: "MIDPOINT", url: "https://www.canva.com/design/DAGym9YIUZk/OIRe6vWYWkaZjWLuMomzrg/watch?embed", description: "Halfway Strong: Story shared, momentum building", duration: "8:00 mins" },
+  { month: 7, title: "VISIBILITY", url: "https://www.canva.com/design/DAGym2_NkFI/NLk8fNcIBNm7mX3lT5mJGQ/watch?embed", description: "Visible Leader: Podcast prep, strong content cadence", duration: "6:45 mins" },
+  { month: 8, title: "EXPAND", url: "https://www.canva.com/design/DAGzJ0qBXKM/JeRKp6jCYA88iE3RJBUvGA/watch?embed", description: "Expanded Reach: Podcast recorded, portfolio growing", duration: "7:15 mins" },
+  { month: 9, title: "CONNECT", url: "https://www.canva.com/design/DAGynDXe7nM/XwF5fSUo3GJfpJBR4sO4Vg/watch?embed", description: "Connected Leader: Deep relationships, podcast live", duration: "6:00 mins" },
+  { month: 10, title: "ACCELERATE", url: "https://www.canva.com/design/DAGynMCn0XU/-9LPKLzn5Zc6W5bJS8ktXQ/watch?embed", description: "Accelerating: Final articles, opportunities in pipeline", duration: "7:30 mins" },
+  { month: 11, title: "CELEBRATE", url: "https://www.canva.com/design/DAGynKgil_I/FVdnkZFWNsKo1iBsbX7omg/watch?embed", description: "Celebrating: Year documented, impact quantified", duration: "8:15 mins" },
+  { month: 12, title: "RENEW", url: "https://www.canva.com/design/DAGynMcNxQI/INWdK-bvAm30aMLK45OMfw/watch?embed", description: "Transformation Complete: Full year tracked, portfolio built", duration: "9:00 mins" }
+];
+
+// Helpers
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function getPostTypeIcon(postType) {
+  const icons = {
+    speaking: 'bx-microphone',
+    podcast: 'bx-podcast',
+    webinar: 'bx-video',
+    volunteering: 'bx-heart',
+    general: 'bx-briefcase',
+  };
+  return icons[(postType || '').toLowerCase()] || 'bx-briefcase';
+}
+
+function formatDate(dateString) {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return 'Recently';
+  }
+}
+
+function validateAndFixVideoUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  if (!url.includes('canva.com')) return url;
+  if (url.includes('/design/')) {
+    url = url.replace('/view?', '/watch?');
+    if (!url.includes('/watch')) {
+      url = url.replace('/design/', '/design/').replace('?embed', '/watch?embed');
+    }
+  }
+  return url;
+}
+
+// Video handling
+function showVideoError(message) {
+  const videoContainer = document.getElementById('videoContainer');
+  if (!videoContainer) return;
+
+  const errorMessage =
+    message || 'Unable to load video. Please try again or open the video in Canva.';
+
+  videoContainer.innerHTML = `
+    <div class="flex flex-col items-center justify-center p-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl min-h-[16rem]">
+      <i class="bx bx-error-circle text-5xl text-red-500 mb-4"></i>
+      <p class="text-gray-700 font-medium mb-2">Video Loading Error</p>
+      <p class="text-gray-500 text-sm text-center mb-4 max-w-md">${escapeHtml(
+        errorMessage,
+      )}</p>
+      <button onclick="loadCurrentMonthVideo()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center">
+        <i class="bx bx-refresh mr-2"></i> Retry
+      </button>
+    </div>
+  `;
+}
+
+async function loadCurrentMonthVideo() {
+  try {
+    console.log('🎥 Loading journey video based on /api/journey/progress...');
+
+    const response = await fetch('/api/journey/progress', {
+      credentials: 'include',
+      headers: {
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API returned ${response.status}`);
+    }
+
+    const journeyData = await response.json();
+    const currentMonth = journeyData.currentMonth || 1;
+
+    console.log('✅ Journey month for video:', currentMonth);
+
+    const currentVideo = VIDEO_CONFIG.find((v) => v.month === currentMonth);
+    if (!currentVideo) {
+      throw new Error(`No video configured for Month ${currentMonth}`);
+    }
+
+    const validatedUrl = validateAndFixVideoUrl(currentVideo.url);
+    if (!validatedUrl) {
+      throw new Error('Invalid video URL');
+    }
+
+    window.currentVideo = { ...currentVideo, url: validatedUrl };
+
+    const videoTitle = document.getElementById('videoTitle');
+    const videoDescription = document.getElementById('videoDescription');
+    const videoMeta = document.getElementById('videoMeta');
+
+    if (videoTitle) {
+      videoTitle.textContent = `Month ${currentMonth}: ${currentVideo.title}`;
+    }
+    if (videoDescription) {
+      videoDescription.textContent = currentVideo.description;
+    }
+    if (videoMeta) {
+      videoMeta.textContent = `${currentVideo.duration} • Month ${currentMonth}`;
+    }
+
+    let embedUrl = validatedUrl;
+    if (embedUrl.includes('canva.com')) {
+      const [baseUrl, query = ''] = embedUrl.split('?');
+      const params = new URLSearchParams(query);
+      if (!params.has('embed')) params.append('embed', '');
+      params.set('autoplay', '1');
+      params.delete('muted');
+      embedUrl = `${baseUrl}?${params.toString()}`;
+    }
+
+    const videoContainer = document.getElementById('videoContainer');
+    if (!videoContainer) {
+      console.warn('videoContainer not found');
+      return;
+    }
+
+    videoContainer.innerHTML = `
+      <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl video-preview" style="padding-top: 56.25%; background: #000;">
+        <iframe
+          id="canvaVideoFrame"
+          class="absolute top-0 left-0 w-full h-full border-0"
+          src="${embedUrl}"
+          allow="autoplay *; fullscreen; accelerometer; gyroscope; picture-in-picture; clipboard-write; encrypted-media"
+          allowfullscreen
+          frameborder="0"
+          title="Month ${currentMonth}: ${currentVideo.title}"
+          loading="eager"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation allow-autoplay">
+        </iframe>
+      </div>
+    `;
+
+    console.log('✅ Journey video iframe inserted');
+  } catch (error) {
+    console.error('❌ Error loading journey video:', error);
+    showVideoError(error.message || 'Failed to load video');
+  }
+}
+
+// Partner calls
+async function loadPartnerCalls() {
+  try {
+    const response = await fetch('/api/posts');
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+    const data = await response.json();
+    const partnerCallsContainer = document.getElementById('partnerCallsContainer');
+    if (!partnerCallsContainer) return;
+
+    const posts = data.posts || [];
+    const latestPosts = posts.slice(0, 2);
+
+    if (latestPosts.length === 0) {
+      partnerCallsContainer.innerHTML = `
+        <div class="text-center py-8">
+          <i class="bx bx-info-circle text-4xl text-gray-400 mb-2"></i>
+          <p class="text-gray-500 text-sm">No partner opportunities available yet</p>
+        </div>
+      `;
+      return;
+    }
+
+    partnerCallsContainer.innerHTML = latestPosts
+      .map((post) => {
+        const formattedDate = formatDate(post.created_at);
+        const icon = getPostTypeIcon(post.category);
+        const title = escapeHtml(post.title || 'Partner Opportunity');
+        const content = escapeHtml(post.content || '');
+
+        return `
+          <a href="/Partner-Calls.html" class="block">
+            <div class="border border-gray-200 rounded-2xl p-4 hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer">
+              <div class="flex items-start gap-3">
+                <div class="bg-purple-100 rounded-xl p-2 flex-shrink-0">
+                  <i class="bx ${icon} text-purple-600 text-xl"></i>
+                </div>
+                <div class="flex-1">
+                  <p class="font-semibold text-gray-900 text-sm mb-1 truncate">${title}</p>
+                  <p class="text-xs text-gray-500 mb-1">${formattedDate} • ${escapeHtml(
+                    post.category || 'General',
+                  )}</p>
+                  <p class="text-xs text-gray-600 line-clamp-2">${content}</p>
+                </div>
+              </div>
+            </div>
+          </a>
+        `;
+      })
+      .join('');
+  } catch (error) {
+    console.error('Error loading partner calls:', error);
+    const partnerCallsContainer = document.getElementById('partnerCallsContainer');
+    if (partnerCallsContainer) {
+      partnerCallsContainer.innerHTML = `
+        <div class="text-center py-8">
+          <i class="bx bx-error-circle text-4xl text-red-400 mb-2"></i>
+          <p class="text-gray-500 text-sm">Unable to load partner opportunities</p>
+          <button onclick="loadPartnerCalls()" class="mt-2 text-purple-600 text-xs font-medium hover:text-purple-700 transition-colors">
+            Try Again
+          </button>
+        </div>
+      `;
+    }
+  }
+}
+
+// Daily reminder
+function showDailyReminder(motivationalMessage, taskName) {
+  const popup = document.getElementById('dailyReminderPopup');
+  const messageEl = document.getElementById('dailyReminderMessage');
+  const taskEl = document.getElementById('dailyReminderTaskName');
+
+  if (!popup) return;
+
+  if (
+    typeof motivationalMessage === 'string' &&
+    motivationalMessage.includes('Remember why you started')
+  ) {
+    motivationalMessage = '💪 Keep pushing forward!';
+  }
+
+  if (messageEl) messageEl.textContent = motivationalMessage;
+  if (taskEl) taskEl.textContent = taskName;
+
+  popup.classList.remove('hidden');
+  popup.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDailyReminder() {
+  const popup = document.getElementById('dailyReminderPopup');
+  if (!popup) return;
+
+  popup.classList.remove('active');
+  popup.classList.add('hidden');
+  document.body.style.overflow = 'auto';
+  document.documentElement.style.overflow = 'auto';
+
+  const today = new Date().toDateString();
+  localStorage.setItem('dailyReminderSeen', today);
+  localStorage.setItem('dailyReminderLastShown', Date.now().toString());
+}
+
+async function checkDailyReminder() {
+  try {
+    const lastReminderTime = localStorage.getItem('dailyReminderLastShown');
+    const now = Date.now();
+    const twoHoursMs = 2 * 60 * 60 * 1000;
+
+    if (lastReminderTime && now - parseInt(lastReminderTime, 10) < twoHoursMs) {
+      console.log('⏰ Daily reminder skipped (recently shown)');
+      return;
+    }
+
+    const response = await fetch('/api/journey/daily-reminder', {
+      credentials: 'include',
+    });
+    if (!response.ok) return;
+
+    const data = await response.json();
+    if (data.hasReminder) {
+      setTimeout(() => {
+        showDailyReminder(data.motivationalMessage, data.taskName);
+        localStorage.setItem('dailyReminderLastShown', Date.now().toString());
+      }, 1500);
+    }
+  } catch (error) {
+    console.warn('Failed to check daily reminder:', error);
+  }
+}
+
+// Initialization
+async function initializeDashboard() {
+  try {
+    console.log('🚀 Initializing ambassador dashboard (video + partner calls + reminder)...');
+
+    await loadCurrentMonthVideo();
+    loadPartnerCalls();
+    checkDailyReminder();
+  } catch (error) {
+    console.error('Dashboard initialization error:', error);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Basic user info for header
+  fetch('/api/me', {
+    credentials: 'include',
+    headers: { 'Cache-Control': 'no-cache' },
+  })
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data) => {
+      if (!data) return;
+      const welcomeHeading = document.getElementById('welcomeHeading');
+      const avatarElement = document.getElementById('userAvatar');
+      if (welcomeHeading && data.name) {
+        welcomeHeading.textContent = `Welcome, ${data.name}!`;
+      }
+      if (avatarElement && data.name) {
+        const initials = data.name
+          .split(' ')
+          .map((w) => w[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2);
+        avatarElement.textContent = initials;
+      }
+    })
+    .catch(() => {});
+
+  // Logout
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      fetch('/api/logout', { method: 'POST', credentials: 'include' })
+        .then(() => (window.location.href = '/signin'))
+        .catch(() => (window.location.href = '/signin'));
+    });
+  }
+
+  // Close reminder when clicking outside
+  const popup = document.getElementById('dailyReminderPopup');
+  if (popup) {
+    popup.addEventListener('click', (e) => {
+      if (e.target === popup) closeDailyReminder();
+    });
+  }
+
+  initializeDashboard();
+});
+
+// Expose for HTML onclick/debug
+window.loadCurrentMonthVideo = loadCurrentMonthVideo;
+window.loadPartnerCalls = loadPartnerCalls;
+window.closeDailyReminder = closeDailyReminder;
+
+console.log('✅ ambassador-dashboard.js loaded (video from /api/journey/progress)');
+
+// ============================================
+// AMBASSADOR DASHBOARD - CLEAN VIDEO + REMINDERS
+// Works alongside ambassador-dashboard-stats-fix.js
+// ============================================
+
+// Video configuration by journey month
+const VIDEO_CONFIG = [
+  { month: 1, title: "FOUNDATION", url: "https://www.canva.com/design/DAG6j1dS_Uk/Dnd2b9mJCCwSROZIWTDVXA/watch?embed", description: "Foundation Set: Onboarding complete, first course done", duration: "5:30 mins" },
+  { month: 2, title: "OPTIMIZE", url: "https://www.canva.com/design/DAGymyxxfQs/vtkXrZ8joa0giowAh60-zg/watch?embed", description: "Optimized Presence: Profile updated, first article submitted", duration: "6:15 mins" },
+  { month: 3, title: "ENGAGE", url: "https://www.canva.com/design/DAGym0x892o/YmDTuaFm1nNjSaJYa93ePA/watch?embed", description: "Engaged Member: Building relationships, consistent content", duration: "5:45 mins" },
+  { month: 4, title: "LEAD", url: "https://www.canva.com/design/DAGymzmB9zo/Oz_eCZ8_EDoXnTeseB6R-A/watch?embed", description: "Leadership Activated: Growing visibility, all courses complete", duration: "7:00 mins" },
+  { month: 5, title: "AMPLIFY", url: "https://www.canva.com/design/DAGym1aI8Gw/Sf85oXevN7qOm5zvehr9dQ/watch?embed", description: "Amplified Impact: Leading initiatives, consistent support", duration: "6:30 mins" },
+  { month: 6, title: "MIDPOINT", url: "https://www.canva.com/design/DAGym9YIUZk/OIRe6vWYWkaZjWLuMomzrg/watch?embed", description: "Halfway Strong: Story shared, momentum building", duration: "8:00 mins" },
+  { month: 7, title: "VISIBILITY", url: "https://www.canva.com/design/DAGym2_NkFI/NLk8fNcIBNm7mX3lT5mJGQ/watch?embed", description: "Visible Leader: Podcast prep, strong content cadence", duration: "6:45 mins" },
+  { month: 8, title: "EXPAND", url: "https://www.canva.com/design/DAGzJ0qBXKM/JeRKp6jCYA88iE3RJBUvGA/watch?embed", description: "Expanded Reach: Podcast recorded, portfolio growing", duration: "7:15 mins" },
+  { month: 9, title: "CONNECT", url: "https://www.canva.com/design/DAGynDXe7nM/XwF5fSUo3GJfpJBR4sO4Vg/watch?embed", description: "Connected Leader: Deep relationships, podcast live", duration: "6:00 mins" },
+  { month: 10, title: "ACCELERATE", url: "https://www.canva.com/design/DAGynMCn0XU/-9LPKLzn5Zc6W5bJS8ktXQ/watch?embed", description: "Accelerating: Final articles, opportunities in pipeline", duration: "7:30 mins" },
+  { month: 11, title: "CELEBRATE", url: "https://www.canva.com/design/DAGynKgil_I/FVdnkZFWNsKo1iBsbX7omg/watch?embed", description: "Celebrating: Year documented, impact quantified", duration: "8:15 mins" },
+  { month: 12, title: "RENEW", url: "https://www.canva.com/design/DAGynMcNxQI/INWdK-bvAm30aMLK45OMfw/watch?embed", description: "Transformation Complete: Full year tracked, portfolio built", duration: "9:00 mins" }
+];
+
+// --------------------------------------------
+// Helpers
+// --------------------------------------------
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function getPostTypeIcon(postType) {
+  const icons = {
+    speaking: 'bx-microphone',
+    podcast: 'bx-podcast',
+    webinar: 'bx-video',
+    volunteering: 'bx-heart',
+    general: 'bx-briefcase',
+  };
+  return icons[(postType || '').toLowerCase()] || 'bx-briefcase';
+}
+
+function formatDate(dateString) {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return 'Recently';
+  }
+}
+
+function validateAndFixVideoUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  if (!url.includes('canva.com')) return url;
+  if (url.includes('/design/')) {
+    url = url.replace('/view?', '/watch?');
+    if (!url.includes('/watch')) {
+      url = url.replace('/design/', '/design/').replace('?embed', '/watch?embed');
+    }
+  }
+  return url;
+}
+
+// --------------------------------------------
+// Video handling
+// --------------------------------------------
+
+function showVideoError(message) {
+  const videoContainer = document.getElementById('videoContainer');
+  if (!videoContainer) return;
+
+  const errorMessage =
+    message || 'Unable to load video. Please try again or open the video in Canva.';
+
+  videoContainer.innerHTML = `
+    <div class="flex flex-col items-center justify-center p-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl min-h-[16rem]">
+      <i class="bx bx-error-circle text-5xl text-red-500 mb-4"></i>
+      <p class="text-gray-700 font-medium mb-2">Video Loading Error</p>
+      <p class="text-gray-500 text-sm text-center mb-4 max-w-md">${escapeHtml(
+        errorMessage,
+      )}</p>
+      <button onclick="loadCurrentMonthVideo()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center">
+        <i class="bx bx-refresh mr-2"></i> Retry
+      </button>
+    </div>
+  `;
+}
+
+async function loadCurrentMonthVideo() {
+  try {
+    console.log('🎥 Loading journey video based on /api/journey/progress...');
+
+    // Get current month directly from the same API as journey.html
+    const response = await fetch('/api/journey/progress', {
+      credentials: 'include',
+      headers: {
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API returned ${response.status}`);
+    }
+
+    const journeyData = await response.json();
+    const currentMonth = journeyData.currentMonth || 1;
+
+    console.log('✅ Journey month for video:', currentMonth);
+
+    const currentVideo = VIDEO_CONFIG.find((v) => v.month === currentMonth);
+    if (!currentVideo) {
+      throw new Error(`No video configured for Month ${currentMonth}`);
+    }
+
+    const validatedUrl = validateAndFixVideoUrl(currentVideo.url);
+    if (!validatedUrl) {
+      throw new Error('Invalid video URL');
+    }
+
+    window.currentVideo = { ...currentVideo, url: validatedUrl };
+
+    const videoTitle = document.getElementById('videoTitle');
+    const videoDescription = document.getElementById('videoDescription');
+    const videoMeta = document.getElementById('videoMeta');
+
+    if (videoTitle) {
+      videoTitle.textContent = `Month ${currentMonth}: ${currentVideo.title}`;
+    }
+    if (videoDescription) {
+      videoDescription.textContent = currentVideo.description;
+    }
+    if (videoMeta) {
+      videoMeta.textContent = `${currentVideo.duration} • Month ${currentMonth}`;
+    }
+
+    let embedUrl = validatedUrl;
+    if (embedUrl.includes('canva.com')) {
+      const [baseUrl, query = ''] = embedUrl.split('?');
+      const params = new URLSearchParams(query);
+      if (!params.has('embed')) params.append('embed', '');
+      params.set('autoplay', '1');
+      params.delete('muted');
+      embedUrl = `${baseUrl}?${params.toString()}`;
+    }
+
+    const videoContainer = document.getElementById('videoContainer');
+    if (!videoContainer) {
+      console.warn('videoContainer not found');
+      return;
+    }
+
+    videoContainer.innerHTML = `
+      <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl video-preview" style="padding-top: 56.25%; background: #000;">
+        <iframe
+          id="canvaVideoFrame"
+          class="absolute top-0 left-0 w-full h-full border-0"
+          src="${embedUrl}"
+          allow="autoplay *; fullscreen; accelerometer; gyroscope; picture-in-picture; clipboard-write; encrypted-media"
+          allowfullscreen
+          frameborder="0"
+          title="Month ${currentMonth}: ${currentVideo.title}"
+          loading="eager"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation allow-autoplay">
+        </iframe>
+      </div>
+    `;
+
+    console.log('✅ Journey video iframe inserted');
+  } catch (error) {
+    console.error('❌ Error loading journey video:', error);
+    showVideoError(error.message || 'Failed to load video');
+  }
+}
+
+// --------------------------------------------
+// Partner calls
+// --------------------------------------------
+
+async function loadPartnerCalls() {
+  try {
+    const response = await fetch('/api/posts');
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+    const data = await response.json();
+    const partnerCallsContainer = document.getElementById('partnerCallsContainer');
+    if (!partnerCallsContainer) return;
+
+    const posts = data.posts || [];
+    const latestPosts = posts.slice(0, 2);
+
+    if (latestPosts.length === 0) {
+      partnerCallsContainer.innerHTML = `
+        <div class="text-center py-8">
+          <i class="bx bx-info-circle text-4xl text-gray-400 mb-2"></i>
+          <p class="text-gray-500 text-sm">No partner opportunities available yet</p>
+        </div>
+      `;
+      return;
+    }
+
+    partnerCallsContainer.innerHTML = latestPosts
+      .map((post) => {
+        const formattedDate = formatDate(post.created_at);
+        const icon = getPostTypeIcon(post.category);
+        const title = escapeHtml(post.title || 'Partner Opportunity');
+        const content = escapeHtml(post.content || '');
+
+        return `
+          <a href="/Partner-Calls.html" class="block">
+            <div class="border border-gray-200 rounded-2xl p-4 hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer">
+              <div class="flex items-start gap-3">
+                <div class="bg-purple-100 rounded-xl p-2 flex-shrink-0">
+                  <i class="bx ${icon} text-purple-600 text-xl"></i>
+                </div>
+                <div class="flex-1">
+                  <p class="font-semibold text-gray-900 text-sm mb-1 truncate">${title}</p>
+                  <p class="text-xs text-gray-500 mb-1">${formattedDate} • ${escapeHtml(
+                    post.category || 'General',
+                  )}</p>
+                  <p class="text-xs text-gray-600 line-clamp-2">${content}</p>
+                </div>
+              </div>
+            </div>
+          </a>
+        `;
+      })
+      .join('');
+  } catch (error) {
+    console.error('Error loading partner calls:', error);
+    const partnerCallsContainer = document.getElementById('partnerCallsContainer');
+    if (partnerCallsContainer) {
+      partnerCallsContainer.innerHTML = `
+        <div class="text-center py-8">
+          <i class="bx bx-error-circle text-4xl text-red-400 mb-2"></i>
+          <p class="text-gray-500 text-sm">Unable to load partner opportunities</p>
+          <button onclick="loadPartnerCalls()" class="mt-2 text-purple-600 text-xs font-medium hover:text-purple-700 transition-colors">
+            Try Again
+          </button>
+        </div>
+      `;
+    }
+  }
+}
+
+// --------------------------------------------
+// Daily reminder
+// --------------------------------------------
+
+function showDailyReminder(motivationalMessage, taskName) {
+  const popup = document.getElementById('dailyReminderPopup');
+  const messageEl = document.getElementById('dailyReminderMessage');
+  const taskEl = document.getElementById('dailyReminderTaskName');
+
+  if (!popup) return;
+
+  if (
+    typeof motivationalMessage === 'string' &&
+    motivationalMessage.includes('Remember why you started')
+  ) {
+    motivationalMessage = '💪 Keep pushing forward!';
+  }
+
+  if (messageEl) messageEl.textContent = motivationalMessage;
+  if (taskEl) taskEl.textContent = taskName;
+
+  popup.classList.remove('hidden');
+  popup.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDailyReminder() {
+  const popup = document.getElementById('dailyReminderPopup');
+  if (!popup) return;
+
+  popup.classList.remove('active');
+  popup.classList.add('hidden');
+  document.body.style.overflow = 'auto';
+  document.documentElement.style.overflow = 'auto';
+
+  const today = new Date().toDateString();
+  localStorage.setItem('dailyReminderSeen', today);
+  localStorage.setItem('dailyReminderLastShown', Date.now().toString());
+}
+
+async function checkDailyReminder() {
+  try {
+    const lastReminderTime = localStorage.getItem('dailyReminderLastShown');
+    const now = Date.now();
+    const twoHoursMs = 2 * 60 * 60 * 1000;
+
+    if (lastReminderTime && now - parseInt(lastReminderTime, 10) < twoHoursMs) {
+      console.log('⏰ Daily reminder skipped (recently shown)');
+      return;
+    }
+
+    const response = await fetch('/api/journey/daily-reminder', {
+      credentials: 'include',
+    });
+    if (!response.ok) return;
+
+    const data = await response.json();
+    if (data.hasReminder) {
+      setTimeout(() => {
+        showDailyReminder(data.motivationalMessage, data.taskName);
+        localStorage.setItem('dailyReminderLastShown', Date.now().toString());
+      }, 1500);
+    }
+  } catch (error) {
+    console.warn('Failed to check daily reminder:', error);
+  }
+}
+
+// --------------------------------------------
+// Initialization
+// --------------------------------------------
+
+async function initializeDashboard() {
+  try {
+    console.log('🚀 Initializing ambassador dashboard (video + partner calls + reminder)...');
+
+    // Wait briefly so stats script can update DOM, but video does NOT depend on it
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    await loadCurrentMonthVideo();
+    loadPartnerCalls();
+    checkDailyReminder();
+  } catch (error) {
+    console.error('Dashboard initialization error:', error);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Basic user info for header
+  fetch('/api/me', {
+    credentials: 'include',
+    headers: { 'Cache-Control': 'no-cache' },
+  })
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data) => {
+      if (!data) return;
+      const welcomeHeading = document.getElementById('welcomeHeading');
+      const avatarElement = document.getElementById('userAvatar');
+      if (welcomeHeading && data.name) {
+        welcomeHeading.textContent = `Welcome, ${data.name}!`;
+      }
+      if (avatarElement && data.name) {
+        const initials = data.name
+          .split(' ')
+          .map((w) => w[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2);
+        avatarElement.textContent = initials;
+      }
+    })
+    .catch(() => {});
+
+  // Logout
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      fetch('/api/logout', { method: 'POST', credentials: 'include' })
+        .then(() => (window.location.href = '/signin'))
+        .catch(() => (window.location.href = '/signin'));
+    });
+  }
+
+  // Close reminder when clicking outside
+  const popup = document.getElementById('dailyReminderPopup');
+  if (popup) {
+    popup.addEventListener('click', (e) => {
+      if (e.target === popup) closeDailyReminder();
+    });
+  }
+
+  initializeDashboard();
+});
+
+// Expose for HTML onclick/debug
+window.loadCurrentMonthVideo = loadCurrentMonthVideo;
+window.loadPartnerCalls = loadPartnerCalls;
+window.closeDailyReminder = closeDailyReminder;
+
+console.log('✅ ambassador-dashboard.js loaded (clean version, video from /api/journey/progress)');
+
+// ============================================
+// AMBASSADOR DASHBOARD - CLEAN VERSION
+// Works with ambassador-dashboard-stats-fix.js
+// ============================================
+
+// Video configuration
+const VIDEO_CONFIG = [
+  { month: 1, title: "FOUNDATION", url: "https://www.canva.com/design/DAG6j1dS_Uk/Dnd2b9mJCCwSROZIWTDVXA/watch?embed", description: "Foundation Set: Onboarding complete, first course done", duration: "5:30 mins" },
+  { month: 2, title: "OPTIMIZE", url: "https://www.canva.com/design/DAGymyxxfQs/vtkXrZ8joa0giowAh60-zg/watch?embed", description: "Optimized Presence: Profile updated, first article submitted", duration: "6:15 mins" },
+  { month: 3, title: "ENGAGE", url: "https://www.canva.com/design/DAGym0x892o/YmDTuaFm1nNjSaJYa93ePA/watch?embed", description: "Engaged Member: Building relationships, consistent content", duration: "5:45 mins" },
+  { month: 4, title: "LEAD", url: "https://www.canva.com/design/DAGymzmB9zo/Oz_eCZ8_EDoXnTeseB6R-A/watch?embed", description: "Leadership Activated: Growing visibility, all courses complete", duration: "7:00 mins" },
+  { month: 5, title: "AMPLIFY", url: "https://www.canva.com/design/DAGym1aI8Gw/Sf85oXevN7qOm5zvehr9dQ/watch?embed", description: "Amplified Impact: Leading initiatives, consistent support", duration: "6:30 mins" },
+  { month: 6, title: "MIDPOINT", url: "https://www.canva.com/design/DAGym9YIUZk/OIRe6vWYWkaZjWLuMomzrg/watch?embed", description: "Halfway Strong: Story shared, momentum building", duration: "8:00 mins" },
+  { month: 7, title: "VISIBILITY", url: "https://www.canva.com/design/DAGym2_NkFI/NLk8fNcIBNm7mX3lT5mJGQ/watch?embed", description: "Visible Leader: Podcast prep, strong content cadence", duration: "6:45 mins" },
+  { month: 8, title: "EXPAND", url: "https://www.canva.com/design/DAGzJ0qBXKM/JeRKp6jCYA88iE3RJBUvGA/watch?embed", description: "Expanded Reach: Podcast recorded, portfolio growing", duration: "7:15 mins" },
+  { month: 9, title: "CONNECT", url: "https://www.canva.com/design/DAGynDXe7nM/XwF5fSUo3GJfpJBR4sO4Vg/watch?embed", description: "Connected Leader: Deep relationships, podcast live", duration: "6:00 mins" },
+  { month: 10, title: "ACCELERATE", url: "https://www.canva.com/design/DAGynMCn0XU/-9LPKLzn5Zc6W5bJS8ktXQ/watch?embed", description: "Accelerating: Final articles, opportunities in pipeline", duration: "7:30 mins" },
+  { month: 11, title: "CELEBRATE", url: "https://www.canva.com/design/DAGynKgil_I/FVdnkZFWNsKo1iBsbX7omg/watch?embed", description: "Celebrating: Year documented, impact quantified", duration: "8:15 mins" },
+  { month: 12, title: "RENEW", url: "https://www.canva.com/design/DAGynMcNxQI/INWdK-bvAm30aMLK45OMfw/watch?embed", description: "Transformation Complete: Full year tracked, portfolio built", duration: "9:00 mins" }
+];
+
+// Helper functions
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function getPostTypeIcon(postType) {
+  const icons = {
+    'speaking': 'bx-microphone',
+    'podcast': 'bx-podcast',
+    'webinar': 'bx-video',
+    'volunteering': 'bx-heart',
+    'general': 'bx-briefcase'
+  };
+  return icons[postType?.toLowerCase()] || 'bx-briefcase';
+}
+
+function formatDate(dateString) {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+  } catch (e) {
+    return 'Recently';
+  }
+}
+
+function validateAndFixVideoUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  if (!url.includes('canva.com')) return url;
+  if (url.includes('/design/')) {
+    url = url.replace('/view?', '/watch?');
+    if (!url.includes('/watch')) {
+      url = url.replace('/design/', '/design/').replace('?embed', '/watch?embed');
+    }
+  }
+  return url;
+}
+
+// ============================================
+// VIDEO LOADING - Uses data from stats fix
+// ============================================
+
+function showVideoError(message = null) {
+  const videoContainer = document.getElementById('videoContainer');
+  const currentVideo = window.currentVideo;
+  
+  if (videoContainer) {
+    const errorMessage = message || 'Unable to load video. Please try again or open the video directly in Canva.';
+    videoContainer.innerHTML = `
+      <div class="flex flex-col items-center justify-center p-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl min-h-[16rem]">
+        <i class="bx bx-error-circle text-5xl text-red-500 mb-4"></i>
+        <p class="text-gray-700 font-medium mb-2">Video Loading Error</p>
+        <p class="text-gray-500 text-sm text-center mb-4 max-w-md">${errorMessage}</p>
+        <div class="flex flex-col sm:flex-row gap-3 mt-4">
+          <button onclick="loadCurrentMonthVideo()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center">
+            <i class="bx bx-refresh mr-2"></i> Retry
+          </button>
+          ${currentVideo && currentVideo.url ? `
+            <a href="${currentVideo.url.replace(/\/watch\?embed/, '/view').replace(/\/watch\?/, '/view?')}" target="_blank" 
+               class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center">
+              <i class="bx bx-link-external mr-2"></i> Open in Canva
+            </a>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+}
+
+async function loadCurrentMonthVideo() {
+  try {
+    console.log('🎥 Loading video based on dashboard stats...');
+    
+    // Get current month from the dashboard stats (set by ambassador-dashboard-stats-fix.js)
+    const journeyMonthElement = document.getElementById('journeyMonth');
+    if (!journeyMonthElement) {
+      throw new Error('Journey month element not found');
+    }
+    
+    const journeyMonthText = journeyMonthElement.textContent; // e.g., "Month 3 of 12"
+    const match = journeyMonthText.match(/Month (\d+)/);
+    
+    if (!match) {
+      throw new Error('Could not parse month from journey stats');
+    }
+    
+    const currentMonth = parseInt(match[1]);
+    console.log('📊 Current month from dashboard:', currentMonth);
+    
+    // Find the video for this month
+    const currentVideo = VIDEO_CONFIG.find(v => v.month === currentMonth);
+    
+    if (!currentVideo) {
+      throw new Error(`No video found for Month ${currentMonth}`);
+    }
+    
+    console.log('✅ Found video:', currentVideo.title);
+    
+    // Validate URL
+    const validatedUrl = validateAndFixVideoUrl(currentVideo.url);
+    if (!validatedUrl) {
+      throw new Error('Invalid video URL');
+    }
+    
+    // Store globally
+    window.currentVideo = { ...currentVideo, url: validatedUrl };
+    
+    // Update text elements
+    const videoTitle = document.getElementById('videoTitle');
+    const videoDescription = document.getElementById('videoDescription');
+    const videoMeta = document.getElementById('videoMeta');
+    
+    if (videoTitle) videoTitle.textContent = `Month ${currentMonth}: ${currentVideo.title}`;
+    if (videoDescription) videoDescription.textContent = currentVideo.description;
+    if (videoMeta) videoMeta.textContent = `${currentVideo.duration} • Month ${currentMonth}`;
+    
+    // Build embed URL with autoplay
+    let embedUrl = validatedUrl;
+    if (embedUrl.includes('canva.com')) {
+      const urlParts = embedUrl.split('?');
+      const baseUrl = urlParts[0];
+      const params = new URLSearchParams(urlParts[1] || '');
+      if (!params.has('embed')) params.append('embed', '');
+      params.set('autoplay', '1');
+      params.delete('muted');
+      embedUrl = baseUrl + '?' + params.toString();
+    }
+    
+    // Insert video iframe
+    const videoContainer = document.getElementById('videoContainer');
+    if (videoContainer) {
+      videoContainer.innerHTML = `
+        <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl video-preview" style="padding-top: 56.25%; background: #000;">
+          <iframe 
+            id="canvaVideoFrame"
+            class="absolute top-0 left-0 w-full h-full border-0"
+            src="${embedUrl}"
+            allow="autoplay *; fullscreen; accelerometer; gyroscope; picture-in-picture; clipboard-write; encrypted-media"
+            allowfullscreen
+            frameborder="0"
+            title="Month ${currentMonth}: ${currentVideo.title}"
+            loading="eager"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation allow-autoplay">
+          </iframe>
+        </div>
+      `;
+      
+      console.log('✅ Video loaded successfully');
+    }
+    
+  } catch (error) {
+    console.error('❌ Error loading video:', error);
+    showVideoError(error.message || 'Failed to load video');
+  }
+}
+
+// ============================================
+// PARTNER CALLS
+// ============================================
+
+async function loadPartnerCalls() {
+  try {
+    const response = await fetch('/api/posts');
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    
+    const data = await response.json();
+    const partnerCallsContainer = document.getElementById('partnerCallsContainer');
+    if (!partnerCallsContainer) return;
+    
+    const posts = data.posts || [];
+    const latestPosts = posts.slice(0, 2);
+    
+    if (latestPosts.length === 0) {
+      partnerCallsContainer.innerHTML = `
+        <div class="text-center py-8">
+          <i class="bx bx-info-circle text-4xl text-gray-400 mb-2"></i>
+          <p class="text-gray-500 text-sm">No partner opportunities available yet</p>
+        </div>
+      `;
+      return;
+    }
+    
+    partnerCallsContainer.innerHTML = latestPosts.map(post => {
+      const formattedDate = formatDate(post.created_at);
+      const icon = getPostTypeIcon(post.category);
+      const title = escapeHtml(post.title || 'Partner Opportunity');
+      const content = escapeHtml(post.content || '');
+      
+      return `
+        <a href="/Partner-Calls.html" class="block">
+          <div class="border border-gray-200 rounded-2xl p-4 hover:border-purple-300 hover:shadow-sm transition-all cursor-pointer">
+            <div class="flex items-start gap-3">
+              <div class="bg-purple-100 rounded-xl p-2 flex-shrink-0">
+                <i class="bx ${icon} text-purple-600 text-xl"></i>
+              </div>
+              <div class="flex-1">
+                <p class="font-semibold text-gray-900 text-sm mb-1 truncate">${title}</p>
+                <p class="text-xs text-gray-500 mb-1">${formattedDate} • ${post.category || 'General'}</p>
+                <p class="text-xs text-gray-600 line-clamp-2">${content}</p>
+              </div>
+            </div>
+          </div>
+        </a>
+      `;
+    }).join('');
+  } catch (error) {
+    console.error('Error loading partner calls:', error);
+    const partnerCallsContainer = document.getElementById('partnerCallsContainer');
+    if (partnerCallsContainer) {
+      partnerCallsContainer.innerHTML = `
+        <div class="text-center py-8">
+          <i class="bx bx-error-circle text-4xl text-red-400 mb-2"></i>
+          <p class="text-gray-500 text-sm">Unable to load partner opportunities</p>
+          <button onclick="loadPartnerCalls()" class="mt-2 text-purple-600 text-xs font-medium hover:text-purple-700 transition-colors">
+            Try Again
+          </button>
+        </div>
+      `;
+    }
+  }
+}
+
+// ============================================
+// DAILY REMINDER
+// ============================================
+
+function showDailyReminder(motivationalMessage, taskName) {
+  const popup = document.getElementById('dailyReminderPopup');
+  const messageEl = document.getElementById('dailyReminderMessage');
+  const taskEl = document.getElementById('dailyReminderTaskName');
+  
+  if (!popup) return;
+
+  // Safety filter
+  if (typeof motivationalMessage === 'string' && motivationalMessage.includes('Remember why you started')) {
+    motivationalMessage = '💪 Keep pushing forward!';
+  }
+  
+  // Set the content
+  if (messageEl) messageEl.textContent = motivationalMessage;
+  if (taskEl) taskEl.textContent = taskName;
+  
+  // Show the popup
+  popup.classList.remove('hidden');
+  popup.classList.add('active');
+  document.body.style.overflow = 'hidden';
+  
+  console.log('✅ Daily reminder shown');
+}
+
+function closeDailyReminder() {
+  const popup = document.getElementById('dailyReminderPopup');
+  if (!popup) return;
+  
+  popup.classList.remove('active');
+  popup.classList.add('hidden');
+  document.body.style.overflow = 'auto';
+  document.documentElement.style.overflow = 'auto';
+  
+  // Store that reminder was seen
+  const today = new Date().toDateString();
+  localStorage.setItem('dailyReminderSeen', today);
+  localStorage.setItem('dailyReminderLastShown', Date.now().toString());
+}
+
+async function checkDailyReminder() {
+  try {
+    // Rate limiting - only show every 2 hours
+    const lastReminderTime = localStorage.getItem('dailyReminderLastShown');
+    const now = Date.now();
+    const twoHoursInMs = 2 * 60 * 60 * 1000;
+    
+    if (lastReminderTime && (now - parseInt(lastReminderTime)) < twoHoursInMs) {
+      console.log('⏰ Daily reminder skipped - shown recently');
+      return;
+    }
+    
+    const response = await fetch('/api/journey/daily-reminder', {
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.hasReminder) {
+        setTimeout(() => {
+          showDailyReminder(data.motivationalMessage, data.taskName);
+          localStorage.setItem('dailyReminderLastShown', now.toString());
+        }, 1500);
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️ Failed to check daily reminder:', error);
+  }
+}
+
+// ============================================
+// INITIALIZATION
+// ============================================
+
+async function initializeDashboard() {
+  try {
+    console.log('🚀 Initializing dashboard (clean version)...');
+    
+    // Wait a moment for ambassador-dashboard-stats-fix.js to load the stats
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Load video based on the stats that were just loaded
+    await loadCurrentMonthVideo();
+    
+    // Load partner calls
+    loadPartnerCalls();
+    
+    // Check daily reminder
+    checkDailyReminder();
+    
+    console.log('✅ Dashboard initialized');
+    
+  } catch (error) {
+    console.error('❌ Dashboard initialization error:', error);
+  }
+}
+
+// ============================================
+// EVENT LISTENERS
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Fetch user data
+  fetch('/api/me', { 
+    credentials: 'include',
+    headers: {
+      'Cache-Control': 'no-cache'
+    }
+  })
+    .then(response => {
+      if (!response.ok) return null;
+      return response.json();
+    })
+    .then(data => {
+      if (!data) return;
+
+      const welcomeHeading = document.getElementById('welcomeHeading');
+      if (welcomeHeading && data.name) {
+        welcomeHeading.textContent = `Welcome, ${data.name}!`;
+      }
+      
+      const avatarElement = document.getElementById('userAvatar');
+      if (avatarElement && data.name) {
+        const initials = data.name.split(' ')
+          .map(word => word[0])
+          .join('')
+          .toUpperCase()
+          .substring(0, 2);
+        avatarElement.textContent = initials;
+      }
+    })
+    .catch(error => {
+      console.warn('Could not load user data:', error);
+    });
+
+  // Logout functionality
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', function() {
+      fetch('/api/logout', { method: 'POST', credentials: 'include' })
+        .then(() => window.location.href = '/signin')
+        .catch(() => window.location.href = '/signin');
+    });
+  }
+
+  // Close reminder when clicking outside
+  const popup = document.getElementById('dailyReminderPopup');
+  if (popup) {
+    popup.addEventListener('click', (e) => {
+      if (e.target === popup) {
+        closeDailyReminder();
+      }
+    });
+  }
+
+  // Initialize dashboard
+  initializeDashboard();
+});
+
+// Expose functions globally
+window.loadCurrentMonthVideo = loadCurrentMonthVideo;
+window.loadPartnerCalls = loadPartnerCalls;
+window.closeDailyReminder = closeDailyReminder;
+
+console.log('✅ Ambassador dashboard loaded (clean version)');
+
+*** End of File
 
 // Video configuration
 const VIDEO_CONFIG = [

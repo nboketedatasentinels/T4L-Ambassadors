@@ -389,7 +389,7 @@
           <div class="bg-white rounded-2xl p-4 md:p-6 lg:col-span-2 border border-gray-100 flex flex-col">
             <!-- Header -->
             <div class="flex justify-between items-center mb-4">
-              <h4 class="font-semibold text-gray-900 text-lg" id="videoTitle">Loading...</h4>
+              <h4 class="font-semibold text-gray-900 text-lg" id="videoTitle">Video Month 1</h4>
               <a href="/journey.html" class="text-purple-600 text-sm font-medium hover:text-purple-700 transition-colors">View Journey</a>
             </div>
 
@@ -1102,5 +1102,81 @@
     
     <!-- ✅ Subscription Manager -->
     <script src="/js/subscription-manager.js"></script>
+
+    <!-- ✅ Real-time dashboard stats fix (non-destructive) -->
+    <script src="/js/ambassador-dashboard-stats-fix.js"></script>
+
+    <!-- ✅ Minimal inline video loader using /api/journey/progress -->
+    <script>
+      document.addEventListener('DOMContentLoaded', async function () {
+        try {
+          const res = await fetch('/api/journey/progress', {
+            credentials: 'include',
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          });
+          if (!res.ok) return;
+          const data = await res.json();
+          const currentMonth = data.currentMonth || 1;
+
+          const videoConfig = {
+            1: "https://www.canva.com/design/DAG6j1dS_Uk/Dnd2b9mJCCwSROZIWTDVXA/watch?embed",
+            2: "https://www.canva.com/design/DAGymyxxfQs/vtkXrZ8joa0giowAh60-zg/watch?embed",
+            3: "https://www.canva.com/design/DAGym0x892o/YmDTuaFm1nNjSaJYa93ePA/watch?embed",
+            4: "https://www.canva.com/design/DAGymzmB9zo/Oz_eCZ8_EDoXnTeseB6R-A/watch?embed",
+            5: "https://www.canva.com/design/DAGym1aI8Gw/Sf85oXevN7qOm5zvehr9dQ/watch?embed",
+            6: "https://www.canva.com/design/DAGym9YIUZk/OIRe6vWYWkaZjWLuMomzrg/watch?embed",
+            7: "https://www.canva.com/design/DAGym2_NkFI/NLk8fNcIBNm7mX3lT5mJGQ/watch?embed",
+            8: "https://www.canva.com/design/DAGzJ0qBXKM/JeRKp6jCYA88iE3RJBUvGA/watch?embed",
+            9: "https://www.canva.com/design/DAGynDXe7nM/XwF5fSUo3GJfpJBR4sO4Vg/watch?embed",
+            10: "https://www.canva.com/design/DAGynMCn0XU/-9LPKLzn5Zc6W5bJS8ktXQ/watch?embed",
+            11: "https://www.canva.com/design/DAGynKgil_I/FVdnkZFWNsKo1iBsbX7omg/watch?embed",
+            12: "https://www.canva.com/design/DAGynMcNxQI/INWdK-bvAm30aMLK45OMfw/watch?embed"
+          };
+
+          // Update header text to reflect the actual month
+          const titleEl = document.getElementById('videoTitle');
+          if (titleEl) {
+            titleEl.textContent = `Video Month ${currentMonth}`;
+          }
+
+          let url = videoConfig[currentMonth];
+          if (!url) return;
+
+          // Ensure autoplay + embed params
+          if (url.includes('canva.com')) {
+            const parts = url.split('?');
+            const base = parts[0];
+            const params = new URLSearchParams(parts[1] || '');
+            if (!params.has('embed')) params.append('embed', '');
+            params.set('autoplay', '1');
+            params.delete('muted');
+            url = base + '?' + params.toString();
+          }
+
+          const container = document.getElementById('videoContainer');
+          if (!container) return;
+
+          container.innerHTML = `
+            <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl" style="padding-top: 56.25%; background:#fdf4ff;">
+              <iframe
+                class="absolute top-0 left-0 w-full h-full border-0"
+                src="${url}"
+                allow="autoplay *; fullscreen; accelerometer; gyroscope; picture-in-picture; clipboard-write; encrypted-media"
+                allowfullscreen
+                frameborder="0"
+                title="Journey Video - Month ${currentMonth}"
+                loading="eager"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation allow-autoplay">
+              </iframe>
+            </div>
+          `;
+        } catch (e) {
+          console.error('Inline journey video loader error:', e);
+        }
+      });
+    </script>
   </body>
 </html>

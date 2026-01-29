@@ -48,6 +48,50 @@ class SubscriptionManager {
     return this.freeFeatures.includes(featureName);
   }
 
+  // Temporarily block paid-only sidebar links and show a small spinner
+  setSidebarLoading(isLoading) {
+    try {
+      const links = document.querySelectorAll('.sidebar a, aside.sidebar a');
+      links.forEach(link => {
+        const href = (link.getAttribute('href') || '').toLowerCase();
+        let featureName = null;
+
+        if (href.includes('ambassador-events') || (href.includes('events') && !href.includes('journey'))) {
+          featureName = 'events';
+        } else if (href.includes('partner-calls') || (href.includes('partner') && !href.includes('partner-dashboard'))) {
+          featureName = 'partners';
+        } else if (href.includes('impactlog') || href.includes('impact-log')) {
+          featureName = 'impact-log';
+        } else if (href.includes('chat-pillar') || (href.includes('chat') && !href.includes('chat-region'))) {
+          featureName = 'chat';
+        } else if (href.includes('journey')) {
+          featureName = 'journey';
+        } else if (href.includes('article')) {
+          featureName = 'articles';
+        } else if (href.includes('profile-ambassador') || (href.includes('profile') && !href.includes('profile-partner'))) {
+          featureName = 'profile';
+        } else if ((href.includes('service') || href.includes('my-services')) && !href.includes('services-partner')) {
+          featureName = 'services';
+        } else if (href.includes('media-library') || href.includes('media-kit')) {
+          featureName = 'media-kit';
+        }
+
+        // Only apply loading state to features that are NOT in the free list
+        if (!featureName || this.freeFeatures.includes(featureName)) {
+          return;
+        }
+
+        if (isLoading) {
+          link.classList.add('subscription-loading');
+        } else {
+          link.classList.remove('subscription-loading');
+        }
+      });
+    } catch (e) {
+      console.warn('Subscription sidebar loading toggle failed:', e);
+    }
+  }
+
   restrictNavigation() {
     // Get all navigation links - prioritize sidebar links
     const sidebarLinks = document.querySelectorAll('.sidebar a, aside a, nav.sidebar a');
@@ -226,10 +270,13 @@ Thank you,
   }
 
   async initialize() {
+    // While we are checking subscription, temporarily block paid-only sidebar links
+    this.setSidebarLoading(true);
     await this.checkSubscription();
+    this.addStyles();
     this.restrictNavigation();
     this.addSubscriptionBadge();
-    this.addStyles();
+    this.setSidebarLoading(false);
   }
 
   addSubscriptionBadge() {
@@ -293,6 +340,37 @@ Thank you,
       @keyframes pulse {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.5; }
+      }
+
+      /* Sidebar loading state: hide icon, show spinner, block clicks */
+      .sidebar a.subscription-loading {
+        position: relative;
+        pointer-events: none;
+        opacity: 0.6;
+      }
+      
+      .sidebar a.subscription-loading i.bx,
+      .sidebar a.subscription-loading .bx {
+        opacity: 0;
+      }
+      
+      .sidebar a.subscription-loading::after {
+        content: '';
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 18px;
+        height: 18px;
+        border-radius: 9999px;
+        border: 2px solid #4b0d7f;
+        border-top-color: transparent;
+        animation: spin-subscription-loader 0.6s linear infinite;
+      }
+      
+      @keyframes spin-subscription-loader {
+        from { transform: translateX(-50%) rotate(0deg); }
+        to   { transform: translateX(-50%) rotate(360deg); }
       }
     `;
     document.head.appendChild(style);
