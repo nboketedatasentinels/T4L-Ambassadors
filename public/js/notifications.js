@@ -687,7 +687,8 @@
           item.addEventListener('click', () => handleNotificationClick(
             item.dataset.id, 
             item.dataset.link,
-            item.dataset.type
+            item.dataset.type,
+            item.dataset.certificateId || ''
           ));
         });
       }
@@ -717,7 +718,8 @@
       <div class="notification-item ${isUnread ? 'unread' : ''}" 
            data-id="${notif.notification_id}" 
            data-link="${notif.link || ''}"
-           data-type="${notif.type || ''}">
+           data-type="${notif.type || ''}"
+           data-certificate-id="${notif.certificate_id || ''}">
         <div class="notification-icon ${iconClass}">
           <i class="bx ${icon}"></i>
         </div>
@@ -823,7 +825,7 @@
   // ============================================
   // HANDLE NOTIFICATION CLICK
   // ============================================
-  async function handleNotificationClick(notificationId, link, notificationType) {
+  async function handleNotificationClick(notificationId, link, notificationType, certificateId) {
     // Mark as read
     try {
       await fetch(`/api/notifications/${notificationId}/read`, {
@@ -849,9 +851,13 @@
     // Determine redirect URL
     let redirectUrl = link;
     
+    // Certificate notification for admin: go to admin dashboard and open that certificate
+    if (notificationType === 'certificate_uploaded' && certificateId && currentUserRole === 'admin') {
+      redirectUrl = '/admin-dashboard.html?certificate=' + encodeURIComponent(certificateId);
+    }
     // If this is a partner application notification for an ambassador, redirect to Partner-Calls.html
     // Also handle new partner post notifications to prevent redirecting to partner-dashboard.html
-    if (currentUserRole === 'ambassador') {
+    else if (currentUserRole === 'ambassador') {
       if (notificationType === 'application_status_change' || 
           notificationType === 'new_partner_post') {
         redirectUrl = '/Partner-Calls.html';

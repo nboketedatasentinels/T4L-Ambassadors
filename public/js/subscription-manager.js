@@ -48,6 +48,44 @@ class SubscriptionManager {
     return this.freeFeatures.includes(featureName);
   }
 
+  // Show skeleton in sidebar while subscription is loading (so free users don't see full nav and click)
+  showSidebarSkeleton() {
+    const sidebar = document.querySelector('.sidebar, aside.sidebar');
+    if (!sidebar) return;
+    const nav = sidebar.querySelector('nav');
+    if (!nav) return;
+    nav.setAttribute('data-subscription-nav', 'true');
+    nav.style.visibility = 'hidden';
+    nav.style.position = 'absolute';
+    nav.style.pointerEvents = 'none';
+    const skeleton = document.createElement('div');
+    skeleton.id = 'sidebar-skeleton-container';
+    skeleton.className = 'flex flex-col space-y-4 text-gray-700 w-full';
+    const count = 10;
+    for (let i = 0; i < count; i++) {
+      const item = document.createElement('div');
+      item.className = 'flex flex-col items-center py-2 px-3 rounded-lg';
+      item.innerHTML = `
+        <div class="sidebar-skeleton-icon w-8 h-8 rounded-lg bg-gray-200"></div>
+        <div class="sidebar-skeleton-text mt-1.5 h-3 w-10 rounded bg-gray-200"></div>
+      `;
+      skeleton.appendChild(item);
+    }
+    nav.parentNode.insertBefore(skeleton, nav);
+  }
+
+  hideSidebarSkeletonShowNav() {
+    const skeleton = document.getElementById('sidebar-skeleton-container');
+    if (skeleton) skeleton.remove();
+    const nav = document.querySelector('.sidebar nav[data-subscription-nav], aside.sidebar nav[data-subscription-nav]');
+    if (nav) {
+      nav.style.visibility = '';
+      nav.style.position = '';
+      nav.style.pointerEvents = '';
+      nav.removeAttribute('data-subscription-nav');
+    }
+  }
+
   // Temporarily block paid-only sidebar links and show a small spinner
   setSidebarLoading(isLoading) {
     try {
@@ -270,13 +308,13 @@ Thank you,
   }
 
   async initialize() {
-    // While we are checking subscription, temporarily block paid-only sidebar links
-    this.setSidebarLoading(true);
-    await this.checkSubscription();
     this.addStyles();
+    // Show skeleton in sidebar so free users don't see full nav during latency and click restricted items
+    this.showSidebarSkeleton();
+    await this.checkSubscription();
+    this.hideSidebarSkeletonShowNav();
     this.restrictNavigation();
     this.addSubscriptionBadge();
-    this.setSidebarLoading(false);
   }
 
   addSubscriptionBadge() {
@@ -371,6 +409,16 @@ Thank you,
       @keyframes spin-subscription-loader {
         from { transform: translateX(-50%) rotate(0deg); }
         to   { transform: translateX(-50%) rotate(360deg); }
+      }
+
+      /* Sidebar skeleton loader (for free ambassadors during subscription check) */
+      .sidebar-skeleton-icon,
+      .sidebar-skeleton-text {
+        animation: subscription-skeleton-pulse 1.5s ease-in-out infinite;
+      }
+      @keyframes subscription-skeleton-pulse {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 1; }
       }
     `;
     document.head.appendChild(style);

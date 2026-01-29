@@ -922,29 +922,8 @@ app.post(
         // Don't fail the whole request if notification fails
       }
 
-      // Notify admins about the new application
-      try {
-        const { data: admins } = await supabase.from("admins").select("user_id");
-        if (admins && admins.length > 0) {
-          const ambassadorName = `${ambassador.first_name || ""} ${
-            ambassador.last_name || ""
-          }`.trim() || "An ambassador";
-          for (const admin of admins) {
-            await createNotification(
-              admin.user_id,
-              "admin",
-              "application_submitted",
-              "📋 New Application",
-              `${ambassadorName} applied to "${postTitle || post.title}"`,
-              `/admin-dashboard.html`,
-              applicationId
-            );
-          }
-          console.log("   ✅ Admin notifications sent");
-        }
-      } catch (adminNotifError) {
-        console.error("   ⚠️ Failed to notify admins:", adminNotifError.message);
-      }
+      // Do not notify admins about ambassador partner-opportunity applications
+      // (Partners are notified below and manage applications on their own.)
 
       // Notify the partner who posted the opportunity
       try {
@@ -1276,26 +1255,7 @@ app.post(
       }
 
       // Notify admins
-      try {
-        const { data: admins } = await supabase.from("admins").select("user_id");
-        if (admins && admins.length > 0) {
-          const ambassadorName = `${ambassador.first_name || ""} ${ambassador.last_name || ""}`.trim() || "An ambassador";
-          for (const admin of admins) {
-            await createNotification(
-              admin.user_id,
-              "admin",
-              "application_submitted",
-              "📋 New Application",
-              `${ambassadorName} applied to "${post.title}"`,
-              `/admin-dashboard.html`,
-              applicationId
-            );
-          }
-          console.log("✅ Admin notifications sent");
-        }
-      } catch (adminNotifError) {
-        console.error("⚠️ Failed to notify admins:", adminNotifError.message);
-      }
+      // Do not notify admins about ambassador partner-opportunity applications.
 
       // Notify the partner who posted the opportunity
       try {

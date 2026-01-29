@@ -4,6 +4,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>T4L Journey Tracker</title>
   <link rel="icon" type="image/png" href="/images/favicon.png" />
   <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" />
@@ -1193,16 +1196,17 @@
           </div>
         </div>
 
-          <div class="instructions">
+        <div class="instructions">
           <h3><i class='bx bx-list-check'></i> How to Announce Your Ambassadorship</h3>
           <ol>
-            <li><strong>Preview all 3 designs</strong> above - each has a different logo color</li>
-            <li><strong>Click on your preferred design</strong> to select it</li>
-            <li><strong>Click on the link to "duplicate the file in Canva"</strong> to customize your selected design</li>
-            <li><strong>Add your name, photo, or personal touch</strong> in Canva (optional)</li>
-            <li><strong>Download the image</strong> from Canva</li>
-            <li><strong>Click "Post on LinkedIn"</strong> below to share your announcement.</li>
-            <li><strong>The LinkedIn message is pre-filled</strong> - just add the image , tag Transformation Leader, and publish!</li>
+            <li>Preview all 3 designs above - each has a different logo color</li>
+            <li>Click on your preferred design to select it</li>
+            <li>Click on <a href="https://ior.ad/bdhG?iframeHash=trysteps-1" target="_blank" rel="noopener" class="text-purple-600 font-semibold underline"><strong>File</strong></a> in Canva from the toolbar to duplicate the design</li>
+            <li>Add your name, photo, or personal touch in Canva (optional)</li>
+            <li>Download the image from Canva</li>
+            <li>Click "Post on LinkedIn" below to share your announcement.</li>
+            <li>The LinkedIn message is pre-filled - just add the image, tag Transformation Leader, and publish!</li>
+            <li>Click on the link for instructional guidelines</li>
           </ol>
         </div>
 
@@ -1348,12 +1352,12 @@
         <div class="instructions">
           <h3><i class='bx bx-list-check'></i> How to Share Your Year-End Story</h3>
           <ol>
-            <li><strong>View the carousel above</strong> - this is your year-end reflection graphic</li>
-            <li><strong>Click the link above</strong> to open it in Canva if you want to customize</li>
-            <li><strong>Download the image</strong> from Canva (or use as is)</li>
-            <li><strong>Click "Post on LinkedIn"</strong> below to share your reflection</li>
-            <li><strong>Upload the carousel image</strong> when posting on LinkedIn</li>
-            <li><strong>The message is pre-filled</strong> - just add your personal story and publish!</li>
+            <li>View the carousel above — this is your year-end reflection graphic.</li>
+            <li>Click the button above to open it in Canva if you want to customize it.</li>
+            <li>Download the image from Canva (or use it as it is).</li>
+            <li>Click "Post on LinkedIn" below to share your reflection.</li>
+            <li>Upload the carousel image when creating your LinkedIn post.</li>
+            <li>The message is already pre-filled — just add your personal story, tag Transformation Leader, and publish!</li>
           </ol>
         </div>
 
@@ -1429,14 +1433,16 @@
         </div>
 
         <div class="instructions">
-          <h3><i class='bx bx-list-check'></i> How to Use These Quote Templates</h3>
+          <h3><i class='bx bx-list-check'></i> How to Use These Designs</h3>
           <ol>
-            <li><strong>Preview the quote templates above</strong> - click on any to select it</li>
-            <li><strong>Click "Open in Canva"</strong> to customize your selected quote template</li>
-            <li><strong>Customize the quote template</strong> in Canva with your content</li>
-            <li><strong>Download the images</strong> from Canva</li>
-            <li><strong>Click "Post on LinkedIn"</strong> below to share your quote template</li>
-            <li><strong>Upload the quote template image</strong> when posting on LinkedIn</li>
+            <li>Preview all 3 designs above - each has a different logo color</li>
+            <li>Click on your preferred design to select it</li>
+            <li>Click on <a href="https://ior.ad/bdhG?iframeHash=trysteps-1" target="_blank" rel="noopener" class="text-purple-600 font-semibold underline"><strong>File</strong></a> in Canva from the toolbar to duplicate the design</li>
+            <li>Add your name, photo, or personal touch in Canva (optional)</li>
+            <li>Download the image from Canva</li>
+            <li>Click "Post on LinkedIn" below to share your announcement.</li>
+            <li>The LinkedIn message is pre-filled - just add the image, tag Transformation Leader, and publish!</li>
+            <li>Click on the link for instructional guidelines</li>
           </ol>
         </div>
 
@@ -1584,38 +1590,6 @@
   </div>
 
   <!-- Daily Reminder Popup -->
-  <div id="dailyReminderPopup" class="daily-reminder-popup hidden">
-    <div class="daily-reminder-content">
-      <!-- Motivational Icon -->
-      <div class="daily-reminder-icon-container">
-        <i class='bx bx-bullseye daily-reminder-icon'></i>
-      </div>
-
-      <!-- Motivational Message -->
-      <div class="daily-reminder-message" id="dailyReminderMessage">
-        💪 Keep pushing forward!
-      </div>
-
-      <!-- Task Name -->
-      <div class="daily-reminder-task-container">
-        <div class="daily-reminder-task-label">Your current task:</div>
-        <div class="daily-reminder-task-name" id="dailyReminderTaskName">
-          Complete your current task
-        </div>
-      </div>
-
-      <!-- Call to Action -->
-      <div class="daily-reminder-cta">
-        Complete it to keep your momentum going! 💪
-      </div>
-
-      <!-- Close Button -->
-      <button class="daily-reminder-close" onclick="closeDailyReminder()">
-        <i class='bx bx-x'></i>
-      </button>
-    </div>
-  </div>
-
   <!-- Celebration Popup -->
   <div id="completionCelebration" class="celebration-popup hidden">
     <div class="celebration-content">
@@ -2165,27 +2139,27 @@
     function getTasksForMonth(monthNumber) {
       const tasksByMonth = {
         1: [
-          { id: 'linkedin_course', text: 'Complete LinkedIn Warrior Course', time: '2 hours', critical: true },
+          { id: 'linkedin_course', text: 'Complete LinkedIn Warrior Course', time: '5-7 days', critical: true },
           { id: 'submit_profile', text: 'Submit LinkedIn profile for audit', time: '30 mins', critical: true },
-          { id: 'second_course', text: 'Complete Transformational Leadership Course', time: '3 hours', critical: true },
+          { id: 'second_course', text: 'Complete Transformational Leadership Course', time: '5-7 days', critical: true },
           { id: 'connect_10', text: 'Connect with 10 new people in your industry', time: '1 hour' },
           { id: 'post_3x', text: 'Announce your T4L Ambassador enrollment on LinkedIn', time: '2 hours' }
         ],
         2: [
         { id: 'implement_audit', text: 'Implement profile audit recommendations', time: '1 hour', critical: true },
-        { id: 'third_course', text: 'Complete Science of You: Personality & Strengths', time: '2 hours', critical: true },
-        { id: 'submit_article_1', text: 'Submit your first article idea', time: '45 mins' },
+        { id: 'third_course', text: 'Complete Science of You: Personality & Strengths', time: '5-7 days', critical: true },
+        { id: 'submit_article_1', text: 'Submit your first article idea', time: '3-5 hours' },
         { id: 'engage_15', text: 'Engage with 15 posts in T4L community (LinkedIn, Facebook, WhatsApp, X, YouTube, Instagram)', time: '1 hour' }
         ],
         3: [
           { id: 'first_event', text: 'Attend your first quarterly networking event', time: '2 hours', critical: true },
           { id: 'transformation_post', text: 'Post transformation update on LinkedIn (90 days)', time: '2 hours' },
-          { id: 'submit_article_2', text: 'Submit second article (if first is published)', time: '3 hours' },
+          { id: 'submit_article_2', text: 'Submit second article (if first is published)', time: '3-5 hours' },
           { id: 'update_impact_log', text: 'Update your impact log', time: '30 mins' }
         ],
         4: [
           { id: 'volunteer', text: 'Volunteer for a leadership opportunity', time: '2 hours', critical: true },
-          { id: 'complete_courses', text: 'AI Stacking 101', time: '4 hours', critical: true },
+          { id: 'complete_courses', text: 'AI Stacking 101', time: '5-7 days', critical: true },
           { id: 'request_recommendation', text: 'Request letter of recommendation (if needed)', time: '1 hour' },
           { id: 'post_4x', text: 'Post 4x on LinkedIn this month', time: '2 hours' }
         ],
@@ -2201,7 +2175,7 @@
           { id: 'halfway_story', text: 'Post your halfway transformation story', time: '2 hours' }
         ],
         7: [
-          { id: 'submit_article_next', text: "Submit next article (if you haven't already)", time: '3 hours' },
+          { id: 'submit_article_next', text: "Submit next article (if you haven't already)", time: '3-5 hours' },
           { id: 'lead_second', text: 'Host or lead an opportunity (if you haven\'t completed the form already)', time: '3 hours' },
           { id: 'post_4x_m7', text: 'Post consistently: 4x this month', time: '2 hours' }
         ],
@@ -2739,7 +2713,7 @@ Thank you,
 
 I'm pleased to announce that I have been selected as Transformation Leader (T4L), Top Voice Ambassador.
 
-T4L helps organisations move from top-down control to a culture of collaboration. Our mission is to impact one million lives by the end of this year—but more importantly, it's about being part of an ecosystem building digital leaders who are driving transformation not only in their organisations but in their communities.
+T4L helps organisations move from top-down control to a culture of collaboration. Our mission is to impact one million lives by the end of this year,but more importantly, it's about being part of an ecosystem building digital leaders who are driving transformation not only in their organisations but in their communities.
 
 This opportunity represents my commitment to positive impact and sustainable change.
 
@@ -2780,7 +2754,7 @@ Reflecting on My Journey
 Almost a year ago, I stepped into the role of Transformation Leader (T4L) Top Voice Ambassador. Here's what I didn't expect:
 The conversations mattered more than the content. The community became as valuable as the information received. And the transformation I set out to share? It started with me.
 [Share a specific insight, story, or outcome from your experience]
-To anyone considering this path—the investment in yourself ripples outward in ways you can't predict.
+To anyone considering this path,the investment in yourself ripples outward in ways you can't predict.
 #DigitalLeadership #PersonalGrowth #T4L #Transformation`;
 
       return `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(postText)}`;
@@ -3011,43 +2985,45 @@ What quote guides your approach to leadership or change?
           const emailType = action === 'email' ? 'default' : action.split(':')[1];
 
           if (emailType === 'speaking_pitch') {
-            subject = 'Transformation Update & Personal Topic Inquiry';
-            body = `TRANSFORMATION
-Subject: [Flexible, hard] Status or [in fact future]
-By David:
+            subject = 'Speaking Proposal: [Your Topic Title]';
+            body = `Dear [Event Organizer/Selection Committee],
 
-It is not a touch of the reflection for herself. Hard!
-Your audience at Black's address about global & society don't work with. Help them (practice reviews per share).
+I'm writing to submit a speaking proposal for [Conference/Event Name].
 
+Proposed Topic: [Your Talk Title]
+Description: [2-3 sentences summarizing what you'll cover and the key takeaway for attendees.]
 
-Personal Topic: "Everything's Jessica, Tate"
-What standard will I have?
+Why This Matters to Your Audience: [1-2 sentences connecting your topic to the event's theme or the audience's challenges/interests.]
 
-[Flexible, stationary (*)]
-[Flexible, stationary *)]
-[Flexible, stationary *)]
+About Me: [Brief bio: your role, relevant expertise, and any previous speaking experience.]
 
-Why are you the reasons to identify, resolve, undertake, or advance experience, for systems of personal? Is this applicable with your audience at Facebook?
-Here's my question pages: [Best use of Advanced speakers over this].
-Are you open to a 1 different online dataset to?
-Note:
-[First Name]
-[Title]`;
+Session Details:
+Preferred format: [Keynote / Breakout / Workshop / Panel]
+Suggested length: [30 min / 45 min / 60 min]
+Audience level: [Beginner / Intermediate / Advanced]
+
+I'd welcome the opportunity to discuss how this session could add value to your program. Please let me know if you need any additional information.
+Thank you for your consideration.
+
+Best regards,
+[Your Name]
+[Your Title]
+[Your Contact Information]`;
           } else if (emailType === 'follow_up') {
             subject = 'Great connecting at [Event Name]!';
             body = `Hi [Name],
 
-It was great meeting you at [Event Name/Q[X] Ambassador Gathering] on [day/date]. I really enjoyed our conversation about [specific topic you discussed—e.g., "how you're approaching digital adoption in your team" / "the challenges of leading change in traditional industries" / "your experience with stakeholder buy-in"].
+It was great meeting you at [Event Name/Q[X] Ambassador Gathering] on [day/date]. I really enjoyed our conversation about [specific topic you discussed,e.g., "how you're approaching digital adoption in your team" / "the challenges of leading change in traditional industries" / "your experience with stakeholder buy-in"].
 
 [Choose one or customise:]
 * Your perspective on [specific point they made] stuck with me, and I've been thinking about how I might apply that in my own context.
 * I was inspired by what you shared about [specific project/challenge/success]. It's clear you're doing meaningful work.
-* I appreciated your honesty about [challenge they mentioned]—it's reassuring to know others are navigating similar terrain.
+* I appreciated your honesty about [challenge they mentioned],it's reassuring to know others are navigating similar terrain.
 
 I'd love to stay connected and continue learning from your journey.
 [Choose one or customise:]
 * Would you be open to a quick virtual coffee in the coming weeks?
-* Let's keep in touch—I'll look out for you at the next quarterly event.
+* Let's keep in touch,I'll look out for you at the next quarterly event.
 * If there's ever anything I can support you with, please don't hesitate to reach out.
 
 In the meantime, here's [optional: a resource, article, or link related to your conversation] that reminded me of what we discussed.
@@ -3061,7 +3037,7 @@ Warm regards,
 [Optional: T4L Ambassador badge/signature]
 
 Shorter Alternative (for LinkedIn message follow-up):
-Hi [Name], it was great connecting at [Event Name]! I enjoyed our chat about [topic]. Let's stay in touch—I'd love to hear how [specific thing they mentioned] progresses. Feel free to reach out anytime.`;
+Hi [Name], it was great connecting at [Event Name]! I enjoyed our chat about [topic]. Let's stay in touch,I'd love to hear how [specific thing they mentioned] progresses. Feel free to reach out anytime.`;
           } else if (emailType === 'speaking_opportunity') {
             subject = 'Apply for 2+ speaking opportunities';
             body = `Subject: [Topic] Workshop for [Company Name] Team
@@ -3336,9 +3312,9 @@ Best,
             title: "Foundation Building",
             milestone: "Establish your digital presence and complete core training",
             tasks: [
-              { id: 'linkedin_course', text: 'Complete LinkedIn Warrior Course', time: '2 hours', critical: true },
+              { id: 'linkedin_course', text: 'Complete LinkedIn Warrior Course', time: '5-7 days', critical: true },
               { id: 'submit_profile', text: 'Submit LinkedIn profile for audit', time: '30 mins', critical: true },
-              { id: 'second_course', text: 'Complete Transformational Leadership Course', time: '3 hours', critical: true },
+              { id: 'second_course', text: 'Complete Transformational Leadership Course', time: '5-7 days', critical: true },
               { id: 'connect_10', text: 'Connect with 10 new people in your industry', time: '1 hour' },
               { id: 'post_3x', text: 'Announce your T4L Ambassador enrollment on LinkedIn', time: '2 hours' }
             ],
@@ -3354,8 +3330,8 @@ Best,
             milestone: "Start creating valuable content and engage with the full T4L community",
             tasks: [
               { id: 'implement_audit', text: 'Implement profile audit recommendations', time: '1 hour', critical: true },
-              { id: 'third_course', text: 'Complete Science of You: Personality & Strengths', time: '2 hours', critical: true },
-              { id: 'submit_article_1', text: 'Submit your first article idea', time: '45 mins' },
+              { id: 'third_course', text: 'Complete Science of You: Personality & Strengths', time: '5-7 days', critical: true },
+              { id: 'submit_article_1', text: 'Submit your first article idea', time: '3-5 hours' },
               { id: 'engage_15', text: 'Engage with 15 posts across T4L community channels', time: '1 hour' },
             ],
             metrics: {
@@ -3371,7 +3347,7 @@ Best,
             tasks: [
               { id: 'first_event', text: 'Attend your first quarterly networking event', time: '2 hours', critical: true },
               { id: 'transformation_post', text: 'Post transformation update on LinkedIn (90 days)', time: '2 hours' },
-              { id: 'submit_article_2', text: 'Submit second article (if first is published)', time: '3 hours' },
+              { id: 'submit_article_2', text: 'Submit second article (if first is published)', time: '3-5 hours' },
               { id: 'update_impact_log', text: 'Update your impact log', time: '30 mins' }
             ],
             metrics: {
@@ -3386,7 +3362,7 @@ Best,
             milestone: "Leadership Activated: Volunteered for opportunity, all courses complete, growing visibility",
             tasks: [
               { id: 'volunteer', text: 'Volunteer for a leadership opportunity', time: '2 hours', critical: true },
-              { id: 'complete_courses', text: 'AI Stacking 101', time: '4 hours', critical: true },
+              { id: 'complete_courses', text: 'AI Stacking 101', time: '5-7 days', critical: true },
               { id: 'request_recommendation', text: 'Request letter of recommendation (if needed)', time: '1 hour' },
               { id: 'post_4x', text: 'Post 4x on LinkedIn this month', time: '2 hours' }
             ],
@@ -3432,7 +3408,7 @@ Best,
             title: "VISIBILITY",
             milestone: "Visible Leader: Podcast prep underway, leading regularly, strong content cadence",
             tasks: [
-              { id: 'submit_article_next', text: "Submit next article (if you haven't already)", time: '3 hours' },
+              { id: 'submit_article_next', text: "Submit next article (if you haven't already)", time: '3-5 hours' },
               { id: 'lead_second', text: 'Host or lead an opportunity (if you haven\'t completed the form already)', time: '3 hours' },
               { id: 'post_4x_m7', text: 'Post consistently: 4x this month', time: '2 hours' }
             ],
