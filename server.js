@@ -9386,6 +9386,31 @@ app.patch(
 
       const updatedArticle = await updateArticle(articleId, updates);
 
+      // Notify admins so the update appears in the bell — ambassador sent updated version after feedback
+      try {
+        const { data: admins } = await supabase.from("admins").select("user_id");
+        if (admins && admins.length > 0) {
+          const ambassadorName = `${ambassador.first_name || ""} ${ambassador.last_name || ""}`.trim() || "An ambassador";
+          const articleTitle = (updatedArticle.title || existingArticle.title || "Article").substring(0, 60);
+          for (const admin of admins) {
+            await createNotification(
+              admin.user_id,
+              "admin",
+              "article_updated",
+              "📝 Article Updated",
+              `${ambassadorName} submitted an updated version: "${articleTitle}"`,
+              "/admin-dashboard.html",
+              null,
+              null,
+              articleId
+            );
+          }
+          console.log("✅ Admin notifications sent for article update");
+        }
+      } catch (notifError) {
+        console.error("⚠️ Failed to notify admins of article update:", notifError.message);
+      }
+
       return res.json({
         success: true,
         id: updatedArticle.article_id,
@@ -9474,34 +9499,30 @@ app.post(
         throw updateError;
       }
 
-      // Create a notification for admins about the consent
+      // Notify all admins in the bell so they remember to share the publication
       try {
-        const ambassadorName = `${ambassador.first_name || ""} ${ambassador.last_name || ""}`.trim() || ambassador.name || "Ambassador";
-        
-        // Get all admins to notify them
-        const { data: admins } = await supabase
-          .from("users")
-          .select("user_id")
-          .eq("role", "admin");
-
+        const { data: admins } = await supabase.from("admins").select("user_id");
         if (admins && admins.length > 0) {
-          const notifications = admins.map(admin => ({
-            notification_id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            recipient_id: admin.user_id,
-            article_id: articleId,
-            type: "ambassador_consent",
-            title: "Ambassador Consent to Publish",
-            message: `${ambassadorName} has given consent to publish their article "${existingArticle.title}"`,
-            is_read: false,
-            created_at: new Date().toISOString()
-          }));
-
-          await supabase.from("notifications").insert(notifications);
-          console.log("✅ Notified", admins.length, "admins about consent");
+          const ambassadorName = `${ambassador.first_name || ""} ${ambassador.last_name || ""}`.trim() || ambassador.name || "An ambassador";
+          const articleTitle = (existingArticle.title || "Article").substring(0, 60);
+          for (const admin of admins) {
+            await createNotification(
+              admin.user_id,
+              "admin",
+              "ambassador_consent_to_publish",
+              "✅ Ready to publish – ambassador consent",
+              `${ambassadorName} allowed you to publish. Remember to share: "${articleTitle}"`,
+              "/admin-dashboard.html",
+              null,
+              null,
+              articleId,
+              null
+            );
+          }
+          console.log("✅ Admin notifications sent for ambassador consent to publish");
         }
       } catch (notifError) {
-        console.warn("⚠️ Failed to create admin notifications:", notifError.message);
-        // Don't fail the request if notifications fail
+        console.warn("⚠️ Failed to create admin notifications for consent:", notifError.message);
       }
 
       console.log("✅ Ambassador consent to publish recorded for article:", articleId);

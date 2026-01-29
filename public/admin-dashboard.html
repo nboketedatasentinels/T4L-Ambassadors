@@ -1611,7 +1611,7 @@ function getNotificationIcon(type) {
                         state.scrollToCertificateId = certificateId;
                     }
                     switchTab('certificates');
-                } else if (articleId && (type === 'article_submitted' || type === 'needs_update' || type === 'article_published')) {
+                } else if (articleId && (type === 'article_submitted' || type === 'needs_update' || type === 'article_published' || type === 'article_updated' || type === 'ambassador_consent_to_publish')) {
                     openReviewModal(articleId);
                     closeNotificationDropdown();
                 }
