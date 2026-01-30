@@ -267,6 +267,61 @@
           </div>
         </div>
 
+        <!-- Service Details Modal (opened when clicking Open) -->
+        <div class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" id="serviceDetailsModal">
+          <div class="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-200 sticky top-0 bg-white flex justify-between items-center">
+              <h3 class="text-xl font-bold text-gray-900">Service Details</h3>
+              <button type="button" class="close-details-modal text-gray-400 hover:text-gray-600">
+                <i class="bx bx-x text-2xl"></i>
+              </button>
+            </div>
+            <div class="p-6">
+              <div class="flex items-center gap-3 mb-4">
+                <span id="detailsModalServiceType" class="px-3 py-1 rounded-full text-xs font-medium border"></span>
+                <span id="detailsModalServiceStatus" class="px-3 py-1 rounded-full text-xs font-medium"></span>
+              </div>
+              <h2 class="text-2xl font-bold text-gray-900 mb-4" id="detailsModalTitle"></h2>
+              <div class="mb-6">
+                <h4 class="text-sm font-semibold text-gray-700 mb-2">Description</h4>
+                <p class="text-gray-600 whitespace-pre-wrap break-words" id="detailsModalDescription"></p>
+              </div>
+              <div class="mb-6" id="detailsModalPricingSection">
+                <h4 class="text-sm font-semibold text-gray-700 mb-2">Pricing</h4>
+                <p class="text-gray-600" id="detailsModalPricing"></p>
+              </div>
+              <div class="mb-6" id="detailsModalDurationSection">
+                <h4 class="text-sm font-semibold text-gray-700 mb-2">Duration / Availability</h4>
+                <p class="text-gray-600" id="detailsModalDuration"></p>
+              </div>
+              <div class="mb-6" id="detailsModalCapacitySection">
+                <h4 class="text-sm font-semibold text-gray-700 mb-2">Capacity</h4>
+                <p class="text-gray-600" id="detailsModalCapacity"></p>
+              </div>
+              <div class="border-t border-gray-200 pt-6 mt-6">
+                <h4 class="text-sm font-semibold text-gray-700 mb-4">Posted By</h4>
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                    <i class="bx bx-user text-purple-600 text-xl"></i>
+                  </div>
+                  <div>
+                    <p class="font-medium text-gray-900" id="detailsModalPartnerName"></p>
+                    <a href="#" class="text-[#4b0d7f] hover:underline text-sm break-all" id="detailsModalPartnerEmail"></a>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-4 text-sm text-gray-500">
+                <p>Posted on: <span id="detailsModalCreatedDate"></span></p>
+              </div>
+            </div>
+            <div class="p-6 border-t border-gray-200 bg-gray-50">
+              <button type="button" class="close-details-modal w-full bg-[#4b0d7f] hover:bg-[#3a0a66] text-white py-3 rounded-lg font-medium transition-colors">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Request Service Modal -->
         <div class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" id="requestModal">
           <div class="bg-white rounded-xl max-w-md w-full p-6">
@@ -479,24 +534,18 @@
                 <span class="service-type-${service.type} px-3 py-1 rounded-full text-xs font-medium border">
                   ${formatServiceType(service.type)}
                 </span>
-                <span class="status-${service.status} px-3 py-1 rounded-full text-xs font-medium">
+                <span class="status-${service.status} px-3 py-1 rounded-full text-xs font-medium ${service.status === 'active' && !service.hasRequested ? 'cursor-pointer hover:opacity-90 open-service-btn' : ''}" ${service.status === 'active' && !service.hasRequested ? `data-id="${service.service_id}"` : ''} title="${service.status === 'active' && !service.hasRequested ? 'Click to request this service' : ''}">
                   ${service.status === 'active' ? 'Open' : 'Closed'}
                 </span>
               </div>
               <h3 class="font-bold text-lg text-gray-900 mb-2">${service.title}</h3>
               <p class="text-gray-600 text-sm mb-4 line-clamp-2">${service.description}</p>
               
-              <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-2">
-                  <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                    <i class="bx bx-user text-purple-600"></i>
-                  </div>
-                  <span class="text-sm font-medium">Partner</span>
+              <div class="flex items-center gap-2 mb-4 min-w-0">
+                <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <i class="bx bx-user text-purple-600"></i>
                 </div>
-                <div class="text-right">
-                  <div class="text-xs text-gray-500">Requests</div>
-                  <div class="font-semibold">${service.requestCount || 0}</div>
-                </div>
+                <span class="text-sm font-medium truncate" title="${String(service.partnerName || 'Partner').replace(/"/g, '&quot;')}">${String(service.partnerName || 'Partner').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}</span>
               </div>
               
               ${service.status === 'active' && !service.hasRequested ? `
@@ -523,7 +572,75 @@
       }
 
       function formatServiceType(type) {
-        return type.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        return type ? type.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : 'General';
+      }
+
+      function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      function formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      }
+
+      function formatPricing(service) {
+        if (!service.pricing_type) return 'Not specified';
+        switch (service.pricing_type) {
+          case 'free': return 'Free';
+          case 'fixed': return (service.currency || 'USD') + ' ' + (service.price != null ? service.price : '0');
+          case 'hourly': return (service.currency || 'USD') + ' ' + (service.price != null ? service.price : '0') + '/hour';
+          case 'package': return 'Package: ' + (service.currency || 'USD') + ' ' + (service.price != null ? service.price : '0');
+          case 'negotiable': return 'Negotiable';
+          default: return 'Not specified';
+        }
+      }
+
+      function showServiceDetailsModal(service) {
+        const modal = document.getElementById('serviceDetailsModal');
+        if (!modal) return;
+        document.getElementById('detailsModalServiceType').textContent = formatServiceType(service.type);
+        document.getElementById('detailsModalServiceType').className = 'service-type-' + (service.type || '') + ' px-3 py-1 rounded-full text-xs font-medium border';
+        const statusEl = document.getElementById('detailsModalServiceStatus');
+        statusEl.textContent = service.status === 'active' ? 'Open' : 'Closed';
+        statusEl.className = 'status-' + (service.status || '') + ' px-3 py-1 rounded-full text-xs font-medium';
+        document.getElementById('detailsModalTitle').textContent = service.title || '';
+        document.getElementById('detailsModalDescription').textContent = service.description || 'No description provided.';
+        const pricingSection = document.getElementById('detailsModalPricingSection');
+        const pricingEl = document.getElementById('detailsModalPricing');
+        if (service.pricing_type) {
+          pricingEl.textContent = formatPricing(service) + (service.price_note ? ' — ' + service.price_note : '');
+          pricingSection.style.display = 'block';
+        } else {
+          pricingSection.style.display = 'none';
+        }
+        const durationSection = document.getElementById('detailsModalDurationSection');
+        const durationEl = document.getElementById('detailsModalDuration');
+        if (service.duration) {
+          durationEl.textContent = service.duration;
+          durationSection.style.display = 'block';
+        } else {
+          durationSection.style.display = 'none';
+        }
+        const capacitySection = document.getElementById('detailsModalCapacitySection');
+        const capacityEl = document.getElementById('detailsModalCapacity');
+        capacityEl.textContent = service.capacity ? 'Limited to ' + service.capacity + ' participants' : 'Unlimited spots';
+        capacitySection.style.display = 'block';
+        document.getElementById('detailsModalPartnerName').textContent = service.partnerName || 'Partner';
+        const emailEl = document.getElementById('detailsModalPartnerEmail');
+        if (service.partnerEmail) {
+          emailEl.href = 'mailto:' + service.partnerEmail;
+          emailEl.textContent = service.partnerEmail;
+        } else {
+          emailEl.href = '#';
+          emailEl.textContent = 'Email not available';
+        }
+        document.getElementById('detailsModalCreatedDate').textContent = formatDate(service.created_at);
+        modal.classList.remove('hidden');
       }
 
       function attachServiceCardListeners() {
@@ -533,6 +650,15 @@
             selectedService = allServices.find(s => s.service_id === serviceId);
             if (selectedService) {
               showRequestModal(selectedService);
+            }
+          });
+        });
+        document.querySelectorAll('.open-service-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const serviceId = this.dataset.id;
+            const service = allServices.find(s => s.service_id === serviceId);
+            if (service) {
+              showServiceDetailsModal(service);
             }
           });
         });
@@ -675,6 +801,18 @@
         document.getElementById('requestModal').addEventListener('click', (e) => {
           if (e.target.id === 'requestModal') {
             document.getElementById('requestModal').classList.add('hidden');
+          }
+        });
+
+        // Service Details modal close
+        document.querySelectorAll('.close-details-modal').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.getElementById('serviceDetailsModal').classList.add('hidden');
+          });
+        });
+        document.getElementById('serviceDetailsModal').addEventListener('click', (e) => {
+          if (e.target.id === 'serviceDetailsModal') {
+            document.getElementById('serviceDetailsModal').classList.add('hidden');
           }
         });
         

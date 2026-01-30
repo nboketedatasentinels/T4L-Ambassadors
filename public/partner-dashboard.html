@@ -407,26 +407,37 @@
           
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <button 
-              onclick="setActive(this)" 
+              onclick="setActiveFilter(this, 'all')" 
               class="opportunity-btn active bg-[#4b0d7f] text-white px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base"
+              data-filter="all"
+            >
+              All
+            </button>
+            <button 
+              onclick="setActiveFilter(this, 'speaking')" 
+              class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base"
+              data-filter="speaking"
             >
               Speaking
             </button>
             <button 
-              onclick="setActive(this)" 
+              onclick="setActiveFilter(this, 'podcast')" 
               class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base"
+              data-filter="podcast"
             >
               Podcast
             </button>
             <button 
-              onclick="setActive(this)" 
+              onclick="setActiveFilter(this, 'webinar')" 
               class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base"
+              data-filter="webinar"
             >
               Webinar
             </button>
             <button 
-              onclick="setActive(this)" 
+              onclick="setActiveFilter(this, 'volunteering')" 
               class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base"
+              data-filter="volunteering"
             >
               Volunteering
             </button>
@@ -606,31 +617,24 @@
             const myPosts = data.posts || [];
             console.log(`📊 Found ${myPosts.length} posts for this partner`);
 
+            // Cache posts for filtering
+            window._partnerPostsCache = myPosts;
+            window._currentOpportunityFilter = window._currentOpportunityFilter || 'all';
+
             if (myPosts.length > 0) {
               // Update stats
               const activePostsElement = document.getElementById('activePosts');
               if (activePostsElement) {
                 activePostsElement.textContent = myPosts.length;
               }
-              
-              // Views removed - no longer tracking
 
-              // Create cards
-              myPosts.forEach((post, index) => {
-                console.log(`Creating card ${index + 1}:`, post.title);
-                const postCard = createPostCard(post);
-                postsContainer.appendChild(postCard);
-              });
+              // Render cards (respecting current filter)
+              renderPostsFiltered();
               
               // Update scroll buttons after loading posts
-              setTimeout(() => {
-                const scrollContainer = document.getElementById('postsScroll');
-                if (scrollContainer) {
-                  const event = new Event('scroll');
-                  scrollContainer.dispatchEvent(event);
-                }
-              }, 200);
+              setTimeout(updatePostsScrollButtons, 200);
             } else {
+              window._partnerPostsCache = [];
               console.log('📭 No posts found, showing empty state');
               // Show empty state
               postsContainer.innerHTML = `
@@ -766,6 +770,32 @@
         `;
         
         return card;
+      }
+
+      // ============================================
+      // Filter and render posts by opportunity type
+      // ============================================
+      function renderPostsFiltered() {
+        const postsContainer = document.getElementById('postsScroll');
+        if (!postsContainer) return;
+        const cache = window._partnerPostsCache || [];
+        const filter = (window._currentOpportunityFilter || 'all').toLowerCase();
+        const filtered = filter === 'all'
+          ? cache
+          : cache.filter(post => (post.category || '').toLowerCase() === filter);
+        postsContainer.innerHTML = '';
+        filtered.forEach((post, index) => {
+          const postCard = createPostCard(post);
+          postsContainer.appendChild(postCard);
+        });
+        setTimeout(updatePostsScrollButtons, 100);
+      }
+
+      function updatePostsScrollButtons() {
+        const scrollContainer = document.getElementById('postsScroll');
+        if (scrollContainer && typeof scrollContainer.dispatchEvent === 'function') {
+          scrollContainer.dispatchEvent(new Event('scroll'));
+        }
       }
 
       // ============================================
@@ -1018,18 +1048,20 @@
             window.location.href = '/partner-signin';
           });
 
-        // Visibility opportunities active state
-        function setActive(button) {
+        // Visibility opportunities filter: update active button and re-render posts by category
+        function setActiveFilter(button, filter) {
           document.querySelectorAll('.opportunity-btn').forEach(btn => {
             btn.classList.remove('active', 'bg-[#4b0d7f]', 'text-white');
             btn.classList.add('bg-gray-300', 'text-black');
           });
-          
           button.classList.add('active', 'bg-[#4b0d7f]', 'text-white');
           button.classList.remove('bg-gray-300', 'text-black');
+          window._currentOpportunityFilter = filter;
+          if (window._partnerPostsCache && window._partnerPostsCache.length > 0) {
+            renderPostsFiltered();
+          }
         }
-        
-        window.setActive = setActive;
+        window.setActiveFilter = setActiveFilter;
 
         // Logout functionality
         const logoutBtn = document.getElementById('logoutBtn');

@@ -244,11 +244,7 @@ class SubscriptionManager {
             <div class="mb-4">
               <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
                 <p class="text-gray-700 text-sm mb-2">
-                  <strong>To renew your subscription,</strong> please contact:
-                </p>
-                <p class="text-[#4b0d7f] font-semibold text-base">
-                  <i class="fas fa-envelope mr-2"></i>
-                  leaders@t4leader.com
+                  <strong>To Upgrade your subscription,</strong> please contact: <a href="mailto:ambassadors@t4leader.com" class="text-[#4b0d7f] font-semibold hover:underline">ambassadors@t4leader.com</a>
                 </p>
               </div>
             </div>
@@ -301,7 +297,7 @@ Thank you,
 [Your Name]`;
     
     // Create mailto link - simple and direct
-    const mailtoLink = `mailto:leaders@t4leader.com,ambassadors@t4leader.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const mailtoLink = `mailto:ambassadors@t4leader.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     
     // Open email client directly
     window.location.href = mailtoLink;

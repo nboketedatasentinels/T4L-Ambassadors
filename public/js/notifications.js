@@ -26,8 +26,8 @@
       const res = await fetch('/api/me', { credentials: 'include' });
       if (!res.ok) return;
       const me = await res.json();
-      // Support both admin and ambassador roles
-      if (!me || !['admin', 'ambassador'].includes(me.role)) {
+      // Support admin, ambassador, and partner roles (partners see application notifications in bell)
+      if (!me || !['admin', 'ambassador', 'partner'].includes(me.role)) {
         const bellIcons = document.querySelectorAll('.bx-bell');
         bellIcons.forEach(bell => {
           const el = bell.closest('button, div, a, i') || bell;
@@ -745,6 +745,7 @@
     
     const typeClasses = {
       'application_submitted': 'type-application_submitted',
+      'application_received': 'type-application_submitted',
       'application_status_change': 'type-application_status_change',
       'service_request': 'type-service_request',
       'service_request_sent': 'type-service_request_sent',
@@ -770,6 +771,7 @@
     
     const icons = {
       'application_submitted': 'bx-send',
+      'application_received': 'bx-user-plus',
       'application_status_change': 'bx-check-circle',
       'service_request': 'bx-briefcase-alt-2',
       'service_request_sent': 'bx-send',

@@ -382,6 +382,7 @@
       let myServiceRequests = [];
       let currentFilter = 'all';
       let selectedServiceId = null;
+      let statsLoading = true;
       
       // DOM Elements
       const sidebarToggle = document.getElementById('sidebarToggle');
@@ -454,6 +455,15 @@
         }
       }
       
+      // Show loaders in stat cards while data is loading
+      function showStatsLoading() {
+        const loaderHtml = '<i class="bx bx-loader-alt animate-spin text-2xl text-gray-400"></i>';
+        document.getElementById('statTotal').innerHTML = loaderHtml;
+        document.getElementById('statActive').innerHTML = loaderHtml;
+        document.getElementById('statRequests').innerHTML = loaderHtml;
+        document.getElementById('statPending').innerHTML = loaderHtml;
+      }
+      
       // Initialize app
       document.addEventListener('DOMContentLoaded', async () => {
         // Setup UI interactions
@@ -463,11 +473,15 @@
         setupPortfolioModal(); // NEW
         setupLogout();
         
+        // Show loaders in stats until data is ready
+        showStatsLoading();
+        
         // Load data
         await loadCurrentUser();
         await loadMyServices();
         await loadServiceRequests();
         
+        statsLoading = false;
         // Update UI
         updateStats();
         renderServicesTable();
@@ -672,11 +686,18 @@
       
       // UI update functions
       function updateStats() {
+        const statTotalEl = document.getElementById('statTotal');
+        const statActiveEl = document.getElementById('statActive');
+        const statRequestsEl = document.getElementById('statRequests');
+        const statPendingEl = document.getElementById('statPending');
+        
+        if (statsLoading) return;
+        
         if (!myServices.length) {
-          document.getElementById('statTotal').textContent = '0';
-          document.getElementById('statActive').textContent = '0';
-          document.getElementById('statRequests').textContent = '0';
-          document.getElementById('statPending').textContent = '0';
+          statTotalEl.textContent = '0';
+          statActiveEl.textContent = '0';
+          statRequestsEl.textContent = '0';
+          statPendingEl.textContent = '0';
           return;
         }
         
@@ -693,10 +714,10 @@
           pendingRequests += serviceRequests.filter(r => r.status === 'pending').length;
         });
         
-        document.getElementById('statTotal').textContent = total;
-        document.getElementById('statActive').textContent = active;
-        document.getElementById('statRequests').textContent = totalRequests;
-        document.getElementById('statPending').textContent = pendingRequests;
+        statTotalEl.textContent = total;
+        statActiveEl.textContent = active;
+        statRequestsEl.textContent = totalRequests;
+        statPendingEl.textContent = pendingRequests;
       }
       
       function updateTabCounts() {
@@ -782,11 +803,6 @@
               <td class="py-4 px-4 text-sm text-gray-500">${formatDate(service.created_at)}</td>
               <td class="py-4 px-4">
                 <div class="flex items-center gap-2">
-                  <button class="text-blue-600 hover:text-blue-800 p-1.5 rounded hover:bg-blue-50" 
-                          title="Edit" 
-                          onclick="editService('${service.service_id}')">
-                    <i class="bx bx-edit text-lg"></i>
-                  </button>
                   ${service.status === 'active' ? `
                     <button class="text-gray-600 hover:text-gray-800 p-1.5 rounded hover:bg-gray-100" 
                             title="Close" 
@@ -838,10 +854,6 @@
       }
       
       // Service actions
-      async function editService(serviceId) {
-        window.location.href = `/edit-service.html?id=${serviceId}`;
-      }
-      
       async function toggleServiceStatus(serviceId, newStatus) {
         const action = newStatus === 'active' ? 'publish' : 'close';
         const confirmation = newStatus === 'active' 
@@ -1000,14 +1012,6 @@
                 <p class="text-gray-700 text-sm mb-4">"${request.message}"</p>
               ` : ''}
               <div class="flex flex-wrap gap-3">
-                <!-- View Portfolio Button -->
-                <button class="text-sm bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors view-portfolio"
-                        data-id="${ambassadorId}"
-                        data-name="${ambassadorName}"
-                        data-email="${ambassadorEmail || ''}">
-                  <i class="bx bx-folder-open mr-1"></i> View Work
-                </button>
-                
                 ${request.status === 'pending' ? `
                   <button class="text-sm bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                           onclick="updateRequestStatus('${request.request_id}', 'accepted')">
@@ -1029,16 +1033,6 @@
             </div>
           `;
         }).join('');
-        
-        // Attach portfolio view event listeners
-        document.querySelectorAll('.view-portfolio').forEach(btn => {
-          btn.addEventListener('click', function() {
-            const ambassadorId = this.dataset.id;
-            const ambassadorName = this.dataset.name;
-            const ambassadorEmail = this.dataset.email;
-            viewAmbassadorPortfolio(ambassadorId, ambassadorName, ambassadorEmail);
-          });
-        });
       }
       
       // NEW: View ambassador portfolio
@@ -1229,7 +1223,6 @@
       }
       
       // Make functions available globally
-      window.editService = editService;
       window.toggleServiceStatus = toggleServiceStatus;
       window.deleteService = deleteService;
       window.updateRequestStatus = updateRequestStatus;

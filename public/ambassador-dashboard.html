@@ -599,6 +599,7 @@
         try {
           const videoContainer = domCache.get('videoContainer');
           const currentVideo = window.currentVideo;
+          const hasFullAccess = window.subscriptionManager && window.subscriptionManager.hasFullAccess === true;
           
           if (!videoContainer || !currentVideo?.url) {
             showVideoError(videoContainer ? 'Video data is missing. Please refresh the page.' : 'Video container not found.');
@@ -616,7 +617,7 @@
             </div>
           `;
           
-          const playUrl = utils.buildVideoUrl(currentVideo.url);
+          const playUrl = hasFullAccess ? utils.buildVideoUrl(currentVideo.url) : (currentVideo.url || ''); // Free: no autoplay
           const viewUrl = utils.getCanvaViewUrl(currentVideo.url);
           
           setTimeout(() => {
@@ -639,8 +640,19 @@
                     <p class="text-sm">Loading video player...</p>
                   </div>
                 </div>
+                ${!hasFullAccess ? `
+                <div class="absolute inset-0 z-10 cursor-pointer flex items-center justify-center" onclick="window.subscriptionManager && window.subscriptionManager.showUpgradeModal()" title="Upgrade to watch">
+                  <div class="absolute inset-0 bg-black/20 hover:bg-black/30 transition-colors"></div>
+                  <div class="relative flex flex-col items-center justify-center p-4 pointer-events-none">
+                    <div class="w-14 h-14 rounded-full bg-white/95 shadow-lg flex items-center justify-center mb-2">
+                      <i class="bx bx-lock-alt text-2xl text-[#4b0d7f]"></i>
+                    </div>
+                    <span class="text-white text-sm font-semibold drop-shadow">Click to upgrade and watch</span>
+                  </div>
+                </div>
+                ` : ''}
               </div>
-              <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              ${hasFullAccess ? `<div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                 <div class="flex items-start gap-2">
                   <i class="bx bx-check-circle text-green-600 text-lg mt-0.5"></i>
                   <div class="flex-1">
@@ -651,7 +663,7 @@
                     </p>
                   </div>
                 </div>
-              </div>
+              </div>` : ''}
             `;
             
             const iframe = document.getElementById('canvaVideoFrame');
@@ -1077,6 +1089,23 @@
     <script>
       document.addEventListener('DOMContentLoaded', async function () {
         try {
+          const container = document.getElementById('videoContainer');
+          if (!container) return;
+
+          // Free ambassadors: show locked video (unclickable), no iframe
+          let hasFullAccess = false;
+          if (window.subscriptionManager) {
+            hasFullAccess = window.subscriptionManager.hasFullAccess === true;
+          } else {
+            try {
+              const subRes = await fetch('/api/ambassador/subscription', { credentials: 'include' });
+              if (subRes.ok) {
+                const subData = await subRes.json();
+                hasFullAccess = subData.has_full_access === true;
+              }
+            } catch (_) {}
+          }
+
           const res = await fetch('/api/journey/progress', {
             credentials: 'include',
             headers: {
@@ -1087,6 +1116,11 @@
           if (!res.ok) return;
           const data = await res.json();
           const currentMonth = data.currentMonth || 1;
+
+          const titleEl = document.getElementById('videoTitle');
+          if (titleEl) {
+            titleEl.textContent = `Video Month ${currentMonth}`;
+          }
 
           const videoConfig = {
             1: "https://www.canva.com/design/DAG6j1dS_Uk/Dnd2b9mJCCwSROZIWTDVXA/watch?embed",
@@ -1103,28 +1137,21 @@
             12: "https://www.canva.com/design/DAGynMcNxQI/INWdK-bvAm30aMLK45OMfw/watch?embed"
           };
 
-          // Update header text to reflect the actual month
-          const titleEl = document.getElementById('videoTitle');
-          if (titleEl) {
-            titleEl.textContent = `Video Month ${currentMonth}`;
-          }
-
           let url = videoConfig[currentMonth];
           if (!url) return;
 
-          // Ensure autoplay + embed params
+          // Ensure autoplay + embed params (only for paid; free users get no autoplay so video stays paused)
           if (url.includes('canva.com')) {
             const parts = url.split('?');
             const base = parts[0];
             const params = new URLSearchParams(parts[1] || '');
             if (!params.has('embed')) params.append('embed', '');
-            params.set('autoplay', '1');
-            params.delete('muted');
+            if (hasFullAccess) {
+              params.set('autoplay', '1');
+              params.delete('muted');
+            }
             url = base + '?' + params.toString();
           }
-
-          const container = document.getElementById('videoContainer');
-          if (!container) return;
 
           container.innerHTML = `
             <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl" style="padding-top: 56.25%; background:#fdf4ff;">
@@ -1138,6 +1165,17 @@
                 loading="eager"
                 sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation allow-autoplay">
               </iframe>
+              ${!hasFullAccess ? `
+              <div class="absolute inset-0 z-10 cursor-pointer flex items-center justify-center" onclick="window.subscriptionManager && window.subscriptionManager.showUpgradeModal()" title="Upgrade to watch">
+                <div class="absolute inset-0 bg-black/20 hover:bg-black/30 transition-colors"></div>
+                <div class="relative flex flex-col items-center justify-center p-4 pointer-events-none">
+                  <div class="w-14 h-14 rounded-full bg-white/95 shadow-lg flex items-center justify-center mb-2">
+                    <i class="bx bx-lock-alt text-2xl text-[#4b0d7f]"></i>
+                  </div>
+                  <span class="text-white text-sm font-semibold drop-shadow">Click to upgrade and watch</span>
+                </div>
+              </div>
+              ` : ''}
             </div>
           `;
         } catch (e) {

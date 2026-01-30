@@ -341,10 +341,11 @@
         <h3 class="text-lg font-bold mb-4">Visibility Opportunities</h3>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button onclick="setActive(this)" class="opportunity-btn active bg-[#4b0d7f] text-white px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base">Speaking</button>
-          <button onclick="setActive(this)" class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base">Podcast</button>
-          <button onclick="setActive(this)" class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base">Webinar</button>
-          <button onclick="setActive(this)" class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base">Volunteering</button>
+          <button onclick="setActiveFilter(this, 'all')" class="opportunity-btn active bg-[#4b0d7f] text-white px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base" data-filter="all">All</button>
+          <button onclick="setActiveFilter(this, 'speaking')" class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base" data-filter="speaking">Speaking</button>
+          <button onclick="setActiveFilter(this, 'podcast')" class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base" data-filter="podcast">Podcast</button>
+          <button onclick="setActiveFilter(this, 'webinar')" class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base" data-filter="webinar">Webinar</button>
+          <button onclick="setActiveFilter(this, 'volunteering')" class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base" data-filter="volunteering">Volunteering</button>
         </div>
       </section>
 
@@ -565,6 +566,22 @@
       return div.innerHTML;
     }
 
+    function copyToClipboardFallback(text) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast('Link copied to clipboard!', 'success');
+      } catch (e) {
+        showToast('Copy failed. Share this link: ' + text, 'info');
+      }
+      document.body.removeChild(ta);
+    }
+
     function showToast(message, type = 'info') {
       const toast = document.createElement('div');
       toast.className = `fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg z-[9999] animate-slideIn ${
@@ -626,14 +643,17 @@
       }
     }
 
-    function setActive(button) {
+    function setActiveFilter(button, filter) {
       document.querySelectorAll(".opportunity-btn").forEach((btn) => {
         btn.classList.remove("active", "bg-[#4b0d7f]", "text-white");
         btn.classList.add("bg-gray-300", "text-black");
       });
-
       button.classList.add("active", "bg-[#4b0d7f]", "text-white");
       button.classList.remove("bg-gray-300", "text-black");
+      window._currentOpportunityFilter = filter;
+      if (window._opportunitiesCache && window._opportunitiesCache.length > 0) {
+        renderOpportunitiesFiltered();
+      }
     }
 
     // ============================================
@@ -816,6 +836,34 @@
     }
 
     // ============================================
+    // RENDER OPPORTUNITIES BY FILTER
+    // ============================================
+    function renderOpportunitiesFiltered() {
+      const container = document.getElementById('opportunitiesContainer');
+      if (!container) return;
+      const cache = window._opportunitiesCache || [];
+      const filter = (window._currentOpportunityFilter || 'all').toLowerCase();
+      const filtered = filter === 'all'
+        ? cache
+        : cache.filter(post => (post.category || '').toLowerCase() === filter);
+      container.innerHTML = '';
+      if (filtered.length > 0) {
+        filtered.forEach(post => {
+          const opportunityCard = createOpportunityCard(post);
+          container.appendChild(opportunityCard);
+        });
+      } else {
+        container.innerHTML = `
+          <div class="bg-white rounded-2xl p-12 flex flex-col items-center justify-center text-center">
+            <i class="bx bx-briefcase text-6xl text-gray-400 mb-4"></i>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">No ${filter === 'all' ? '' : filter + ' '}opportunities</h3>
+            <p class="text-gray-600 mb-4">Try another category or check back later.</p>
+          </div>
+        `;
+      }
+    }
+
+    // ============================================
     // LOAD OPPORTUNITIES
     // ============================================
     function loadOpportunities() {
@@ -842,18 +890,16 @@
         })
         .then(data => {
           console.log('Posts data received:', data);
-          
-          container.innerHTML = '';
 
           const posts = data.posts || [];
+          window._opportunitiesCache = posts;
+          window._currentOpportunityFilter = window._currentOpportunityFilter || 'all';
           console.log(`Found ${posts.length} posts`);
 
           if (posts.length > 0) {
-            posts.forEach(post => {
-              const opportunityCard = createOpportunityCard(post);
-              container.appendChild(opportunityCard);
-            });
+            renderOpportunitiesFiltered();
           } else {
+            container.innerHTML = '';
             container.innerHTML = `
               <div class="bg-white rounded-2xl p-12 flex flex-col items-center justify-center text-center">
                 <i class="bx bx-briefcase text-6xl text-gray-400 mb-4"></i>
@@ -1000,13 +1046,30 @@ function createOpportunityCard(post) {
       <button class="text-gray-600 hover:text-purple-700 p-2 hover:bg-gray-100 rounded-lg transition-all">
         <i class="bx bx-bookmark text-2xl"></i>
       </button>
-      <button class="text-gray-600 hover:text-purple-700 p-2 hover:bg-gray-100 rounded-lg transition-all">
+      <button class="share-opportunity-btn text-gray-600 hover:text-purple-700 p-2 hover:bg-gray-100 rounded-lg transition-all" title="Share link">
         <i class="bx bx-share-alt text-2xl"></i>
       </button>
       ${applyButtonHtml}
     </div>
   `;
-  
+
+  // Share button: copy opportunity page link to clipboard
+  const shareBtn = card.querySelector('.share-opportunity-btn');
+  if (shareBtn) {
+    shareBtn.addEventListener('click', function() {
+      const url = window.location.origin + window.location.pathname + (post.post_id ? '?post=' + encodeURIComponent(post.post_id) : '');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function() {
+          showToast('Link copied to clipboard!', 'success');
+        }).catch(function() {
+          copyToClipboardFallback(url);
+        });
+      } else {
+        copyToClipboardFallback(url);
+      }
+    });
+  }
+
   // ATTACH EVENT LISTENER FOR QUICK APPLY (One-click)
   if (!hasApplied) {
     const applyBtn = card.querySelector('.apply-now-button');
