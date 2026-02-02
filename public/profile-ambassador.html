@@ -10,12 +10,80 @@
       href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css"
       rel="stylesheet"
     />
+    <style>
+      .skeleton {
+        background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+        background-size: 200% 100%;
+        animation: skeleton-shimmer 1.5s ease-in-out infinite;
+        border-radius: 6px;
+      }
+      @keyframes skeleton-shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+    </style>
   </head>
   <body class="bg-gray-50 font-sans">
     <!-- Global Notification Script -->
     <script src="/js/notifications.js"></script>
     
     <div class="flex min-h-screen">
+      <!-- Sidebar -->
+      <aside class="sidebar w-20 lg:w-20 md:w-20 bg-white shadow-md flex flex-col items-center py-6 space-y-6 z-40">
+        <div class="mb-4">
+          <div class="bg-[#4b0d7f] text-white px-3 py-2 rounded-xl font-semibold text-sm">T4L</div>
+        </div>
+        <nav class="flex flex-col space-y-4 text-gray-700 w-full">
+          <a href="/ambassador-dashboard.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bxs-home text-2xl text-[#4b0d9f] group-hover:scale-110 transition-transform duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Home</span>
+          </a>
+          <a href="/article-amb.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-edit-alt text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Publishing</span>
+          </a>
+          <!-- Task (Journey) -->
+          <a href="/journey.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-check-square text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Task</span>
+          </a>
+          <!-- Partners directly under Task -->
+          <a href="/Partner-Calls.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-briefcase text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Partners</span>
+          </a>
+          <!-- Impact Log -->
+          <a href="/impactlog-ambassador.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-line-chart text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Impact Log</span>
+          </a>
+          <a href="/media-library.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-image text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Media Kit</span>
+          </a>
+          <a href="/chat-pillar-ambassador.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-message-rounded text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Chat</span>
+          </a>
+          <a href="/services.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-briefcase-alt-2 text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Services</span>
+          </a>
+          <a href="https://www.t4leader.com/ambassador-events" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+            <i class="bx bx-calendar-event text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Events</span>
+          </a>
+          <a href="/profile.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50 bg-purple-50">
+            <i class="bx bx-user text-2xl text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-[#4b0d9f] transition-colors duration-200">Profile</span>
+          </a>
+          <div id="logoutBtn" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-red-50">
+            <i class="bx bx-log-out text-2xl group-hover:text-red-600 group-hover:scale-110 transition-all duration-200"></i>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-red-600 transition-colors duration-200">Logout</span>
+          </div>
+        </nav>
+      </aside>
+
       <!-- Main Content -->
       <main class="flex-1 p-4 md:p-6 lg:p-6">
         <!-- Top Bar -->
@@ -44,8 +112,8 @@
               </button>
             </div>
             <div class="flex-1 text-center md:text-left">
-              <h2 id="profileName" class="text-2xl font-bold text-gray-900 mb-2">Loading...</h2>
-              <p id="profileEmail" class="text-gray-600 mb-2">Loading...</p>
+              <h2 id="profileName" class="text-2xl font-bold text-gray-900 mb-2"><span class="skeleton h-8 w-48 inline-block"></span></h2>
+              <p id="profileEmail" class="text-gray-600 mb-2"><span class="skeleton h-5 w-64 inline-block"></span></p>
               <span id="profileRole" class="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
                 Ambassador
               </span>
@@ -102,7 +170,7 @@
               </label>
               <div class="flex items-center gap-3">
                 <span id="statusBadge" class="px-4 py-2 rounded-lg text-sm font-semibold">
-                  Loading...
+                  <span class="skeleton h-5 w-24 inline-block rounded"></span>
                 </span>
               </div>
             </div>
@@ -423,6 +491,16 @@
         document.getElementById('cancelBtn').addEventListener('click', function() {
           window.location.reload();
         });
+
+        // Logout
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+          logoutBtn.addEventListener('click', function() {
+            fetch('/api/logout', { method: 'POST', credentials: 'include' })
+              .then(() => { window.location.href = '/signin.html'; })
+              .catch(err => console.error('Logout error:', err));
+          });
+        }
 
         // Toast functions
         function showToast(toastId) {

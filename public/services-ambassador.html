@@ -103,6 +103,18 @@
       .animate-spin {
         animation: spin 1s linear infinite;
       }
+
+      /* Skeleton loader */
+      .skeleton {
+        background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+        background-size: 200% 100%;
+        animation: skeleton-shimmer 1.5s ease-in-out infinite;
+        border-radius: 6px;
+      }
+      @keyframes skeleton-shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
     </style>
   </head>
   <body class="bg-gray-50 font-sans">
@@ -250,10 +262,12 @@
         <div class="mb-8">
           <h2 class="text-lg font-semibold text-gray-900 mb-4">Available Services</h2>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="servicesContainer">
-            <div class="text-center py-12 col-span-full">
-              <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4b0d7f] mx-auto"></div>
-              <p class="text-gray-500 mt-4">Loading services...</p>
-            </div>
+            <div class="rounded-xl border border-gray-200 p-5"><div class="skeleton h-6 w-20 rounded-full mb-3"></div><div class="skeleton h-6 w-3/4 mb-2"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-2/3"></div></div>
+            <div class="rounded-xl border border-gray-200 p-5"><div class="skeleton h-6 w-24 rounded-full mb-3"></div><div class="skeleton h-6 w-2/3 mb-2"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-4/5"></div></div>
+            <div class="rounded-xl border border-gray-200 p-5"><div class="skeleton h-6 w-20 rounded-full mb-3"></div><div class="skeleton h-6 w-4/5 mb-2"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-1/2"></div></div>
+            <div class="rounded-xl border border-gray-200 p-5"><div class="skeleton h-6 w-24 rounded-full mb-3"></div><div class="skeleton h-6 w-3/4 mb-2"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-3/4"></div></div>
+            <div class="rounded-xl border border-gray-200 p-5"><div class="skeleton h-6 w-20 rounded-full mb-3"></div><div class="skeleton h-6 w-2/3 mb-2"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-2/3"></div></div>
+            <div class="rounded-xl border border-gray-200 p-5"><div class="skeleton h-6 w-24 rounded-full mb-3"></div><div class="skeleton h-6 w-4/5 mb-2"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-4/5"></div></div>
           </div>
         </div>
 
@@ -790,6 +804,14 @@
     <script>
       document.addEventListener('DOMContentLoaded', function () {
         requireAuth('/signin');
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+          logoutBtn.addEventListener('click', function() {
+            fetch('/api/logout', { method: 'POST', credentials: 'include' })
+              .then(() => { window.location.href = '/signin.html'; })
+              .catch(err => console.error('Logout error:', err));
+          });
+        }
       });
     </script>
     

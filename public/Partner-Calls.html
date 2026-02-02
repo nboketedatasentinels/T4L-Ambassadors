@@ -209,6 +209,17 @@
       word-break: break-word;
       max-width: 100%;
     }
+    /* Skeleton loader */
+    .skeleton {
+      background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+      background-size: 200% 100%;
+      animation: skeleton-shimmer 1.5s ease-in-out infinite;
+      border-radius: 6px;
+    }
+    @keyframes skeleton-shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
     #opportunitiesContainer .flex {
       flex-wrap: wrap;
       max-width: 100%;
@@ -875,9 +886,11 @@
       }
 
       container.innerHTML = `
-        <div class="bg-white rounded-2xl p-12 flex flex-col items-center justify-center text-center">
-          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4b0d7f] mb-4"></div>
-          <p class="text-gray-600">Loading opportunities...</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-white rounded-2xl p-6 border border-gray-200"><div class="skeleton h-6 w-20 rounded-full mb-3"></div><div class="skeleton h-6 w-3/4 mb-2"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-2/3"></div></div>
+          <div class="bg-white rounded-2xl p-6 border border-gray-200"><div class="skeleton h-6 w-24 rounded-full mb-3"></div><div class="skeleton h-6 w-2/3 mb-2"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-4/5"></div></div>
+          <div class="bg-white rounded-2xl p-6 border border-gray-200"><div class="skeleton h-6 w-20 rounded-full mb-3"></div><div class="skeleton h-6 w-4/5 mb-2"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-1/2"></div></div>
+          <div class="bg-white rounded-2xl p-6 border border-gray-200"><div class="skeleton h-6 w-24 rounded-full mb-3"></div><div class="skeleton h-6 w-3/4 mb-2"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-3/4"></div></div>
         </div>
       `;
 

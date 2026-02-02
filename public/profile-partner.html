@@ -153,6 +153,18 @@
           display: block;
         }
       }
+
+      /* Skeleton loader */
+      .skeleton {
+        background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+        background-size: 200% 100%;
+        animation: skeleton-shimmer 1.5s ease-in-out infinite;
+        border-radius: 6px;
+      }
+      @keyframes skeleton-shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
     </style>
   </head>
   <body class="bg-gray-50 font-sans">
@@ -176,7 +188,7 @@
             <i class="bx bxs-home"></i>
             <span>Home</span>
           </a>
-          <a href="/services-partner.html" class="partner-nav-link">
+          <a href="/my-services.html" class="partner-nav-link">
             <i class="bx bx-briefcase-alt-2"></i>
             <span>Services</span>
           </a>
@@ -234,8 +246,8 @@
               </button>
             </div>
             <div class="flex-1 text-center md:text-left">
-              <h2 id="profileName" class="text-2xl font-bold text-gray-900 mb-2">Loading...</h2>
-              <p id="profileEmail" class="text-gray-600 mb-2">Loading...</p>
+              <h2 id="profileName" class="text-2xl font-bold text-gray-900 mb-2"><span class="skeleton h-8 w-48 inline-block"></span></h2>
+              <p id="profileEmail" class="text-gray-600 mb-2"><span class="skeleton h-5 w-64 inline-block"></span></p>
               <span id="profileRole" class="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
                 Partner
               </span>
@@ -305,7 +317,7 @@
               </label>
               <div class="flex items-center gap-3">
                 <span id="statusBadge" class="px-4 py-2 rounded-lg text-sm font-semibold">
-                  Loading...
+                  <span class="skeleton h-5 w-24 inline-block rounded"></span>
                 </span>
               </div>
             </div>

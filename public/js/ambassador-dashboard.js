@@ -1749,14 +1749,7 @@ function playVideo() {
     }
     
     videoContainer.innerHTML = `
-      <div class="flex flex-col items-center justify-center p-8 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl min-h-[16rem]">
-        <div class="animate-pulse flex flex-col items-center">
-          <div class="bg-white rounded-full p-4 mb-4">
-            <i class="bx bx-loader-alt text-3xl text-purple-600 animate-spin"></i>
-          </div>
-          <p class="text-gray-700 font-medium">Loading video...</p>
-        </div>
-      </div>
+      <div class="skeleton w-full min-h-[16rem] rounded-2xl"></div>
     `;
     
     let playUrl = validateAndFixVideoUrl(currentVideo.url);
@@ -2128,11 +2121,12 @@ async function initializeDashboard() {
     const journeyProgress = document.getElementById('journeyProgress');
     const journeyMonth = document.getElementById('journeyMonth');
     
-    if (videoTitle) videoTitle.textContent = 'Loading...';
-    if (videoDescription) videoDescription.textContent = 'Loading journey data...';
+    const skeletonBar = (w) => `<div class="skeleton h-5 ${w} mx-auto"></div>`;
+    if (videoTitle) videoTitle.innerHTML = skeletonBar('w-24');
+    if (videoDescription) videoDescription.innerHTML = skeletonBar('w-48');
     if (videoMeta) videoMeta.textContent = 'Please wait...';
-    if (journeyProgress) journeyProgress.textContent = '--';
-    if (journeyMonth) journeyMonth.textContent = 'Loading...';
+    if (journeyProgress) journeyProgress.innerHTML = skeletonBar('w-12');
+    if (journeyMonth) journeyMonth.innerHTML = skeletonBar('w-16');
     
     // ✅ STEP 1: Fetch journey data FIRST
     console.log('📡 Step 1: Fetching journey data from /api/journey/progress...');

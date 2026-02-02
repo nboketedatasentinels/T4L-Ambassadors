@@ -195,14 +195,19 @@
       });
     }
 
-    // Check for remembered credentials on page load
-    const rememberedEmail = localStorage.getItem('rememberedPartnerEmail');
-    const rememberedAccessCode = localStorage.getItem('rememberedPartnerAccessCode');
-    if (rememberedEmail && rememberedAccessCode) {
-      emailInput.value = rememberedEmail;
-      accessCodeInput.value = rememberedAccessCode;
-      rememberMeCheckbox.checked = true;
-    }
+    // Auto-populate credentials from localStorage (remember me - same as admin)
+    (function prefillRememberMe() {
+      try {
+        const stored = localStorage.getItem('partnerRememberMeCredentials');
+        if (stored) {
+          const credentials = JSON.parse(stored);
+          if (credentials.email) emailInput.value = credentials.email;
+          if (credentials.access_code) accessCodeInput.value = credentials.access_code;
+          if (credentials.password) passwordInput.value = credentials.password;
+          rememberMeCheckbox.checked = true;
+        }
+      } catch (e) { console.error('Remember me prefill:', e); }
+    })();
 
     // Check for auto-populate flag in URL (from registration)
     try {
@@ -251,15 +256,6 @@
       const password = passwordInput.value;
       const rememberMe = rememberMeCheckbox.checked;
 
-      // Handle remember me - save or remove credentials
-      if (rememberMe) {
-        localStorage.setItem('rememberedPartnerEmail', email);
-        localStorage.setItem('rememberedPartnerAccessCode', access_code);
-      } else {
-        localStorage.removeItem('rememberedPartnerEmail');
-        localStorage.removeItem('rememberedPartnerAccessCode');
-      }
-      
       // Show loading state
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<span class="loading">Signing in...</span>';
@@ -282,7 +278,17 @@
         const result = await response.json();
         
         if (response.ok) {
-          // Success - redirect
+          // Success - handle remember me (same as admin: save only on success)
+          if (rememberMe) {
+            localStorage.setItem('partnerRememberMeCredentials', JSON.stringify({
+              email,
+              access_code,
+              password
+            }));
+          } else {
+            localStorage.removeItem('partnerRememberMeCredentials');
+          }
+          // Redirect
           if (result.redirect) {
             window.location.href = result.redirect;
           } else if (result.success) {

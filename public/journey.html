@@ -92,6 +92,21 @@
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       animation: slideIn 0.3s ease-out;
     }
+    .toast.toast-centered {
+      left: 50%;
+      top: 50%;
+      right: auto;
+      transform: translate(-50%, -50%);
+      max-width: 90%;
+      padding: 1.25rem 1.75rem;
+      font-size: 1rem;
+      text-align: center;
+      animation: fadeIn 0.3s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
 
     @keyframes slideIn {
       from {
@@ -1315,34 +1330,21 @@
           </ol>
         </div>
 
-        <!-- Upload & Email Section -->
+        <!-- Submit via Email Section (no file upload) -->
         <div class="upload-section">
           <h3><i class='bx bx-envelope'></i> Submit Your Updated Materials</h3>
           <p style="color: #666; margin-bottom: 20px;">
             Once you've edited the template in Canva, download it and submit via email
           </p>
 
-          <div class="file-input-wrapper">
-            <input type="file" id="speakerFile" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.ppt,.pptx" onchange="handleSpeakerFileSelect(event)">
-            <label for="speakerFile" class="file-input-label">
-              <i class='bx bx-folder-open'></i> Choose File
-            </label>
-          </div>
-
-          <div class="file-name" id="speakerFileName">No file selected</div>
-
           <div class="action-buttons">
-            <button class="btn-submit" id="speakerSubmitBtn" onclick="uploadSpeakerMaterials()" disabled>
+            <button class="btn-submit" id="speakerSubmitBtn" onclick="openEmailWithMaterials()">
               <i class='bx bx-send'></i> Email Your Materials
             </button>
-
-            <a href="#" class="btn-linkedin hidden" id="emailBtn" onclick="openEmailWithMaterials()">
-              <i class='bx bx-envelope'></i> Open Email
-            </a>
           </div>
 
           <div class="success-message" id="speakerSuccessMsg">
-            <i class='bx bx-check-circle'></i> Success! Your speaker materials have been prepared for email submission.
+            <i class='bx bx-check-circle'></i> Email opened! Please attach your materials and send.
           </div>
         </div>
       </div>
@@ -2033,8 +2035,6 @@
 
     // UPDATED: Month 8 Speaker Materials Variables with 3 templates
     let selectedSpeakerCarouselIndex = 0;
-    let selectedSpeakerFile = null;
-    let uploadedSpeakerFileName = '';
     const speakerCarouselLinks = [
       'https://www.canva.com/design/DAG5D4YdK2I/9Je3_IkDr2j3cr46NzM6rQ/edit?utm_content=DAG5D4YdK2I&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton',
       'https://www.canva.com/design/DAG487XIzBw/HUyiGKtboJeoMQqhvH-aHw/edit?utm_content=DAG487XIzBw&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton',
@@ -2296,51 +2296,6 @@
       });
     }
 
-    function handleSpeakerFileSelect(event) {
-      selectedSpeakerFile = event.target.files[0];
-      const fileNameDisplay = document.getElementById('speakerFileName');
-      const submitBtn = document.getElementById('speakerSubmitBtn');
-
-      if (selectedSpeakerFile) {
-        fileNameDisplay.textContent = `Selected: ${selectedSpeakerFile.name}`;
-        fileNameDisplay.style.color = '#3a0a63';
-        fileNameDisplay.style.fontWeight = 'bold';
-        submitBtn.disabled = false;
-        uploadedSpeakerFileName = selectedSpeakerFile.name;
-      } else {
-        fileNameDisplay.textContent = 'No file selected';
-        fileNameDisplay.style.color = '#666';
-        submitBtn.disabled = true;
-        uploadedSpeakerFileName = '';
-      }
-    }
-
-    function uploadSpeakerMaterials() {
-      if (!selectedSpeakerFile) {
-        alert('Please select a file first!');
-        return;
-      }
-
-      const submitBtn = document.getElementById('speakerSubmitBtn');
-      const emailBtn = document.getElementById('emailBtn');
-      const successMsg = document.getElementById('speakerSuccessMsg');
-
-      submitBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> Preparing...';
-      submitBtn.disabled = true;
-
-      // Simulate upload/processing
-      setTimeout(() => {
-        successMsg.classList.add('show');
-
-        setTimeout(() => {
-          submitBtn.classList.add('hidden');
-          emailBtn.classList.remove('hidden');
-
-          successMsg.innerHTML = '<i class="bx bx-check-circle"></i> Ready! Click "Open Email" to submit your materials.';
-        }, 1000);
-      }, 1500);
-    }
-
     function openEmailWithMaterials() {
       const subject = 'Updated Speaker Materials - Month 8';
       const body = `Hello T4L Team,
@@ -2363,23 +2318,19 @@ Thank you,
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=ambassadors@t4leader.com&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       
       window.open(gmailUrl, '_blank');
-      
-      // Show confirmation
-      setTimeout(() => {
-        alert('Email opened! Please attach your file and send it to complete this task.\n\nReturn here and mark the task as complete when done.');
-      }, 1000);
+
+      const successMsg = document.getElementById('speakerSuccessMsg');
+      if (successMsg) successMsg.classList.add('show');
     }
 
     function resetSpeakerPopupState() {
-      selectedSpeakerFile = null;
-      document.getElementById('speakerFile').value = '';
-      document.getElementById('speakerFileName').textContent = 'No file selected';
-      document.getElementById('speakerFileName').style.color = '#666';
-      document.getElementById('speakerSubmitBtn').innerHTML = '<i class="bx bx-send"></i> Email Your Materials';
-      document.getElementById('speakerSubmitBtn').disabled = true;
-      document.getElementById('speakerSubmitBtn').classList.remove('hidden');
-      document.getElementById('emailBtn').classList.add('hidden');
-      document.getElementById('speakerSuccessMsg').classList.remove('show');
+      const submitBtn = document.getElementById('speakerSubmitBtn');
+      const successMsg = document.getElementById('speakerSuccessMsg');
+      if (submitBtn) {
+        submitBtn.innerHTML = '<i class=\'bx bx-send\'></i> Email Your Materials';
+        submitBtn.disabled = false;
+      }
+      if (successMsg) successMsg.classList.remove('show');
     }
 
     // Global function to ensure scrolling is always enabled
@@ -2919,21 +2870,21 @@ What quote guides your approach to leadership or change?
       window.fetch.polyfilled = true;
     }
 
-    // Toast Component
-    function Toast({ message, type, onClose }) {
+    // Toast Component (duration in ms, centered optional)
+    function Toast({ message, type, onClose, duration = 3000, centered = false }) {
       useEffect(() => {
-        const timer = setTimeout(() => onClose(), 3000);
+        const timer = setTimeout(() => onClose(), duration);
         return () => clearTimeout(timer);
-      }, [onClose]);
+      }, [onClose, duration]);
       return (
-        <div className={`toast ${type}`}>
+        <div className={`toast ${type} ${centered ? 'toast-centered' : ''}`}>
           {message}
         </div>
       );
     }
 
     // Task Item Component
-    function TaskItem({ task, monthIndex, isCompleted, onToggle, isLocked, hasCertificate, onRequestCertificateUpload }) {
+    function TaskItem({ task, monthIndex, isCompleted, onToggle, isLocked }) {
       const getTaskAction = (taskId) => {
         const actions = {
           'linkedin_course': 'https://www.t4leader.com/challenge-page/linkedin-warrior-set-up-your-profile?programId=51ebfc25-4d89-4894-b317-9a607bb0d7e2',
@@ -3130,8 +3081,6 @@ Best,
         }
       };
 
-      const requiresCertificate = ['linkedin_course', 'second_course', 'third_course', 'complete_courses'].includes(task.id);
-
       return (
         <div className={`border-2 rounded-xl p-4 transition-all bg-white hover:shadow-lg hover:scale-[1.01] ${isCompleted ? 'border-gray-200 bg-gray-50/30' : 'border-gray-200'
           }`}>
@@ -3143,12 +3092,6 @@ Best,
                 checked={isCompleted}
                 onChange={() => {
                   if (isLocked) return;
-                  if (requiresCertificate && !hasCertificate) {
-                    if (typeof onRequestCertificateUpload === 'function') {
-                      onRequestCertificateUpload(task.id);
-                    }
-                    return;
-                  }
                   onToggle(monthIndex, task.id);
                 }}
                 disabled={isLocked}
@@ -3199,7 +3142,7 @@ Best,
     }
 
     // Month Card Component
-    function MonthCard({ month, currentMonth, completedTasks, onToggleTask, onNextMonth, certificateMap, onRequestCertificateUpload }) {
+    function MonthCard({ month, currentMonth, completedTasks, onToggleTask, onNextMonth }) {
       const monthIndex = month.month;
       const isCurrent = monthIndex === currentMonth;
       const isCompleted = monthIndex < currentMonth;
@@ -3285,19 +3228,7 @@ Best,
           </div>
 
           <div className="space-y-3 mb-4">
-            {month.tasks.map(task => {
-              const courseTaskToType = {
-                linkedin_course: 'linkedin_course',
-                second_course: 'transformational_course',
-                third_course: 'science_of_you',
-                complete_courses: 'ai_stacking',
-              };
-              const courseType = courseTaskToType[task.id];
-              const hasCertificate = courseType
-                ? Boolean(certificateMap[courseType])
-                : false;
-
-              return (
+            {month.tasks.map(task => (
                 <TaskItem
                   key={task.id}
                   task={task}
@@ -3305,11 +3236,8 @@ Best,
                   isCompleted={!!completedTasks[`${monthIndex}-${task.id}`]}
                   onToggle={onToggleTask}
                   isLocked={isLocked}
-                  hasCertificate={hasCertificate}
-                  onRequestCertificateUpload={onRequestCertificateUpload}
                 />
-              );
-            })}
+              ))}
           </div>
 
           {/* Journey progression guidance and actions */}
@@ -3352,6 +3280,7 @@ Best,
     function App() {
       const [journeyData, setJourneyData] = useState({
         currentMonth: 1,
+        currentMonthStartedAt: null,
         completedTasks: {},
         months: [
           {
@@ -3540,18 +3469,13 @@ Best,
           }
         ]
       });
-      const [certificateMap, setCertificateMap] = useState({});
-      const [isUploadingCert, setIsUploadingCert] = useState(false);
-      const [isUploadInProgress, setIsUploadInProgress] = useState(false);
-      const [pendingCertTaskId, setPendingCertTaskId] = useState(null);
-      const [uploadingCourseType, setUploadingCourseType] = useState(null);
       const [loading, setLoading] = useState(false);
       const [error, setError] = useState(null);
       const [toast, setToast] = useState(null);
       const [user, setUser] = useState({ name: "John Doe" });
 
-      const showToast = useCallback((message, type = 'info') => {
-        setToast({ message, type, id: Date.now() });
+      const showToast = useCallback((message, type = 'info', options = {}) => {
+        setToast({ message, type, id: Date.now(), duration: options.duration, centered: options.centered });
       }, []);
 
       const closeToast = useCallback(() => {
@@ -3630,11 +3554,12 @@ Best,
             const data = await response.json();
             console.log('✅ Journey data loaded:', data);
 
-            // Update current month
-            if (data.currentMonth) {
+            // Update current month and 3-week gate timestamp
+            if (data.currentMonth != null || data.currentMonthStartedAt != null) {
               setJourneyData(prev => ({
                 ...prev,
-                currentMonth: data.currentMonth
+                ...(data.currentMonth != null && { currentMonth: data.currentMonth }),
+                ...(data.currentMonthStartedAt != null && { currentMonthStartedAt: data.currentMonthStartedAt })
               }));
             }
 
@@ -3706,10 +3631,11 @@ Best,
                   if (reloadResponse.ok) {
                     const reloadData = await reloadResponse.json();
                     
-                    if (reloadData.currentMonth) {
+                    if (reloadData.currentMonth != null || reloadData.currentMonthStartedAt != null) {
                       setJourneyData(prev => ({
                         ...prev,
-                        currentMonth: reloadData.currentMonth
+                        ...(reloadData.currentMonth != null && { currentMonth: reloadData.currentMonth }),
+                        ...(reloadData.currentMonthStartedAt != null && { currentMonthStartedAt: reloadData.currentMonthStartedAt })
                       }));
                     }
 
@@ -3771,31 +3697,6 @@ Best,
         };
 
         loadJourneyData();
-
-        // Load existing certificates for this ambassador
-        const fetchCertificates = async () => {
-          try {
-            const resp = await fetch('/api/certificates', {
-              method: 'GET',
-              credentials: 'include',
-            });
-            if (!resp.ok) return;
-            const data = await resp.json();
-            if (data && Array.isArray(data.certificates)) {
-              const map = {};
-              data.certificates.forEach((cert) => {
-                if (cert.course_type) {
-                  map[cert.course_type] = cert;
-                }
-              });
-              setCertificateMap(map);
-            }
-          } catch (e) {
-            console.warn('Failed to load certificates', e);
-          }
-        };
-
-        fetchCertificates();
         
         // Check and show daily reminder (with rate limiting)
         const checkAndShowDailyReminder = async () => {
@@ -3995,17 +3896,19 @@ Best,
           return;
         }
 
+        // 3-week gate: each month must be active for at least 3 weeks before advancing
+        const THREE_WEEKS_MS = 21 * 24 * 60 * 60 * 1000;
+        const startedAt = journeyData.currentMonthStartedAt ? new Date(journeyData.currentMonthStartedAt).getTime() : 0;
+        if (startedAt && (Date.now() - startedAt < THREE_WEEKS_MS)) {
+          showToast(`Your month ${currentMonth} activities are being reviewed. Your next month activities will open soon.`, 'error', { duration: 8000, centered: true });
+          return;
+        }
+
         if (!confirm('Move to the next month? This action cannot be undone.')) return;
 
         try {
           const newMonth = journeyData.currentMonth + 1;
           
-          // Optimistic update
-          setJourneyData(prev => ({
-            ...prev,
-            currentMonth: newMonth
-          }));
-
           // Save to database
           const response = await fetch('/api/journey/progress/month', {
             method: 'POST',
@@ -4014,41 +3917,33 @@ Best,
             body: JSON.stringify({ monthNumber: newMonth })
           });
 
+          const responseData = await response.json();
+
           if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to save month progress');
+            if (response.status === 403 && responseData.message) {
+              showToast(responseData.message, 'error');
+              return;
+            }
+            throw new Error(responseData.error || 'Failed to save month progress');
           }
 
-          const data = await response.json();
-          console.log('✅ Month progress saved to database:', data);
+          console.log('✅ Month progress saved to database:', responseData);
+
+          // Update state with new month and new month's started_at
+          setJourneyData(prev => ({
+            ...prev,
+            currentMonth: newMonth,
+            currentMonthStartedAt: responseData.progress && responseData.progress.started_at
+              ? responseData.progress.started_at
+              : new Date().toISOString()
+          }));
 
           showToast(`Advanced to Month ${newMonth}! 🎉`, 'success');
         } catch (error) {
           console.error('❌ Error saving month progress:', error);
-          
-          // Rollback on error
-          setJourneyData(prev => ({
-            ...prev,
-            currentMonth: journeyData.currentMonth
-          }));
-          
-          showToast('Failed to advance month. Please try again.', 'error');
+          showToast(error.message || 'Failed to advance month. Please try again.', 'error');
         }
-      }, [journeyData.currentMonth, journeyData.completedTasks, journeyData.months, showToast]);
-
-      const handleRequestCertificateUpload = useCallback((taskId) => {
-        const taskToCourseType = {
-          linkedin_course: 'linkedin_course',
-          second_course: 'transformational_course',
-          third_course: 'science_of_you',
-          complete_courses: 'ai_stacking',
-        };
-        const courseType = taskToCourseType[taskId];
-        if (!courseType) return;
-        setPendingCertTaskId(taskId);
-        setUploadingCourseType(courseType);
-        setIsUploadingCert(true);
-      }, []);
+      }, [journeyData.currentMonth, journeyData.currentMonthStartedAt, journeyData.completedTasks, journeyData.months, showToast]);
 
       // ✅ Retry helper function for frontend
       const retryFetch = async (url, options, maxRetries = 3, delay = 1000) => {
@@ -4079,119 +3974,6 @@ Best,
         }
         throw lastError;
       };
-
-      const handleCertificateUploadSubmit = useCallback(async (event) => {
-        event.preventDefault();
-        const fileInput = event.target.elements.certificateFile;
-        
-        if (!fileInput || !fileInput.files || !fileInput.files[0]) {
-          showToast('Please select a certificate file to upload.', 'error');
-          return;
-        }
-        
-        const maxFileSize = 10 * 1024 * 1024;
-        const selectedFile = fileInput.files[0];
-        if (selectedFile.size > maxFileSize) {
-          showToast('File size exceeds the maximum limit of 10 MB.', 'error');
-          return;
-        }
-        
-        if (!uploadingCourseType) {
-          showToast('Unknown course type for certificate.', 'error');
-          return;
-        }
-
-        try {
-          setIsUploadInProgress(true);
-          showToast('Uploading certificate...', 'info');
-
-          const formData = new FormData();
-          formData.append('certificate', selectedFile);
-          formData.append('courseType', uploadingCourseType);
-
-          console.log('📤 Uploading certificate:', {
-            courseType: uploadingCourseType,
-            filename: selectedFile.name,
-            size: selectedFile.size
-          });
-
-          const resp = await fetch('/api/certificates/upload', {
-            method: 'POST',
-            body: formData,
-            credentials: 'include',
-          });
-
-          console.log('📥 Response status:', resp.status, resp.statusText);
-
-          // Check if response is JSON
-          const contentType = resp.headers.get('content-type');
-          if (!contentType || !contentType.includes('application/json')) {
-            const textResponse = await resp.text();
-            console.error('❌ Non-JSON response received:', textResponse.substring(0, 500));
-            throw new Error('Server returned HTML instead of JSON. Check server logs.');
-          }
-
-          const data = await resp.json();
-          console.log('📥 Response data:', data);
-
-          if (!resp.ok || !data.success) {
-            throw new Error(data.error || data.details || 'Upload failed');
-          }
-
-          // Update certificate map
-          setCertificateMap((prev) => ({
-            ...prev,
-            [uploadingCourseType]: {
-              course_type: uploadingCourseType,
-              filename: data.certificate.filename,
-              upload_date: data.certificate.uploadDate,
-              verified: data.certificate.verified,
-            },
-          }));
-
-          showToast(
-            'Certificate uploaded successfully! You can now mark this course as completed.',
-            'success'
-          );
-
-          // Reset form
-          fileInput.value = '';
-
-          // Auto-toggle task after upload
-          if (pendingCertTaskId) {
-            const courseTaskToMonth = {
-              linkedin_course: 1,
-              second_course: 1,
-              third_course: 2,
-              complete_courses: 4,
-            };
-            const monthIndex = courseTaskToMonth[pendingCertTaskId] || journeyData.currentMonth;
-
-            await new Promise((resolve) => setTimeout(resolve, 500));
-
-            try {
-              await handleToggleTask(monthIndex, pendingCertTaskId);
-              console.log("✅ Task auto-toggled successfully");
-            } catch (toggleError) {
-              console.warn("⚠️ Auto-toggle failed:", toggleError.message);
-              showToast(
-                'Certificate uploaded! Please check the task box to mark it complete.',
-                'info'
-              );
-            }
-          }
-
-          setPendingCertTaskId(null);
-          setUploadingCourseType(null);
-          setIsUploadingCert(false);
-          
-        } catch (err) {
-          console.error('❌ Certificate upload failed:', err);
-          showToast(err.message || 'Failed to upload certificate', 'error');
-        } finally {
-          setIsUploadInProgress(false);
-        }
-      }, [uploadingCourseType, pendingCertTaskId, handleToggleTask, journeyData.currentMonth, showToast]);
 
       // Add event listener for celebration popup
       useEffect(() => {
@@ -4336,8 +4118,6 @@ Best,
                   completedTasks={completedTasks}
                   onToggleTask={handleToggleTask}
                   onNextMonth={handleNextMonth}
-                  certificateMap={certificateMap}
-                  onRequestCertificateUpload={handleRequestCertificateUpload}
                 />
               ))}
             </div>
@@ -4348,73 +4128,22 @@ Best,
               message={toast.message}
               type={toast.type}
               onClose={closeToast}
+              duration={toast.duration}
+              centered={toast.centered}
             />
           )}
 
-          {isUploadingCert && (
-            <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-2">
-                  Upload Course Certificate
-                </h2>
-                <p className="text-sm text-gray-600 mb-4">
-                  Please upload a screenshot or PDF of your completion certificate
-                  for this course before marking the task as done.
-                </p>
-                <form onSubmit={handleCertificateUploadSubmit} className="space-y-4">
-                  <div>
-                    <input
-                      type="file"
-                      name="certificateFile"
-                      accept=".jpg,.jpeg,.png,.pdf"
-                      disabled={isUploadInProgress}
-                      className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#4b0d7f] disabled:opacity-50 disabled:cursor-not-allowed"
-                      required
-                    />
-                    <p className="text-xs text-gray-500 mt-2">
-                      Maximum file size: <strong>10 MB</strong>. Accepted formats: JPG, JPEG, PNG, PDF
-                    </p>
-                  </div>
-                  <div className="flex justify-end gap-3 pt-2">
-                    <button
-                      type="button"
-                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-                      onClick={() => {
-                        setIsUploadingCert(false);
-                        setPendingCertTaskId(null);
-                        setUploadingCourseType(null);
-                      }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isUploadInProgress}
-                      className="px-4 py-2 text-sm font-semibold text-white bg-[#4b0d7f] rounded-lg hover:bg-[#3a0a63] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      {isUploadInProgress ? (
-                        <>
-                          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Uploading...
-                        </>
-                      ) : (
-                        'Upload & Continue'
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
         </div>
       );
     }
 
     // Sidebar Component
     function Sidebar() {
+      const handleLogout = () => {
+        fetch('/api/logout', { method: 'POST', credentials: 'include' })
+          .then(() => { window.location.href = '/signin.html'; })
+          .catch(err => console.error('Logout error:', err));
+      };
       return (
         <aside className="sidebar w-20 lg:w-20 md:w-20 bg-white shadow-md flex flex-col items-center py-6 space-y-6 z-40">
           <div className="mb-4">
@@ -4451,7 +4180,7 @@ Best,
               <i className="bx bx-user text-2xl group-hover:text-[#4b0d7f] group-hover:scale-110 transition-all duration-200"></i>
               <span className="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d7f] transition-colors duration-200">Profile</span>
             </a>
-            <div className="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-red-50">
+            <div role="button" tabIndex={0} onClick={handleLogout} onKeyDown={e => e.key === 'Enter' && handleLogout()} className="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-red-50">
               <i className="bx bx-log-out text-2xl group-hover:text-red-600 group-hover:scale-110 transition-all duration-200"></i>
               <span className="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-red-600 transition-colors duration-200">Logout</span>
             </div>

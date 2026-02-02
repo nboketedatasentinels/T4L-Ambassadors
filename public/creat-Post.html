@@ -1338,7 +1338,7 @@
       const logoutBtn = document.getElementById('logoutBtn');
       if (logoutBtn) {
         logoutBtn.addEventListener('click', function() {
-          fetch('/logout', { method: 'POST' })
+          fetch('/api/logout', { method: 'POST', credentials: 'include' })
             .then(() => {
               window.location.href = '/partner-signin';
             })

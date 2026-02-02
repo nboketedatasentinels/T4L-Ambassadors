@@ -158,14 +158,19 @@
         eyeSlashIcon.classList.toggle('hidden', !isPassword);
       });
 
-      // Check for remembered credentials on page load
-      const rememberedEmail = localStorage.getItem('rememberedAmbassadorEmail');
-      const rememberedAccessCode = localStorage.getItem('rememberedAmbassadorAccessCode');
-      if (rememberedEmail && rememberedAccessCode) {
-        emailInput.value = rememberedEmail;
-        accessCodeInput.value = rememberedAccessCode;
-        rememberMeCheckbox.checked = true;
-      }
+      // Auto-populate credentials from localStorage (remember me - same as admin)
+      (function prefillRememberMe() {
+        try {
+          const stored = localStorage.getItem('ambassadorRememberMeCredentials');
+          if (stored) {
+            const credentials = JSON.parse(stored);
+            if (credentials.email) emailInput.value = credentials.email;
+            if (credentials.access_code) accessCodeInput.value = credentials.access_code;
+            if (credentials.password) passwordInput.value = credentials.password;
+            rememberMeCheckbox.checked = true;
+          }
+        } catch (e) { console.error('Remember me prefill:', e); }
+      })();
 
       // Check for auto-fill credentials from registration
       const urlParams = new URLSearchParams(window.location.search);
@@ -213,15 +218,6 @@
           return;
         }
 
-        // Handle remember me - save or remove credentials
-        if (rememberMe) {
-          localStorage.setItem('rememberedAmbassadorEmail', email);
-          localStorage.setItem('rememberedAmbassadorAccessCode', access_code);
-        } else {
-          localStorage.removeItem('rememberedAmbassadorEmail');
-          localStorage.removeItem('rememberedAmbassadorAccessCode');
-        }
-
         // Disable submit button
         submitBtn.disabled = true;
         submitBtn.textContent = 'Signing In...';
@@ -248,7 +244,18 @@
             throw new Error(data.error || 'Sign in failed');
           }
 
-          // Success! Redirect to dashboard
+          // Success - handle remember me (same as admin: save only on success)
+          if (rememberMe) {
+            localStorage.setItem('ambassadorRememberMeCredentials', JSON.stringify({
+              email,
+              access_code,
+              password
+            }));
+          } else {
+            localStorage.removeItem('ambassadorRememberMeCredentials');
+          }
+
+          // Redirect to dashboard
           if (data.redirect) {
             window.location.href = data.redirect;
           } else {

@@ -241,6 +241,14 @@
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       requireAuth('/signin');
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
+          fetch('/api/logout', { method: 'POST', credentials: 'include' })
+            .then(() => { window.location.href = '/signin.html'; })
+            .catch(err => console.error('Logout error:', err));
+        });
+      }
     });
   </script>
 </body>

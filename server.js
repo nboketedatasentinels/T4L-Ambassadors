@@ -6634,21 +6634,58 @@ app.get('/api/journey/progress', requireAuth, requireRole('ambassador'), async (
       taskCompletions = taskData || [];
     }
 
-    const currentMonth = currentProgress && currentProgress.journey_months 
-      ? currentProgress.journey_months.month_number 
-      : 1;
+    let currentProgressRes = currentProgress;
+    let allProgressRes = allProgress || [];
+
+    // Ensure month 1 progress exists for new users (so we have started_at for 3-week gate)
+    if (!currentProgressRes && (!allProgressRes || allProgressRes.length === 0)) {
+      const { data: month1 } = await supabase
+        .from('journey_months')
+        .select('month_id')
+        .eq('month_number', 1)
+        .single();
+      if (month1) {
+        const now = new Date().toISOString();
+        const { data: inserted, error: insertErr } = await supabase
+          .from('ambassador_journey_progress')
+          .insert([{
+            ambassador_id: ambassadorId,
+            month_id: month1.month_id,
+            current_month: true,
+            started_at: now,
+            created_at: now,
+            updated_at: now
+          }])
+          .select()
+          .single();
+        if (!insertErr && inserted) {
+          currentProgressRes = inserted;
+          allProgressRes = [inserted];
+          console.log('✅ Created initial Month 1 progress for ambassador');
+        }
+      }
+    }
+
+    // Resolve current month: from joined journey_months or 1 when we just created Month 1 progress
+    const resolvedCurrentMonth = (currentProgressRes && currentProgressRes.journey_months && currentProgressRes.journey_months.month_number != null)
+      ? currentProgressRes.journey_months.month_number
+      : (currentProgressRes ? 1 : 1);
+
+    const currentMonthStartedAt = currentProgressRes ? (currentProgressRes.started_at || null) : null;
 
     console.log('✅ Journey progress loaded:', {
-      currentMonth,
-      progressRecords: allProgress?.length || 0,
+      currentMonth: resolvedCurrentMonth,
+      currentMonthStartedAt,
+      progressRecords: allProgressRes.length,
       taskCompletions: taskCompletions?.length || 0
     });
 
     return res.json({
       success: true,
-      currentMonth,
-      currentProgress,
-      allProgress: allProgress || [],
+      currentMonth: resolvedCurrentMonth,
+      currentMonthStartedAt,
+      currentProgress: currentProgressRes,
+      allProgress: allProgressRes,
       taskCompletions: taskCompletions || []
     });
   } catch (error) {
@@ -6680,6 +6717,35 @@ app.post('/api/journey/progress/month', requireAuth, requireRole('ambassador'), 
       return res.status(404).json({ error: 'Ambassador not found' });
     }
     const ambassadorId = ambassador.ambassador_id || ambassador.id;
+
+    // 3-week gate: advancing to next month only allowed after 3 weeks in current month
+    if (monthNumber > 1) {
+      const previousMonthNumber = monthNumber - 1;
+      const { data: prevMonth } = await supabase
+        .from('journey_months')
+        .select('month_id')
+        .eq('month_number', previousMonthNumber)
+        .single();
+      if (prevMonth) {
+        const { data: prevProgress } = await supabase
+          .from('ambassador_journey_progress')
+          .select('started_at')
+          .eq('ambassador_id', ambassadorId)
+          .eq('month_id', prevMonth.month_id)
+          .maybeSingle();
+        if (prevProgress && prevProgress.started_at) {
+          const startedAt = new Date(prevProgress.started_at).getTime();
+          const threeWeeksMs = 21 * 24 * 60 * 60 * 1000;
+          if (Date.now() - startedAt < threeWeeksMs) {
+            return res.status(403).json({
+              error: 'Month not yet available',
+              message: `Your month ${previousMonthNumber} activities are being reviewed. Your next month activities will open soon.`,
+              currentMonth: previousMonthNumber
+            });
+          }
+        }
+      }
+    }
 
     // Get month_id from journey_months table
     const { data: month, error: monthError } = await supabase

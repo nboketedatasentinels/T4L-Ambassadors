@@ -92,10 +92,12 @@
           <button class="notification-tab" data-tab="unread">Unread</button>
         </div>
         
-        <div id="notificationList" class="notification-list">
-          <div class="notification-loading">
-            <div class="notification-spinner"></div>
-            <p>Loading notifications...</p>
+        <div id="globalNotificationList" class="notification-list">
+          <div style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div class="notification-skeleton" style="height: 3.5rem; width: 100%;"></div>
+            <div class="notification-skeleton" style="height: 3.5rem; width: 100%;"></div>
+            <div class="notification-skeleton" style="height: 3.5rem; width: 100%;"></div>
+            <div class="notification-skeleton" style="height: 3.5rem; width: 80%;"></div>
           </div>
         </div>
         
@@ -296,6 +298,17 @@
       
       @keyframes spin {
         to { transform: rotate(360deg); }
+      }
+
+      .notification-skeleton {
+        background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+        background-size: 200% 100%;
+        animation: skeleton-shimmer 1.5s ease-in-out infinite;
+        border-radius: 6px;
+      }
+      @keyframes skeleton-shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
       }
 
       /* Empty State */
@@ -504,14 +517,20 @@
   // ATTACH BELL CLICK HANDLERS
   // ============================================
   function attachBellClickHandlers() {
-    // Find all bell icons on the page
+    // Pages with their own notification dropdown (e.g. Partner-Calls) should not open the global panel
+    const pageHasOwnDropdown = document.getElementById('notificationDropdown');
+    
     const bellIcons = document.querySelectorAll('.bx-bell');
     
     bellIcons.forEach(bell => {
-      // Get the parent element (usually a button or div)
       const bellContainer = bell.closest('button, div, a, i');
       
       if (bellContainer && !bellContainer.hasAttribute('data-notification-attached')) {
+        // Skip if this page has its own dropdown – let the page’s bell handler manage it
+        if (pageHasOwnDropdown) {
+          bellContainer.setAttribute('data-notification-attached', 'true');
+          return;
+        }
         bellContainer.setAttribute('data-notification-attached', 'true');
         bellContainer.style.cursor = 'pointer';
         bellContainer.style.position = 'relative';
@@ -641,7 +660,8 @@
   // LOAD NOTIFICATIONS
   // ============================================
   async function loadNotifications(unreadOnly = false) {
-    const listContainer = document.getElementById('notificationList');
+    // Use global panel list only (unique id so page-specific dropdowns are not overwritten)
+    const listContainer = document.getElementById('globalNotificationList');
     if (!listContainer) return;
 
     try {

@@ -479,6 +479,16 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .skeleton {
+            background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.5s ease-in-out infinite;
+            border-radius: 6px;
+        }
+        @keyframes skeleton-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -548,17 +558,20 @@
 
             <!-- Progress Content -->
             <div class="progress-container" id="progressContainer">
-                <!-- Loading State -->
-                <div class="loading-container" id="loadingState">
-                    <div class="loading-spinner"></div>
-                    <p class="text-gray-600">Loading article progress...</p>
+                <!-- Skeleton while loading -->
+                <div class="loading-container" id="loadingState" style="text-align: left; padding: 2rem;">
+                    <div class="skeleton" style="height: 2rem; width: 60%; margin-bottom: 1rem;"></div>
+                    <div class="skeleton" style="height: 1rem; width: 100%; margin-bottom: 0.5rem;"></div>
+                    <div class="skeleton" style="height: 1rem; width: 80%; margin-bottom: 0.5rem;"></div>
+                    <div class="skeleton" style="height: 1rem; width: 90%; margin-bottom: 1.5rem;"></div>
+                    <div class="skeleton" style="height: 6rem; width: 100%; border-radius: 12px;"></div>
                 </div>
 
                 <!-- Content (hidden initially) -->
                 <div id="mainContent" style="display: none;">
                     <!-- Article Info Card -->
                     <div class="article-info-card">
-                        <h2 class="article-title-display" id="articleTitleDisplay">Loading...</h2>
+                        <h2 class="article-title-display" id="articleTitleDisplay"><span class="skeleton h-8 w-3/4 inline-block"></span></h2>
                         <div class="article-meta">
                             <div class="article-meta-item">
                                 <i class="bx bx-calendar"></i>
@@ -1141,7 +1154,7 @@
         const logoutBtn = document.getElementById('logoutBtn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', function() {
-                fetch('/logout', { method: 'POST' })
+                fetch('/api/logout', { method: 'POST', credentials: 'include' })
                     .then(() => window.location.href = '/signin')
                     .catch(() => window.location.href = '/signin');
             });

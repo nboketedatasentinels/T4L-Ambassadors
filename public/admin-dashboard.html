@@ -310,6 +310,17 @@
             animation: spin 1s linear infinite;
         }
         
+        .skeleton {
+            background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.5s ease-in-out infinite;
+            border-radius: 6px;
+        }
+        @keyframes skeleton-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
         /* Ensure proper button styling with loader */
         #sendPublicationBtn:disabled {
             opacity: 0.9;
@@ -777,10 +788,13 @@
           <button id="filterRejected" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-100">Rejected</button>
         </div>
 
-        <!-- Loading State (shared overlay) -->
+        <!-- Loading State (shared overlay) - Skeleton -->
         <div id="loadingState" class="loading">
-            <div class="loading-spinner"></div>
-            <span class="ml-3 text-gray-600">Loading...</span>
+            <div class="flex flex-col items-center gap-4">
+                <div class="skeleton" style="width: 200px; height: 24px;"></div>
+                <div class="skeleton" style="width: 160px; height: 20px;"></div>
+                <div class="skeleton" style="width: 240px; height: 120px; border-radius: 12px;"></div>
+            </div>
         </div>
 
         <!-- Panel: Ambassadors -->

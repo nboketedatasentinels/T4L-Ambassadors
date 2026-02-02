@@ -51,6 +51,18 @@
         display: block;
       }
     }
+
+    /* Skeleton loader */
+    .skeleton {
+      background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+      background-size: 200% 100%;
+      animation: skeleton-shimmer 1.5s ease-in-out infinite;
+      border-radius: 6px;
+    }
+    @keyframes skeleton-shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
   </style>
 </head>
 <body class="bg-gray-50 font-sans">
@@ -108,12 +120,13 @@
       </header>
       
       <div class="max-w-4xl mx-auto">
-        <!-- Loading State -->
-        <div id="loadingState" class="bg-white rounded-2xl shadow-md p-8">
-          <div class="text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-            <p class="text-gray-600">Loading application details...</p>
-          </div>
+        <!-- Skeleton while loading -->
+        <div id="loadingState" class="bg-white rounded-2xl shadow-md p-8 space-y-6">
+          <div class="skeleton h-8 w-1/2 mb-4"></div>
+          <div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-4/5 mb-4"></div>
+          <div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-3/4 mb-4"></div>
+          <div class="skeleton h-20 w-full rounded-lg"></div>
+          <div class="skeleton h-8 w-32 rounded"></div>
         </div>
         
         <!-- Application Details -->
@@ -396,7 +409,7 @@
     }
     
     function logout() {
-      fetch('/logout', { method: 'POST' })
+      fetch('/api/logout', { method: 'POST', credentials: 'include' })
         .then(() => {
           window.location.href = '/partner-signin';
         })
