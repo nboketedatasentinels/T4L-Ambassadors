@@ -1456,6 +1456,21 @@ app.post("/api/services/:id/request", requireAuth, async (req, res) => {
 
     console.log("✅ Step 4: No duplicate found");
 
+    // 4b. Enforce capacity limit (max applications) if set on the service
+    if (service.capacity != null && service.capacity > 0) {
+      const { count: currentCount } = await supabase
+        .from("service_requests")
+        .select("request_id", { count: "exact", head: true })
+        .eq("service_id", serviceId)
+        .in("status", ["pending", "approved", "completed"]);
+
+      if (currentCount != null && currentCount >= service.capacity) {
+        return res.status(400).json({
+          error: "This service has reached its participant limit. No more applications can be accepted.",
+        });
+      }
+    }
+
     // 5. CREATE THE SERVICE REQUEST (THIS IS THE IMPORTANT PART)
     const requestId = uuidv4();
     const requestData = {
@@ -1600,15 +1615,49 @@ app.get(
 
       console.log("✅ Found partner_id:", partner.partner_id);
 
-      // ✅ Now get applications using the correct partner_id
+      // Optional status filter (frontend uses "accepted", DB uses "approved")
+      const statusParam = req.query.status;
+      const validStatuses = ["pending", "accepted", "approved", "rejected", "reviewed", "withdrawn"];
+      const statusFilter =
+        statusParam &&
+        statusParam !== "all" &&
+        validStatuses.includes(String(statusParam).toLowerCase())
+          ? String(statusParam).toLowerCase() === "accepted"
+            ? "approved"
+            : String(statusParam).toLowerCase()
+          : null;
+      if (statusFilter) {
+        console.log("📋 Partner applications filter: status =", statusFilter);
+      }
+
+      // Optional post_id filter
+      const postIdParam = req.query.post_id || req.query.postId;
+      const postIdFilter =
+        postIdParam && String(postIdParam).trim() !== "" && String(postIdParam) !== "all"
+          ? String(postIdParam).trim()
+          : null;
+
+      // ✅ Now get applications using the correct partner_id (and optional status + post_id)
+      let query = supabase
+        .from("applications")
+        .select("*", { count: "exact" })
+        .eq("partner_id", partner.partner_id);
+      if (statusFilter) {
+        // "Accepted" in UI = DB can have "approved" or legacy "accepted"
+        if (statusFilter === "approved") {
+          query = query.in("status", ["approved", "accepted"]);
+        } else {
+          query = query.eq("status", statusFilter);
+        }
+      }
+      if (postIdFilter) {
+        query = query.eq("post_id", postIdFilter);
+      }
       const {
         data: applications,
         error,
         count,
-      } = await supabase
-        .from("applications")
-        .select("*", { count: "exact" })
-        .eq("partner_id", partner.partner_id) // ✅ Use partner_id from lookup!
+      } = await query
         .order("applied_at", { ascending: false })
         .range(offset, offset + limit - 1);
 
@@ -1742,9 +1791,13 @@ app.put(
         });
       }
 
+      // DB stores "approved", not "accepted"; map so filter and display stay in sync
+      const statusToSave = status === "accepted" ? "approved" : status;
+
       console.log("📝 Updating application status:", {
         applicationId,
         status,
+        statusToSave,
         userId,
       });
 
@@ -1777,10 +1830,10 @@ app.put(
 
       console.log("✅ Application found, updating status...");
 
-      // ✅ Update status
+      // ✅ Update status (store "approved" when partner sends "accepted")
       const { data: updatedApplication, error: updateError } = await supabase
         .from("applications")
-        .update({ status: status })
+        .update({ status: statusToSave })
         .eq("application_id", applicationId)
         .select()
         .single();
@@ -2593,6 +2646,20 @@ app.get("/api/services", requireAuth, async (req, res) => {
       }
     }
 
+    // ✅ Capacity: get request counts for services that have a capacity limit
+    const capacityServiceIds = services.filter((s) => s.capacity != null && s.capacity > 0).map((s) => s.service_id);
+    const capacityCountMap = new Map();
+    if (capacityServiceIds.length > 0) {
+      const { data: capacityRows } = await supabase
+        .from("service_requests")
+        .select("service_id")
+        .in("service_id", capacityServiceIds)
+        .in("status", ["pending", "approved", "completed"]);
+      (capacityRows || []).forEach((row) => {
+        capacityCountMap.set(row.service_id, (capacityCountMap.get(row.service_id) || 0) + 1);
+      });
+    }
+
     // Process services
     const processedServices = services.map((service) => {
       const processed = { ...service };
@@ -2604,6 +2671,16 @@ app.get("/api/services", requireAuth, async (req, res) => {
 
       // Check if requested
       processed.hasRequested = requestedServiceIds.has(service.service_id);
+
+      // Capacity: at capacity and spots left (for display / disabling Apply)
+      if (service.capacity != null && service.capacity > 0) {
+        const currentCount = capacityCountMap.get(service.service_id) || 0;
+        processed.atCapacity = currentCount >= service.capacity;
+        processed.spotsLeft = Math.max(0, service.capacity - currentCount);
+      } else {
+        processed.atCapacity = false;
+        processed.spotsLeft = null; // unlimited
+      }
       
       // Add partner name and email
       if (service.partner_id) {

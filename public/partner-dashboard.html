@@ -326,9 +326,17 @@
             <i class="bx bxs-home"></i>
             <span>Home</span>
           </a>
+          <a href="/creat-Post.html" class="partner-nav-link">
+            <i class="bx bx-plus-circle"></i>
+            <span>Create Post</span>
+          </a>
           <a href="/my-services.html" class="partner-nav-link">
             <i class="bx bx-briefcase-alt-2"></i>
             <span>Services</span>
+          </a>
+          <a href="/applications.html" class="partner-nav-link">
+            <i class="bx bx-file"></i>
+            <span>Applications</span>
           </a>
           <a href="/impactlog-partner.html" class="partner-nav-link">
             <i class="bx bx-line-chart"></i>
@@ -381,115 +389,74 @@
           </div>
         </header>
 
-        <!-- Hero Section -->
-        <section class="bg-gradient-to-r from-[#4b0d7f] to-[#a36737] text-white p-6 md:p-8 rounded-2xl mb-6 shadow-md relative overflow-hidden">
-          <div class="flex justify-between items-center">
-            <div>
-              <h2 class="text-2xl md:text-3xl font-bold mb-2" id="welcomeHeading">Welcome, Partner!</h2>
+        <!-- Welcome + Stats: same width row -->
+        <div class="w-full space-y-4 mb-6">
+          <!-- Hero Section -->
+          <section class="w-full bg-gradient-to-r from-[#4b0d7f] to-[#a36737] text-white p-6 md:p-8 rounded-2xl shadow-md relative overflow-hidden">
+            <div class="flex justify-between items-center">
+              <div>
+                <h2 class="text-2xl md:text-3xl font-bold mb-2" id="welcomeHeading">Welcome, Partner!</h2>
+              </div>
+              
+              <a href="/creat-Post.html" class="bg-white/20 backdrop-blur-sm hover:bg-white/30 px-6 py-3 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-2 font-medium">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                </svg>
+                <span>Create a Post</span>
+              </a>
             </div>
-            
-            <a href="/creat-Post.html" class="bg-white/20 backdrop-blur-sm hover:bg-white/30 px-6 py-3 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-2 font-medium">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
-              </svg>
-              <span>Create a Post</span>
-            </a>
-          </div>
-        </section>
+          </section>
 
-        <!-- LIFT Pillar Section -->
-        <section class="bg-white p-6 md:p-8 rounded-2xl mb-6 shadow-md">
-          <h2 class="text-xl font-bold mb-5">LIFT Pillar</h2>
-          
-          <!-- Dropdown -->
-          <div class="relative mb-6">
-            <select class="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700 text-base appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white">
-              <option>Leading Self</option>
-              <option>Inspiring Others</option>
-              <option>Fostering Teams</option>
-              <option>Transforming Orgs</option>
-            </select>
-            <svg class="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-700 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-            </svg>
-          </div>
-          
-          <!-- Visibility Opportunities -->
-          <h3 class="text-lg font-bold mb-4">Visibility Opportunities</h3>
-          
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <button 
-              onclick="setActiveFilter(this, 'all')" 
-              class="opportunity-btn active bg-[#4b0d7f] text-white px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base"
-              data-filter="all"
-            >
-              All
-            </button>
-            <button 
-              onclick="setActiveFilter(this, 'speaking')" 
-              class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base"
-              data-filter="speaking"
-            >
-              Speaking
-            </button>
-            <button 
-              onclick="setActiveFilter(this, 'podcast')" 
-              class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base"
-              data-filter="podcast"
-            >
-              Podcast
-            </button>
-            <button 
-              onclick="setActiveFilter(this, 'webinar')" 
-              class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base"
-              data-filter="webinar"
-            >
-              Webinar
-            </button>
-            <button 
-              onclick="setActiveFilter(this, 'volunteering')" 
-              class="opportunity-btn bg-gray-300 text-black px-5 py-4 rounded-xl shadow-md hover:shadow-lg transition-all font-semibold text-base"
-              data-filter="volunteering"
-            >
-              Volunteering
-            </button>
-          </div>
-        </section>
-
-        <!-- Stats Section -->
-        <section class="mb-6">
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+          <!-- Stats Section (same width as hero) -->
+          <section class="w-full max-w-7xl mx-auto">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
             <!-- Pending Review Card -->
-            <div class="bg-white border border-yellow-300 rounded-2xl p-5 shadow hover:shadow-lg transition-all hover:-translate-y-1 hover:border-yellow-500 cursor-pointer">
-              <div class="flex justify-center mb-3">
-                <div class="rounded-xl p-3">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+            <div class="bg-white border border-yellow-300 rounded-xl p-3 shadow hover:shadow-md transition-all hover:-translate-y-0.5 hover:border-yellow-500 cursor-pointer">
+              <div class="flex justify-center mb-2">
+                <div class="rounded-lg p-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
                   </svg>
                 </div>
               </div>
               <div class="text-center">
-                <p class="text-2xl font-bold text-gray-900 mb-1" id="pendingApplications">0</p>
-                <p class="text-sm text-gray-600 font-medium">Pending Review</p>
+                <p class="text-xl font-bold text-gray-900 mb-0.5 flex justify-center" id="pendingApplications"><span class="skeleton h-6 w-10 inline-block rounded"></span></p>
+                <p class="text-xs text-gray-600 font-medium">Pending Review</p>
               </div>
             </div>
 
             <!-- Active Posts Card -->
-            <div class="bg-white border border-purple-300 rounded-2xl p-5 shadow hover:shadow-lg transition-all hover:-translate-y-1 hover:border-purple-500 cursor-pointer">
-              <div class="flex justify-center mb-3">
-                <div class="rounded-xl p-3">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9 text-purple-800" viewBox="0 0 20 20" fill="currentColor">
+            <div class="bg-white border border-purple-300 rounded-xl p-3 shadow hover:shadow-md transition-all hover:-translate-y-0.5 hover:border-purple-500 cursor-pointer">
+              <div class="flex justify-center mb-2">
+                <div class="rounded-lg p-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-800" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
                   </svg>
                 </div>
               </div>
               <div class="text-center">
-                <p class="text-2xl font-bold text-gray-900 mb-1" id="activePosts">0</p>
-                <p class="text-sm text-gray-600 font-medium">Active Posts</p>
+                <p class="text-xl font-bold text-gray-900 mb-0.5 flex justify-center" id="activePosts"><span class="skeleton h-6 w-10 inline-block rounded"></span></p>
+                <p class="text-xs text-gray-600 font-medium">Active Posts</p>
               </div>
             </div>
+
+            <!-- My Services Card -->
+            <a href="/my-services.html" class="block bg-white border border-emerald-300 rounded-xl p-3 shadow hover:shadow-md transition-all hover:-translate-y-0.5 hover:border-emerald-500 cursor-pointer no-underline">
+              <div class="flex justify-center mb-2">
+                <div class="rounded-lg p-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-emerald-600" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M6 6V5a2 2 0 012-2h4a2 2 0 012 2v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0116.127 14H7.873A22.952 22.952 0 014 8.57V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h4a1 1 0 011 1v1H8V5z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+              <div class="text-center">
+                <p class="text-xl font-bold text-gray-900 mb-0.5 flex justify-center" id="myServicesCount"><span class="skeleton h-6 w-10 inline-block rounded"></span></p>
+                <p class="text-xs text-gray-600 font-medium">My Services</p>
+              </div>
+            </a>
           </div>
-        </section>
+          </section>
+        </div>
 
         <!-- Recent Applications Section -->
         <section class="bg-white rounded-2xl p-6 md:p-8 mb-6 shadow-md">
@@ -870,6 +837,23 @@
       }
 
       // ============================================
+      // Load partner services count for My Services card
+      // ============================================
+      function loadServicesCount() {
+        fetch('/api/partner/services', { credentials: 'include' })
+          .then(response => response.ok ? response.json() : Promise.reject(new Error('Failed to load services')))
+          .then(data => {
+            const count = (data.services || []).length;
+            const el = document.getElementById('myServicesCount');
+            if (el) el.textContent = count;
+          })
+          .catch(() => {
+            const el = document.getElementById('myServicesCount');
+            if (el) el.textContent = '0';
+          });
+      }
+
+      // ============================================
       // Load recent applications for partner
       // ============================================
       function loadRecentApplications() {
@@ -1052,6 +1036,8 @@
             
             console.log('📥 Loading applications...');
             loadRecentApplications();
+            
+            loadServicesCount();
           })
           .catch(error => {
             console.error('❌ Error fetching user data:', error);

@@ -77,26 +77,46 @@
   <div class="overlay" id="overlay"></div>
   
   <div class="flex min-h-screen">
-    <!-- Sidebar - Same as partner-dashboard -->
+    <!-- Sidebar - Full partner nav (consistent with all partner pages) -->
     <aside class="sidebar w-20 lg:w-20 md:w-20 bg-white shadow-md flex flex-col items-center py-6 space-y-6 z-40">
       <div class="mb-4">
         <div class="bg-[#4b0d7f] text-white px-3 py-2 rounded-xl font-semibold text-sm">T4L</div>
       </div>
       <nav class="flex flex-col space-y-4 text-gray-700 w-full">
         <a href="/partner-dashboard.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
-          <i class="bx bxs-home text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+          <i class="bx bxs-home text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
           <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Home</span>
         </a>
-        <a href="/applications.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50 bg-purple-50">
+        <a href="/creat-Post.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <i class="bx bx-plus-circle text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+          <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Create Post</span>
+        </a>
+        <a href="/my-services.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <i class="bx bx-briefcase-alt-2 text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+          <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Services</span>
+        </a>
+        <a href="/applications.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg bg-purple-50">
           <i class="bx bx-file text-2xl text-[#4b0d9f] group-hover:scale-110 transition-transform duration-200"></i>
           <span class="text-[10px] mt-1.5 font-medium text-[#4b0d9f] transition-colors duration-200">Applications</span>
         </a>
-        <a href="/profile.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
-          <i class="bx bx-user text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+        <a href="/impactlog-partner.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <i class="bx bx-line-chart text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+          <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Impact Log</span>
+        </a>
+        <a href="/chat-pillar-partner.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <i class="bx bxs-group text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+          <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Partners Community</span>
+        </a>
+        <a href="https://www.t4leader.com/event" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50" target="_blank" rel="noopener noreferrer">
+          <i class="bx bx-calendar-event text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
+          <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Events</span>
+        </a>
+        <a href="/profile-partner.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <i class="bx bx-user text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
           <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Profile</span>
         </a>
         <div onclick="logout()" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-red-50">
-          <i class="bx bx-log-out text-2xl group-hover:text-red-600 group-hover:scale-110 transition-all duration-200"></i>
+          <i class="bx bx-log-out text-2xl text-gray-600 group-hover:text-red-600 group-hover:scale-110 transition-all duration-200"></i>
           <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-red-600 transition-colors duration-200">Logout</span>
         </div>
       </nav>
@@ -123,20 +143,15 @@
             <select id="statusFilter" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
+              <option value="reviewed">Reviewed</option>
               <option value="accepted">Accepted</option>
               <option value="rejected">Rejected</option>
             </select>
           </div>
-          <div class="flex-1">
-            <select id="postFilter" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-              <option value="all">All Posts</option>
-              <!-- Posts will be loaded here -->
-            </select>
-          </div>
-          <button onclick="loadApplications()" class="bg-purple-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-purple-700 transition-all text-sm">
+          <button type="button" id="applyFiltersBtn" class="bg-purple-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-purple-700 transition-all text-sm">
             Apply Filters
           </button>
-          <button onclick="clearFilters()" class="border border-gray-300 text-gray-700 px-5 py-2.5 rounded-lg font-semibold hover:bg-gray-50 transition-all text-sm">
+          <button type="button" id="clearFiltersBtn" class="border border-gray-300 text-gray-700 px-5 py-2.5 rounded-lg font-semibold hover:bg-gray-50 transition-all text-sm">
             Clear
           </button>
         </div>
@@ -154,27 +169,14 @@
   
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Get URL parameters
-      const urlParams = new URLSearchParams(window.location.search);
-      const postId = urlParams.get('postId');
+      // Apply Filters and Clear buttons
+      document.getElementById('applyFiltersBtn')?.addEventListener('click', function() { loadApplications(); });
+      document.getElementById('clearFiltersBtn')?.addEventListener('click', function() { clearFilters(); });
       
-      // Load posts for filter
-      loadPosts();
+      // Auto-apply when user changes status
+      document.getElementById('statusFilter')?.addEventListener('change', function() { loadApplications(); });
       
-      // If postId is provided in URL, set it in the filter
-      if (postId) {
-        setTimeout(() => {
-          const postFilter = document.getElementById('postFilter');
-          if (postFilter) {
-            postFilter.value = postId;
-            // Load applications for this specific post
-            loadApplications();
-          }
-        }, 500);
-      } else {
-        // Load all applications
-        loadApplications();
-      }
+      loadApplications();
       
       // Sidebar toggle
       const sidebarToggle = document.getElementById('sidebarToggle');
@@ -202,54 +204,37 @@
       return name.charAt(0).toUpperCase();
     }
     
-    async function loadPosts() {
-      try {
-        const response = await fetch('/api/partner/posts');
-        if (!response.ok) throw new Error('Failed to load posts');
-        
-        const data = await response.json();
-        const postFilter = document.getElementById('postFilter');
-        
-        if (postFilter && data.posts) {
-          // Clear existing options except "All Posts"
-          postFilter.innerHTML = '<option value="all">All Posts</option>';
-          
-          // Add post options
-          data.posts.forEach(post => {
-            const option = document.createElement('option');
-            option.value = post.post_id;
-            option.textContent = post.title.substring(0, 50) + (post.title.length > 50 ? '...' : '');
-            postFilter.appendChild(option);
-          });
-        }
-      } catch (error) {
-        console.error('Error loading posts:', error);
-      }
-    }
-    
     async function loadApplications() {
+      const container = document.getElementById('applicationsContainer');
+      const statusFilterEl = document.getElementById('statusFilter');
+      if (!container || !statusFilterEl) return;
+
       try {
-        const statusFilter = document.getElementById('statusFilter').value;
-        const postFilter = document.getElementById('postFilter').value;
+        const statusFilter = statusFilterEl.value;
         
+        // Show skeleton while loading
+        container.innerHTML = `
+          <div class="bg-white rounded-2xl shadow-md p-6"><div class="skeleton h-5 w-1/3 mb-3"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-2/3 mb-4"></div><div class="skeleton h-8 w-24 rounded"></div></div>
+          <div class="bg-white rounded-2xl shadow-md p-6"><div class="skeleton h-5 w-1/4 mb-3"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-1/2 mb-4"></div><div class="skeleton h-8 w-24 rounded"></div></div>
+          <div class="bg-white rounded-2xl shadow-md p-6"><div class="skeleton h-5 w-1/3 mb-3"></div><div class="skeleton h-4 w-full mb-2"></div><div class="skeleton h-4 w-3/4 mb-4"></div><div class="skeleton h-8 w-24 rounded"></div></div>
+        `;
+
         let url = '/api/partner/applications?limit=100';
         if (statusFilter !== 'all') {
-          url += `&status=${statusFilter}`;
+          url += '&status=' + encodeURIComponent(statusFilter);
         }
-        
-        const response = await fetch(url);
+        url += '&_t=' + Date.now();
+
+        const response = await fetch(url, { credentials: 'include', cache: 'no-store' });
+        if (response.status === 401 || response.status === 403) {
+          window.location.href = '/partner-signin.html';
+          return;
+        }
         if (!response.ok) throw new Error('Failed to load applications');
         
         const data = await response.json();
-        const container = document.getElementById('applicationsContainer');
-        
-        if (!container) return;
-        
-        // Filter by post if specified
-        let applications = data.items || [];
-        if (postFilter !== 'all') {
-          applications = applications.filter(app => app.postId == postFilter); // Use == for type conversion
-        }
+        const applications = data.items || [];
+        const filtersApplied = statusFilter !== 'all';
         
         if (applications.length > 0) {
           container.innerHTML = applications.map(application => `
@@ -268,11 +253,12 @@
                 <div class="flex flex-col items-end">
                   <span class="px-3 py-1 rounded-full text-xs font-semibold ${
                     application.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    application.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                    application.status === 'reviewed' ? 'bg-blue-100 text-blue-800' :
+                    (application.status === 'accepted' || application.status === 'approved') ? 'bg-green-100 text-green-800' :
                     application.status === 'rejected' ? 'bg-red-100 text-red-800' :
                     'bg-gray-100 text-gray-800'
                   }">
-                    ${(application.status || 'pending').charAt(0).toUpperCase() + (application.status || 'pending').slice(1)}
+                    ${application.status === 'approved' ? 'Accepted' : ((application.status || 'pending').charAt(0).toUpperCase() + (application.status || 'pending').slice(1))}
                   </span>
                   <div class="mt-2 flex gap-2">
                     ${application.ambassadorProfile?.cvFilename ? `
@@ -292,15 +278,28 @@
             </div>
           `).join('');
         } else {
-          container.innerHTML = `
+          container.innerHTML = filtersApplied
+            ? `
+            <div class="bg-white rounded-2xl shadow-md p-8">
+              <div class="text-center">
+                <i class="bx bx-filter-alt text-4xl text-gray-400 mb-4"></i>
+                <h3 class="text-lg font-bold text-gray-900 mb-2">No applications match your filters</h3>
+                <p class="text-gray-600 mb-4">Try changing the status above, or clear filters to see all applications.</p>
+                <button type="button" onclick="clearFilters()" class="bg-purple-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-purple-700 transition-all">
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          `
+            : `
             <div class="bg-white rounded-2xl shadow-md p-8">
               <div class="text-center">
                 <i class="bx bx-file text-4xl text-gray-400 mb-4"></i>
-                <h3 class="text-lg font-bold text-gray-900 mb-2">No applications found</h3>
-                <p class="text-gray-600 mb-4">No applications match your current filters</p>
-                <button onclick="clearFilters()" class="bg-purple-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-purple-700 transition-all">
-                  Clear Filters
-                </button>
+                <h3 class="text-lg font-bold text-gray-900 mb-2">No applications yet</h3>
+                <p class="text-gray-600 mb-4">When ambassadors apply to your posts, they’ll show up here. Create posts from your dashboard to receive applications.</p>
+                <a href="/partner-dashboard.html" class="inline-block bg-purple-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-purple-700 transition-all">
+                  Go to Dashboard
+                </a>
               </div>
             </div>
           `;
@@ -326,8 +325,8 @@
     }
     
     function clearFilters() {
-      document.getElementById('statusFilter').value = 'all';
-      document.getElementById('postFilter').value = 'all';
+      const statusEl = document.getElementById('statusFilter');
+      if (statusEl) statusEl.value = 'all';
       loadApplications();
     }
     

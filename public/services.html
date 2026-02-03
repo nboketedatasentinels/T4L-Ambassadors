@@ -627,8 +627,30 @@
         }
         const capacitySection = document.getElementById('detailsModalCapacitySection');
         const capacityEl = document.getElementById('detailsModalCapacity');
-        capacityEl.textContent = service.capacity ? 'Limited to ' + service.capacity + ' participants' : 'Unlimited spots';
+        if (service.capacity) {
+          if (service.atCapacity) {
+            capacityEl.textContent = 'At capacity (' + service.capacity + ' participants)';
+          } else if (service.spotsLeft != null) {
+            capacityEl.textContent = service.spotsLeft + ' spot(s) left of ' + service.capacity;
+          } else {
+            capacityEl.textContent = 'Limited to ' + service.capacity + ' participants';
+          }
+        } else {
+          capacityEl.textContent = 'Unlimited spots';
+        }
         capacitySection.style.display = 'block';
+        const confirmBtn = document.getElementById('confirmRequest');
+        const requestBtnText = document.getElementById('requestBtnText');
+        if (service.hasRequested) {
+          confirmBtn.disabled = true;
+          requestBtnText.textContent = 'Already requested';
+        } else if (service.atCapacity) {
+          confirmBtn.disabled = true;
+          requestBtnText.textContent = 'At capacity';
+        } else {
+          confirmBtn.disabled = false;
+          requestBtnText.textContent = 'Send Request';
+        }
         document.getElementById('detailsModalPartnerName').textContent = service.partnerName || 'Partner';
         const emailEl = document.getElementById('detailsModalPartnerEmail');
         if (service.partnerEmail) {

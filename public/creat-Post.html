@@ -382,27 +382,40 @@
           </a>
 
           <a href="/creat-Post.html" class="sidebar-link active">
-            <i class="bx bx-edit-alt"></i>
+            <i class="bx bx-plus-circle"></i>
             <span>Create Post</span>
           </a>
 
-          <a href="/Partner-Calls.html" class="sidebar-link">
-            <i class="bx bx-briefcase"></i>
-            <span>Partners</span>
+          <a href="/my-services.html" class="sidebar-link">
+            <i class="bx bx-briefcase-alt-2"></i>
+            <span>Services</span>
           </a>
 
-          <a href="https://www.t4leader.com/event" class="sidebar-link">
-            <i class="bx bx-calendar"></i>
+          <a href="/applications.html" class="sidebar-link">
+            <i class="bx bx-file"></i>
+            <span>Applications</span>
+          </a>
+
+          <a href="/impactlog-partner.html" class="sidebar-link">
+            <i class="bx bx-line-chart"></i>
+            <span>Impact Log</span>
+          </a>
+
+          <a href="/chat-pillar-partner.html" class="sidebar-link">
+            <i class="bx bxs-group"></i>
+            <span>Partners Community</span>
+          </a>
+
+          <a href="https://www.t4leader.com/event" class="sidebar-link" target="_blank" rel="noopener noreferrer">
+            <i class="bx bx-calendar-event"></i>
             <span>Events</span>
           </a>
 
-
-          <a href="/profile.html" class="sidebar-link">
+          <a href="/profile-partner.html" class="sidebar-link">
             <i class="bx bx-user"></i>
             <span>Profile</span>
           </a>
 
-          
           <div id="logoutBtn" class="sidebar-link sidebar-logout">
             <i class="bx bx-log-out"></i>
             <span>Logout</span>
@@ -564,7 +577,7 @@
                 <option value="San Francisco, CA">San Francisco, CA</option>
                 <option value="Chicago, IL">Chicago, IL</option>
                 <option value="Boston, MA">Boston, MA</option>
-                <option value="Remote">Remote</option>
+                <option value="Remote" id="locationOptionRemote">Remote</option>
                 <option value="other">Other (enter city)</option>
               </select>
               <svg class="absolute right-4 md:right-5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -699,29 +712,41 @@
         });
       });
 
-      // NEW: Handle format change to show/hide location
+      // NEW: Handle format change to show/hide location and Remote option
       function handleFormatChange(format) {
         const locationField = document.getElementById('locationField');
         const locationSelect = document.getElementById('locationSelect');
         const locationOtherWrapper = document.getElementById('locationOtherWrapper');
         const locationOtherInput = document.getElementById('locationOtherInput');
+        const remoteOption = document.getElementById('locationOptionRemote');
         
         console.log('Format changed to:', format); // Debug
         
+        // When In-Person: hide "Remote" from Location (it doesn't make sense)
+        if (remoteOption) {
+          if (format === 'in-person') {
+            remoteOption.hidden = true;
+            remoteOption.disabled = true;
+            if (locationSelect && locationSelect.value === 'Remote') {
+              locationSelect.value = '';
+            }
+          } else {
+            remoteOption.hidden = false;
+            remoteOption.disabled = false;
+          }
+        }
+        
         if (format === 'virtual') {
           // For virtual, location is still required but will be auto-set to "Remote"
-          // Keep field visible so users understand location is required
           locationField.classList.remove('hidden');
           locationField.style.display = 'block';
-          // Try to auto-select "Remote" if available
           if (locationSelect) {
-            const remoteOption = Array.from(locationSelect.options).find(opt => 
+            const remoteOpt = Array.from(locationSelect.options).find(opt => 
               opt.value.toLowerCase().includes('remote') || opt.text.toLowerCase().includes('remote')
             );
-            if (remoteOption) {
-              locationSelect.value = remoteOption.value;
+            if (remoteOpt && !remoteOpt.disabled) {
+              locationSelect.value = remoteOpt.value;
             } else {
-              // If no "Remote" option, select "other" and set it
               const otherOption = Array.from(locationSelect.options).find(opt => opt.value === 'other');
               if (otherOption) {
                 locationSelect.value = 'other';
@@ -1105,6 +1130,12 @@
       }
 
       document.addEventListener('DOMContentLoaded', function() {
+        // Sync Location "Remote" option with Format (hide Remote when In-Person is selected)
+        const formatSelect = document.getElementById('formatSelect');
+        if (formatSelect && typeof handleFormatChange === 'function') {
+          handleFormatChange(formatSelect.value || '');
+        }
+        
         const deadlineInput = document.querySelector('input[name="deadline"]');
         const datePreview = document.getElementById('datePreview');
         const selectedDateSpan = document.getElementById('selectedDate');
