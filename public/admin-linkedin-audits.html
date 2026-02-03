@@ -38,6 +38,41 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        .skeleton-stat {
+            background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.5s ease-in-out infinite;
+            border-radius: 6px;
+        }
+        @keyframes skeleton-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Rows where LinkedIn audit hasn't been set – 2px border + attention animation */
+        .audit-row-pending td {
+            border-top: 2px solid #f59e0b;
+            border-bottom: 2px solid #f59e0b;
+            animation: audit-pending-pulse 2s ease-in-out infinite;
+        }
+        .audit-row-pending td:first-child {
+            border-left: 2px solid #f59e0b;
+            border-top-left-radius: 8px;
+            border-bottom-left-radius: 8px;
+        }
+        .audit-row-pending td:last-child {
+            border-right: 2px solid #f59e0b;
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+        .audit-row-pending:hover td {
+            background-color: #fffbeb;
+        }
+        @keyframes audit-pending-pulse {
+            0%, 100% { background-color: rgba(255, 251, 235, 0.3); }
+            50% { background-color: rgba(255, 251, 235, 0.7); }
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -75,7 +110,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-gray-500">Total Ambassadors</p>
-                        <p class="text-3xl font-bold text-gray-900 mt-1" id="totalAmbassadors">0</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-1" id="totalAmbassadors"><span class="skeleton-stat inline-block h-9 w-14 rounded" aria-hidden="true"></span></p>
                     </div>
                     <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                         <i class="bx bx-user text-2xl text-purple-600"></i>
@@ -87,7 +122,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-gray-500">Audits Submitted</p>
-                        <p class="text-3xl font-bold text-green-600 mt-1" id="auditsSubmitted">0</p>
+                        <p class="text-3xl font-bold text-green-600 mt-1" id="auditsSubmitted"><span class="skeleton-stat inline-block h-9 w-14 rounded" aria-hidden="true"></span></p>
                     </div>
                     <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                         <i class="bx bx-check-circle text-2xl text-green-600"></i>
@@ -99,7 +134,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-gray-500">Pending Audits</p>
-                        <p class="text-3xl font-bold text-yellow-600 mt-1" id="auditsPending">0</p>
+                        <p class="text-3xl font-bold text-yellow-600 mt-1" id="auditsPending"><span class="skeleton-stat inline-block h-9 w-14 rounded" aria-hidden="true"></span></p>
                     </div>
                     <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
                         <i class="bx bx-time text-2xl text-yellow-600"></i>
@@ -151,7 +186,7 @@
             <div id="paginationContainer" class="border-t border-gray-200 p-4 hidden">
                 <div class="flex items-center justify-between">
                     <div class="text-sm text-gray-600">
-                        Showing <span id="pageStart">1</span> to <span id="pageEnd">10</span> of <span id="totalItems">0</span> results
+                        Showing <span id="pageStart">1</span> to <span id="pageEnd">10</span> of <span id="totalItems"><span class="skeleton-stat inline-block h-4 w-8 rounded align-middle" aria-hidden="true"></span></span> results
                     </div>
                     <div class="flex space-x-2">
                         <button id="prevPage" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-gray-300 disabled:hover:text-gray-700 transition-colors font-medium">
@@ -442,8 +477,11 @@
                     ? new Date(ambassador.auditData.submittedAt).toLocaleDateString()
                     : '-';
 
+                const rowClass = hasAudit
+                    ? 'border-b border-gray-100 hover:bg-gray-50'
+                    : 'border-b border-gray-100 hover:bg-gray-50 audit-row-pending';
                 return `
-                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <tr class="${rowClass}">
                         <td class="px-4 py-3 text-sm font-medium text-gray-900">
                             ${ambassador.name || 'Unknown'}
                         </td>

@@ -261,10 +261,10 @@
             <i class="bx bx-check-square text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Task</span>
           </a>
-          <!-- Partners directly under Task -->
+          <!-- Visibility directly under Task -->
           <a href="/Partner-Calls.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
             <i class="bx bx-briefcase text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
-            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Partners</span>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Visibility</span>
           </a>
           <!-- Impact Log -->
           <a href="/impactlog-ambassador.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
@@ -283,7 +283,7 @@
           <i class="bx bx-briefcase-alt-2 text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
           <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Services</span>
         </a>
-          <a href="https://www.t4leader.com/ambassador-events" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <a href="https://www.t4leader.com/ambassador-events" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
             <i class="bx bx-calendar-event text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Events</span>
           </a>
@@ -419,7 +419,7 @@
 
           </div>
 
-          <!-- Events + Partner Calls Column -->
+          <!-- Events + Visibility Calls Column -->
           <div class="flex flex-col gap-6">
             <!-- Events -->
             <div class="bg-white rounded-2xl p-4 md:p-6 border border-gray-100">
@@ -460,10 +460,10 @@
               </div>
             </div>
 
-            <!-- Partner Calls -->
+            <!-- Visibility Calls -->
             <div class="bg-white rounded-2xl p-4 md:p-6 border border-gray-100">
               <div class="flex justify-between items-center mb-4">
-                <h4 class="font-semibold text-gray-900 text-lg">Partner Calls</h4>
+                <h4 class="font-semibold text-gray-900 text-lg">Visibility Calls</h4>
                 <a href="/Partner-Calls.html" class="text-purple-600 text-sm font-medium hover:text-purple-700 transition-colors">View all</a>
               </div>
               <div class="space-y-3" id="partnerCallsContainer">
@@ -821,7 +821,7 @@
             container.innerHTML = `
               <div class="text-center py-8">
                 <i class="bx bx-info-circle text-4xl text-gray-400 mb-2"></i>
-                <p class="text-gray-500 text-sm">No partner opportunities available yet</p>
+                <p class="text-gray-500 text-sm">No visibility opportunities available yet</p>
               </div>
             `;
             return;
@@ -833,7 +833,7 @@
             const contentRaw = post.content || post.description || '';
             const formattedDate = utils.formatDate(createdAt);
             const icon = utils.getPostTypeIcon(category);
-            const title = utils.escapeHtml(post.title || 'Partner Opportunity');
+            const title = utils.escapeHtml(post.title || 'Visibility Opportunity');
             const content = utils.escapeHtml(contentRaw);
             
             return `<a href="/Partner-Calls.html" class="block">
@@ -875,7 +875,7 @@
             container.innerHTML = `
               <div class="text-center py-8">
                 <i class="bx bx-error-circle text-4xl text-red-400 mb-2"></i>
-                <p class="text-gray-500 text-sm">Unable to load partner opportunities</p>
+                <p class="text-gray-500 text-sm">Unable to load visibility opportunities</p>
                 <button onclick="loadPartnerCalls()" class="mt-2 text-purple-600 text-xs font-medium hover:text-purple-700 transition-colors">Try Again</button>
               </div>
             `;
@@ -1064,28 +1064,27 @@
     <!-- ✅ Real-time dashboard stats fix (non-destructive) -->
     <script src="/js/ambassador-dashboard-stats-fix.js"></script>
 
-    <!-- ✅ Minimal inline video loader using /api/journey/progress -->
+    <!-- ✅ Inline video loader with subscription-aware locking (overlay only for free ambassadors) -->
     <script>
       document.addEventListener('DOMContentLoaded', async function () {
-        try {
-          const container = document.getElementById('videoContainer');
-          if (!container) return;
+        const container = document.getElementById('videoContainer');
+        const titleEl = document.getElementById('videoTitle');
+        const descriptionEl = document.getElementById('videoDescription');
+        const metaEl = document.getElementById('videoMeta');
+        if (!container) return;
 
-          const res = await fetch('/api/journey/progress', {
+        try {
+          // 1) First, get the current journey month + base video URL
+          const progressRes = await fetch('/api/journey/progress', {
             credentials: 'include',
             headers: {
               'Cache-Control': 'no-cache',
               'Pragma': 'no-cache'
             }
           });
-          if (!res.ok) return;
-          const data = await res.json();
-          const currentMonth = data.currentMonth || 1;
-
-          const titleEl = document.getElementById('videoTitle');
-          if (titleEl) {
-            titleEl.textContent = `Video Month ${currentMonth}`;
-          }
+          if (!progressRes.ok) return;
+          const progressData = await progressRes.json();
+          const currentMonth = progressData.currentMonth || 1;
 
           const videoConfig = {
             1: "https://www.canva.com/design/DAG6j1dS_Uk/Dnd2b9mJCCwSROZIWTDVXA/watch?embed",
@@ -1115,10 +1114,34 @@
             url = base + '?' + params.toString();
           }
 
+          if (titleEl) {
+            titleEl.textContent = `Video Month ${currentMonth}`;
+          }
+
+          // 2) Check subscription status to know if ambassador is free or paid
+          let isFreeAmbassador = true;
+          try {
+            const subRes = await fetch('/api/ambassador/subscription', {
+              credentials: 'include',
+              headers: { 'Cache-Control': 'no-cache' }
+            });
+            if (subRes.ok) {
+              const subData = await subRes.json();
+              const type = (subData.subscription_type || 'free').toLowerCase();
+              const hasFull = !!subData.has_full_access;
+              isFreeAmbassador = !(type === 'paid' || hasFull);
+            }
+          } catch (subError) {
+            console.warn('Subscription check failed, defaulting to free:', subError);
+            isFreeAmbassador = true;
+          }
+
+          // 3) Render video container (iframe) for all users
+          //    For free ambassadors we'll add a lock overlay on top.
           container.innerHTML = `
             <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl" style="padding-top: 56.25%; background:#fdf4ff;">
               <iframe
-                class="absolute top-0 left-0 w-full h-full border-0"
+                class="absolute top-0 left-0 w-full h-full border-0 ${isFreeAmbassador ? 'pointer-events-none blur-[1px]' : ''}"
                 src="${url}"
                 allow="autoplay *; fullscreen; accelerometer; gyroscope; picture-in-picture; clipboard-write; encrypted-media"
                 allowfullscreen
@@ -1127,8 +1150,40 @@
                 loading="eager"
                 sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation allow-autoplay">
               </iframe>
+              ${
+                isFreeAmbassador
+                  ? `
+              <div
+                id="videoLockOverlay"
+                class="absolute inset-0 flex items-center justify-center cursor-pointer"
+                onclick="window.subscriptionManager && window.subscriptionManager.showUpgradeModal && window.subscriptionManager.showUpgradeModal('journey')"
+              >
+                <div class="w-14 h-14 rounded-full bg-white/95 flex items-center justify-center shadow-lg">
+                  <i class="fas fa-lock text-2xl text-[#4b0d7f]"></i>
+                </div>
+              </div>
+              `
+                  : ''
+              }
             </div>
           `;
+
+          // 4) Update text under the video based on subscription
+          if (isFreeAmbassador) {
+            if (descriptionEl) {
+              descriptionEl.textContent = 'This video month is available for paid ambassadors only.';
+            }
+            if (metaEl) {
+              metaEl.textContent = 'Upgrade your subscription to unlock this training.';
+            }
+          } else {
+            if (descriptionEl) {
+              descriptionEl.textContent = 'Watch this month’s journey video to guide your progress.';
+            }
+            if (metaEl) {
+              metaEl.textContent = 'Playing automatically with sound. Use the controls in the player as needed.';
+            }
+          }
         } catch (e) {
           console.error('Inline journey video loader error:', e);
         }

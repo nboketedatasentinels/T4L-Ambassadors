@@ -197,7 +197,11 @@
       <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
         <div class="flex items-center gap-3">
           <a href="/ambassador-dashboard.html" class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white cursor-pointer hover:opacity-80 transition-opacity" style="background:#4b0d7f" title="Go to Dashboard">T4L</a>
-          <div class="text-gray-900 font-semibold">T4L Ambassador</div>
+          <a href="/ambassador-dashboard.html" class="flex items-center gap-1.5 text-[#4b0d7f] hover:opacity-80 font-bold text-base transition-opacity" title="Back to Home">
+            <i class="bx bx-home-alt text-2xl"></i>
+            <span class="text-lg">Back to Home</span>
+          </a>
+          <div class="text-gray-900 font-semibold hidden sm:inline">T4L Ambassador</div>
         </div>
         <div class="relative w-full max-w-md hidden sm:block">
           <input id="search" class="w-full border border-gray-300 rounded-full pl-10 pr-4 py-2 text-sm" placeholder="Search articles, feedback..." />
@@ -254,11 +258,28 @@
               <span>Track Progress</span>
             </a>
 
-            <!-- Share / Copy link for published article -->
-            <button id="btnShareArticle" class="w-full px-4 py-2 rounded-lg border border-dashed border-gray-300 text-sm text-gray-600 flex items-center justify-center gap-2 hover:border-purple-400 hover:text-purple-700 hover:bg-purple-50 transition-all">
-              <i class="bx bx-share-alt text-lg"></i>
-              <span>Share / Copy article link</span>
-            </button>
+            <!-- Share: copy post text, then open LinkedIn (user pastes – LinkedIn does not allow pre-fill) -->
+            <div class="relative" id="shareButtonWrap">
+              <a id="btnShareArticle" href="#" target="_blank" rel="noopener noreferrer" class="w-full px-4 py-2 rounded-lg border border-dashed border-gray-300 text-sm text-gray-600 flex items-center justify-center gap-2 hover:border-purple-400 hover:text-purple-700 hover:bg-purple-50 transition-all no-underline">
+                <i class="bx bxl-linkedin-square text-lg"></i>
+                <span>Post on LinkedIn</span>
+              </a>
+            </div>
+            <!-- Modal: explains LinkedIn can't be pre-filled, shows text, Copy & Open button -->
+            <div id="linkedInShareModal" class="fixed inset-0 z-[200] hidden items-center justify-center bg-black/50 p-4" style="display: none;">
+              <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Share on LinkedIn</h3>
+                <p class="text-sm text-gray-600 mb-3">LinkedIn doesn't let websites put text in the post for you. We'll <strong>copy</strong> your post — when LinkedIn opens, click in the box and <strong>paste</strong> with <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">Cmd+V</kbd> (Mac) or <kbd class="px-1 py-0.5 bg-gray-100 rounded text-xs">Ctrl+V</kbd> (Windows).</p>
+                <div class="bg-gray-50 rounded-lg p-3 mb-4 text-sm text-gray-800 border border-gray-200" id="linkedInShareModalText">Exciting news! 🎉 After writing my article…</div>
+                <div class="flex gap-3">
+                  <button type="button" id="linkedInShareModalCancel" class="flex-1 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
+                  <button type="button" id="linkedInShareModalConfirm" class="flex-1 px-4 py-2 rounded-lg bg-[#0A66C2] text-white hover:bg-[#004182] font-medium flex items-center justify-center gap-2">
+                    <i class="bx bxl-linkedin-square text-lg"></i>
+                    Copy text & open LinkedIn
+                  </button>
+                </div>
+              </div>
+            </div>
 
             <!-- Allow Admin to Publish Button - Only visible when article is approved -->
             <button id="btnConsentToPublish" class="w-full px-4 py-3 rounded-lg bg-green-600 text-white hover:bg-green-700 font-semibold text-sm text-center transition-all shadow-md hover:shadow-lg transform hover:scale-[1.02] flex items-center justify-center gap-2" style="display: none;">
@@ -850,27 +871,83 @@ async function loadArticle() {
           trackProgressBtn.href = `/article-progress.html?articleId=${article.id}`;
         }
 
-        // Configure Share / Copy link button
+        // Share: direct link to LinkedIn + copy post text (paste in LinkedIn to replace "What do you want to talk about?")
         const btnShareArticle = document.getElementById('btnShareArticle');
+        const linkedInPostText = 'Exciting news! 🎉 After writing my article and going through the review process, it has officially been published by Transformation Leader.';
         if (btnShareArticle) {
           const isPublished = String(article.status || '').toLowerCase() === 'published';
           const hasLink = !!currentPublicationLink;
 
           if (isPublished && hasLink) {
-            btnShareArticle.disabled = false;
-            btnShareArticle.className = 'w-full px-4 py-2 rounded-lg border border-purple-200 text-sm text-purple-700 flex items-center justify-center gap-2 bg-purple-50 hover:bg-purple-100 hover:border-purple-400 transition-all';
-            btnShareArticle.innerHTML = '<i class="bx bx-share-alt text-lg"></i><span>Share / Copy article link</span>';
-            btnShareArticle.onclick = async () => {
-              await shareOrCopyArticleLink(currentPublicationLink, article.title || 'My published article');
-            };
-          } else {
-            btnShareArticle.disabled = true;
-            btnShareArticle.className = 'w-full px-4 py-2 rounded-lg border border-dashed border-gray-200 text-sm text-gray-400 flex items-center justify-center gap-2 bg-gray-50 cursor-not-allowed';
-            btnShareArticle.innerHTML = '<i class="bx bx-link text-lg"></i><span>Share link available after publication</span>';
-            btnShareArticle.onclick = (e) => {
+            const url = currentPublicationLink;
+            const linkedInShareUrl = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(url);
+            btnShareArticle.href = linkedInShareUrl;
+            btnShareArticle.className = 'w-full px-4 py-2 rounded-lg border border-purple-200 text-sm text-purple-700 flex items-center justify-center gap-2 bg-purple-50 hover:bg-purple-100 hover:border-purple-400 transition-all no-underline';
+            btnShareArticle.innerHTML = '<i class="bx bxl-linkedin-square text-lg"></i><span>Post on LinkedIn</span>';
+
+            var linkedInModal = document.getElementById('linkedInShareModal');
+            var linkedInModalText = document.getElementById('linkedInShareModalText');
+            var linkedInModalCancel = document.getElementById('linkedInShareModalCancel');
+            var linkedInModalConfirm = document.getElementById('linkedInShareModalConfirm');
+
+            btnShareArticle.onclick = function(e) {
               e.preventDefault();
-              showToast('You can share your article once it has been published and a link is available.', true);
+              if (linkedInModalText) linkedInModalText.textContent = linkedInPostText;
+              if (linkedInModal) {
+                linkedInModal.style.display = 'flex';
+                linkedInModal.classList.remove('hidden');
+              }
             };
+
+            function doCopyAndOpenLinkedIn() {
+              var copied = false;
+              try {
+                var ta = document.createElement('textarea');
+                ta.value = linkedInPostText;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.top = '0';
+                ta.style.left = '0';
+                ta.style.width = '2px';
+                ta.style.height = '2px';
+                ta.style.padding = '0';
+                ta.style.border = 'none';
+                ta.style.outline = 'none';
+                ta.style.boxShadow = 'none';
+                ta.style.background = 'transparent';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                ta.setSelectionRange(0, linkedInPostText.length);
+                copied = document.execCommand('copy');
+                ta.remove();
+              } catch (err) {}
+              if (!copied && navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(linkedInPostText).catch(function() {});
+              }
+              window.open(linkedInShareUrl, '_blank', 'noopener,noreferrer');
+              if (linkedInModal) {
+                linkedInModal.style.display = 'none';
+                linkedInModal.classList.add('hidden');
+              }
+              showToast('Paste in the LinkedIn box with Cmd+V (Mac) or Ctrl+V (Windows)', false);
+            }
+
+            if (linkedInModalCancel) {
+              linkedInModalCancel.onclick = function() {
+                if (linkedInModal) {
+                  linkedInModal.style.display = 'none';
+                  linkedInModal.classList.add('hidden');
+                }
+              };
+            }
+            if (linkedInModalConfirm) {
+              linkedInModalConfirm.onclick = doCopyAndOpenLinkedIn;
+            }
+          } else {
+            btnShareArticle.href = '#';
+            btnShareArticle.className = 'w-full px-4 py-2 rounded-lg border border-dashed border-gray-200 text-sm text-gray-400 flex items-center justify-center gap-2 bg-gray-50 cursor-not-allowed no-underline pointer-events-none';
+            btnShareArticle.innerHTML = '<i class="bx bx-link text-lg"></i><span>Share available after publication</span>';
           }
         }
 

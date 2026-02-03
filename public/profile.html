@@ -108,7 +108,7 @@
             <i class="bx bx-briefcase text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Partners</span>
           </a>
-          <a href="https://www.t4leader.com/ambassador-events" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+          <a href="https://www.t4leader.com/ambassador-events" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
             <i class="bx bx-calendar-event text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
             <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Events</span>
           </a>
@@ -217,133 +217,21 @@
                 disabled
               />
             </div>
-
-            <!-- Access Code Field (Read-only) -->
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-2">
-                Access Code
-              </label>
-              <input
-                type="text"
-                id="accessCodeInput"
-                class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
-                readonly
-                disabled
-              />
-            </div>
-
-            <!-- Status Field (Read-only) -->
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-2">
-                Account Status
-              </label>
-              <div class="flex items-center gap-3">
-                <span id="statusBadge" class="px-4 py-2 rounded-lg text-sm font-semibold">
-                  <span class="skeleton h-5 w-24 inline-block rounded"></span>
-                </span>
-              </div>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="flex flex-col sm:flex-row gap-4 pt-4">
-              <button
-                type="submit"
-                class="flex-1 bg-gradient-to-r from-[#4b0d7f] to-[#6b1fa0] text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all hover:scale-105"
-              >
-                <i class="bx bx-save mr-2"></i>
-                Save Changes
-              </button>
-              <button
-                type="button"
-                id="cancelBtn"
-                class="flex-1 bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
           </form>
         </div>
 
-        <!-- CV Upload Card (Ambassadors Only) -->
-        <div id="cvUploadSection" class="bg-white rounded-2xl shadow-md p-6 md:p-8 mb-6 hidden">
-          <h3 class="text-xl font-bold text-gray-900 mb-6">Upload Your CV</h3>
-          
-          <!-- Current CV Display -->
-          <div id="currentCvContainer" class="mb-6 hidden">
-            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <div class="flex items-center space-x-3">
-                <i class="bx bx-file-blank text-3xl text-purple-600"></i>
-                <div>
-                  <p class="font-semibold text-gray-900" id="currentCvName">-</p>
-                  <p class="text-sm text-gray-500">Current CV</p>
-                </div>
-              </div>
-              <a 
-                id="downloadCvLink" 
-                href="#" 
-                target="_blank"
-                class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-semibold"
-              >
-                <i class="bx bx-download mr-2"></i>Download
-              </a>
-            </div>
-          </div>
-          
-          <!-- CV Upload Section -->
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-2">
-                Upload CV (PDF, DOC, DOCX)
-              </label>
-              <div class="mt-2 flex items-center justify-center w-full">
-                <label 
-                  for="cvFileInput" 
-                  class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
-                >
-                  <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                    <i class="bx bx-cloud-upload text-4xl text-gray-400 mb-2"></i>
-                    <p class="mb-2 text-sm text-gray-500">
-                      <span class="font-semibold">Click to upload</span> or drag and drop
-                    </p>
-                    <p class="text-xs text-gray-500">PDF, DOC, DOCX (MAX. 10MB)</p>
-                  </div>
-                  <input 
-                    id="cvFileInput" 
-                    type="file" 
-                    class="hidden" 
-                    accept=".pdf,.doc,.docx"
-                  />
-                </label>
-              </div>
-              <p id="selectedFileName" class="mt-2 text-sm text-gray-600 hidden"></p>
-            </div>
-            <button
-              type="button"
-              id="uploadCvBtn"
-              class="w-full bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-              disabled
-            >
-              <i class="bx bx-upload mr-2"></i>
-              Upload CV
-            </button>
-          </div>
-        </div>
 
         <!-- Account Information Card -->
         <div class="bg-white rounded-2xl shadow-md p-6 md:p-8">
           <h3 class="text-xl font-bold text-gray-900 mb-6">Account Information</h3>
           <div class="space-y-4">
             <div class="flex justify-between items-center py-3 border-b border-gray-200">
-              <span class="text-gray-600">User ID</span>
-              <span id="userId" class="text-gray-900 font-semibold">-</span>
-            </div>
-            <div class="flex justify-between items-center py-3 border-b border-gray-200">
               <span class="text-gray-600">Role</span>
               <span id="userRole" class="text-gray-900 font-semibold">-</span>
             </div>
             <div class="flex justify-between items-center py-3">
               <span class="text-gray-600">Member Since</span>
-              <span class="text-gray-900 font-semibold">-</span>
+              <span id="memberSince" class="text-gray-900 font-semibold">-</span>
             </div>
           </div>
         </div>
@@ -481,41 +369,21 @@
             }
             
             document.getElementById('emailInput').value = data.email || '';
-            document.getElementById('accessCodeInput').value = data.accessCode || '';
-            
-            // Update status badge
-            const statusBadge = document.getElementById('statusBadge');
-            const status = data.status || 'unknown';
-            statusBadge.textContent = status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
-            
-            if (status === 'active' || status === 'approved') {
-              statusBadge.className = 'px-4 py-2 rounded-lg text-sm font-semibold bg-green-100 text-green-700';
-            } else if (status === 'pending') {
-              statusBadge.className = 'px-4 py-2 rounded-lg text-sm font-semibold bg-yellow-100 text-yellow-700';
-            } else {
-              statusBadge.className = 'px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700';
-            }
             
             // Update account information
-            document.getElementById('userId').textContent = data.id || '-';
             document.getElementById('userRole').textContent = data.role ? data.role.charAt(0).toUpperCase() + data.role.slice(1) : '-';
-            
-            // Show CV upload section for ambassadors only
-            const cvUploadSection = document.getElementById('cvUploadSection');
-            if (cvUploadSection && data.role === 'ambassador') {
-              cvUploadSection.classList.remove('hidden');
-              
-              // Display current CV if available
-              if (data.cvFilename) {
-                const currentCvContainer = document.getElementById('currentCvContainer');
-                const currentCvName = document.getElementById('currentCvName');
-                const downloadCvLink = document.getElementById('downloadCvLink');
-                
-                if (currentCvContainer && currentCvName && downloadCvLink) {
-                  currentCvName.textContent = data.cvFilename;
-                  downloadCvLink.href = `/uploads/cvs/${data.cvFilename}`;
-                  currentCvContainer.classList.remove('hidden');
-                }
+            // Member since / joined date
+            const memberSinceEl = document.getElementById('memberSince');
+            if (memberSinceEl) {
+              if (data.joinedAt) {
+                const joinedDate = new Date(data.joinedAt);
+                memberSinceEl.textContent = joinedDate.toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                });
+              } else {
+                memberSinceEl.textContent = '-';
               }
             }
           })
@@ -652,11 +520,6 @@
             });
           });
         }
-
-        // Cancel button
-        document.getElementById('cancelBtn').addEventListener('click', function() {
-          window.location.reload();
-        });
 
         // Toast functions
         function showToast(toastId) {

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>T4L Ambassador Dashboard</title>
+  <title>Visibility Calls | T4L</title>
   <link rel="icon" type="image/png" href="/images/favicon.png" />
   <link rel="stylesheet" href="css/styles.css" />
   <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
@@ -268,10 +268,10 @@
 
         <a href="/Partner-Calls.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50 bg-purple-50">
           <i class="bx bx-briefcase text-2xl text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
-          <span class="text-[10px] mt-1.5 font-medium text-[#4b0d9f] transition-colors duration-200">Partners</span>
+          <span class="text-[10px] mt-1.5 font-medium text-[#4b0d9f] transition-colors duration-200">Visibility</span>
         </a>
 
-        <a href="https://www.t4leader.com/ambassador-events" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
+        <a href="https://www.t4leader.com/ambassador-events" target="_blank" rel="noopener noreferrer" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
           <i class="bx bx-calendar-event text-2xl group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
           <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Events</span>
         </a>
@@ -1019,7 +1019,7 @@ function createOpportunityCard(post) {
           <i class="bx ${icon} text-white text-2xl"></i>
         </div>
         <div class="min-w-0 flex-1">
-          <h3 class="text-lg font-bold text-gray-900 truncate">Partner Opportunity</h3>
+          <h3 class="text-lg font-bold text-gray-900 truncate">Visibility opportunity</h3>
           <div class="flex items-center gap-3 flex-wrap">
             ${deadlineDate ? `<p class="text-sm text-gray-600 flex items-center gap-1">
               <i class="bx bx-calendar-check text-xs"></i>
@@ -1056,32 +1056,9 @@ function createOpportunityCard(post) {
     </div>
 
     <div class="flex items-center justify-end flex-wrap gap-3">
-      <button class="text-gray-600 hover:text-purple-700 p-2 hover:bg-gray-100 rounded-lg transition-all">
-        <i class="bx bx-bookmark text-2xl"></i>
-      </button>
-      <button class="share-opportunity-btn text-gray-600 hover:text-purple-700 p-2 hover:bg-gray-100 rounded-lg transition-all" title="Share link">
-        <i class="bx bx-share-alt text-2xl"></i>
-      </button>
       ${applyButtonHtml}
     </div>
   `;
-
-  // Share button: copy opportunity page link to clipboard
-  const shareBtn = card.querySelector('.share-opportunity-btn');
-  if (shareBtn) {
-    shareBtn.addEventListener('click', function() {
-      const url = window.location.origin + window.location.pathname + (post.post_id ? '?post=' + encodeURIComponent(post.post_id) : '');
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(url).then(function() {
-          showToast('Link copied to clipboard!', 'success');
-        }).catch(function() {
-          copyToClipboardFallback(url);
-        });
-      } else {
-        copyToClipboardFallback(url);
-      }
-    });
-  }
 
   // ATTACH EVENT LISTENER FOR QUICK APPLY (One-click)
   if (!hasApplied) {

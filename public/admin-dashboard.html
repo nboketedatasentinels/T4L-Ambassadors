@@ -642,7 +642,7 @@
                     <button id="tabAmbassadors" onclick="switchTab('ambassadors')" class="px-4 py-2 rounded-xl text-sm font-semibold text-white" style="background-color: #4b0d7f; cursor: pointer;">Ambassadors</button>
                     <button id="tabPartners" onclick="switchTab('partners')" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700" style="cursor: pointer;">Partners</button>
                     <button id="tabArticles" onclick="switchTab('articles')" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700" style="cursor: pointer;">Articles</button>
-                    <button id="tabCertificates" onclick="switchTab('certificates')" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700" style="cursor: pointer;">Certificates</button>
+                    <button id="tabHistory" onclick="switchTab('history')" class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700" style="cursor: pointer;">History</button>
                 </div>
             </div>
         </div>
@@ -683,8 +683,8 @@
                                     <button onclick="setSearchCategory('articles')" class="search-category-option w-full px-4 py-2 text-left text-sm hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2" data-category="articles">
                                         <i class="bx bx-file"></i> Articles
                                     </button>
-                                    <button onclick="setSearchCategory('certificates')" class="search-category-option w-full px-4 py-2 text-left text-sm hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2" data-category="certificates">
-                                        <i class="bx bx-certificate"></i> Certificates
+                                    <button onclick="setSearchCategory('history')" class="search-category-option w-full px-4 py-2 text-left text-sm hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2" data-category="history">
+                                        <i class="bx bx-history"></i> History
                                     </button>
                                 </div>
                             </div>
@@ -869,25 +869,25 @@
             </div>
         </div>
 
-        <!-- Panel: Certificates -->
-        <div id="panelCertificates" class="tab-panel bg-white rounded-xl shadow-sm border overflow-hidden hidden">
+        <!-- Panel: History (12-month journey completers) -->
+        <div id="panelHistory" class="tab-panel bg-white rounded-xl shadow-sm border overflow-hidden hidden">
             <div class="table-container overflow-x-auto overflow-y-auto" style="max-height: min(70vh, 600px);">
                 <table class="w-full">
-                    <thead class="bg-gray-50"><tr id="tableHeadersCertificates"></tr></thead>
-                    <tbody id="listBodyCertificates"></tbody>
+                    <thead class="bg-gray-50"><tr id="tableHeadersHistory"></tr></thead>
+                    <tbody id="listBodyHistory"></tbody>
                 </table>
             </div>
-            <div id="emptyStateCertificates" class="empty-state hidden">
-                <i class="bx bx-inbox"></i>
-                <h3 class="text-xl font-semibold text-gray-700 mb-2">No certificates found</h3>
-                <p class="text-gray-500">Try adjusting your search or filter.</p>
+            <div id="emptyStateHistory" class="empty-state hidden">
+                <i class="bx bx-history"></i>
+                <h3 class="text-xl font-semibold text-gray-700 mb-2">No history yet</h3>
+                <p class="text-gray-500">Users who complete the 12-month journey will appear here.</p>
             </div>
-            <div id="paginationCertificates" class="border-t border-gray-200 p-4 hidden">
+            <div id="paginationHistory" class="border-t border-gray-200 p-4 hidden">
                 <div class="flex items-center justify-between">
-                    <div class="text-sm text-gray-600">Showing <span id="pageStartCertificates">1</span> to <span id="pageEndCertificates">10</span> of <span id="totalItemsCertificates">0</span> results</div>
+                    <div class="text-sm text-gray-600">Showing <span id="pageStartHistory">1</span> to <span id="pageEndHistory">10</span> of <span id="totalItemsHistory">0</span> results</div>
                     <div class="flex space-x-2">
-                        <button id="prevPageCertificates" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">Previous</button>
-                        <button id="nextPageCertificates" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">Next</button>
+                        <button id="prevPageHistory" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">Previous</button>
+                        <button id="nextPageHistory" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">Next</button>
                     </div>
                 </div>
             </div>
@@ -1330,21 +1330,8 @@
             unreadNotifications: 0
         };
 
-        const VIEWED_CERTS_KEY = 'adminViewedCertificates';
-        function getViewedCertificateIds() {
-            try {
-                const raw = localStorage.getItem(VIEWED_CERTS_KEY);
-                return raw ? new Set(JSON.parse(raw)) : new Set();
-            } catch (_) { return new Set(); }
-        }
-        function markCertificateViewed(certificateId) {
-            const set = getViewedCertificateIds();
-            set.add(String(certificateId));
-            try { localStorage.setItem(VIEWED_CERTS_KEY, JSON.stringify([...set])); } catch (_) {}
-        }
-
         // DOM elements - each tab has its own table, pagination, empty state
-        const panelIds = { ambassadors: 'Ambassadors', partners: 'Partners', articles: 'Articles', certificates: 'Certificates' };
+        const panelIds = { ambassadors: 'Ambassadors', partners: 'Partners', articles: 'Articles', history: 'History' };
         const elements = {
             loadingState: document.getElementById('loadingState'),
             searchInput: document.getElementById('searchInput'),
@@ -1353,7 +1340,7 @@
             addNewBtn: document.getElementById('addNewBtn'),
             panels: {}
         };
-        ['ambassadors', 'partners', 'articles', 'certificates'].forEach(tab => {
+        ['ambassadors', 'partners', 'articles', 'history'].forEach(tab => {
             const suffix = tab.charAt(0).toUpperCase() + tab.slice(1);
             elements.panels[tab] = {
                 panel: document.getElementById('panel' + suffix),
@@ -1618,13 +1605,10 @@ function getNotificationIcon(type) {
                 // ✅ Then refresh from server to ensure consistency
                 await fetchNotifications();
                 
-                // Handle certificate notifications - navigate to specific certificate on Certificates tab
+                // Handle certificate notifications - navigate to ambassadors tab
                 if (type === 'certificate_uploaded') {
                     closeNotificationDropdown();
-                    if (certificateId) {
-                        state.scrollToCertificateId = certificateId;
-                    }
-                    switchTab('certificates');
+                    switchTab('ambassadors');
                 } else if (articleId && (type === 'article_submitted' || type === 'needs_update' || type === 'article_published' || type === 'article_updated' || type === 'ambassador_consent_to_publish')) {
                     openReviewModal(articleId);
                     closeNotificationDropdown();
@@ -1760,7 +1744,7 @@ async function markAllNotificationsRead() {
         }
 
         function showPanelForTab(tabName) {
-            ['ambassadors', 'partners', 'articles', 'certificates'].forEach(t => {
+            ['ambassadors', 'partners', 'articles', 'history'].forEach(t => {
                 const p = elements.panels[t];
                 if (p && p.panel) p.panel.classList.toggle('hidden', t !== tabName);
             });
@@ -1794,7 +1778,7 @@ async function markAllNotificationsRead() {
             const els = getPanelEls();
             if (!els || !els.tableHeaders) return;
             const actionsTh = '<th class="px-4 py-3 font-semibold text-right">Actions</th>';
-            const typeTh = state.tab === 'certificates' ? '' : '<th class="px-4 py-3 font-semibold text-right">Type</th>';
+            const typeTh = state.tab === 'history' ? '' : '<th class="px-4 py-3 font-semibold text-right">Type</th>';
             els.tableHeaders.innerHTML = headers.map(header => 
                 `<th class="px-4 py-3 font-semibold text-left">${header}</th>`
             ).join('') + actionsTh + typeTh;
@@ -2066,8 +2050,8 @@ async function markAllNotificationsRead() {
                     case 'journey':
                         url = '/admin/api/journey/summary';
                         break;
-                    case 'certificates':
-                        url = '/admin/api/certificates';
+                    case 'history':
+                        url = '/admin/api/history';
                         break;
                     default:
                         url = `/admin/api/ambassadors?page=1&limit=${fetchLimit}`;
@@ -2180,41 +2164,28 @@ async function markAllNotificationsRead() {
                     const end = Math.min(start + state.limit, items.length);
                     state.items = items.slice(start, end);
                     renderArticlesList();
-                } else if (state.tab === 'certificates') {
-                    // Certificates tab
-                    let items = data.certificates || [];
+                } else if (state.tab === 'history') {
+                    // History tab - 12-month journey completers
+                    let items = data.history || [];
                     
-                    // Client-side search filtering for certificates
                     if (searchQuery) {
                         items = items.filter(item => {
                             const searchable = [
-                                item.ambassadorName,
-                                item.ambassadorEmail,
-                                item.course_type,
-                                item.original_name
+                                item.name,
+                                item.email
                             ].filter(Boolean).join(' ').toLowerCase();
                             return searchable.includes(searchQuery);
                         });
                     }
-                    
-                    // Apply verification filter if set
                     if (state.status && state.status !== 'all') {
-                        const verified = state.status === 'verified';
-                        items = items.filter(item => item.verified === verified);
+                        items = items.filter(item => (item.status || 'active') === state.status);
                     }
                     
                     state.total = items.length;
-                    // If we're scrolling to a specific certificate (e.g. from notification), go to its page
-                    if (state.scrollToCertificateId) {
-                        const idx = items.findIndex(item => String(item.certificate_id) === String(state.scrollToCertificateId));
-                        if (idx >= 0) {
-                            state.page = Math.floor(idx / state.limit) + 1;
-                        }
-                    }
                     const start = (state.page - 1) * state.limit;
                     const end = Math.min(start + state.limit, items.length);
                     state.items = items.slice(start, end);
-                    renderCertificatesList();
+                    renderHistoryList();
                 } else {
                     // Ambassadors tab - server-side pagination (API returns page + total)
                     state.items = data.ambassadors || [];
@@ -2364,10 +2335,8 @@ async function markAllNotificationsRead() {
             bindRowActions();
         }
 
-        function renderCertificatesList() {
-            updateTableHeaders([
-                'Ambassador', 'Email', 'Course Type', 'Upload Date'
-            ]);
+        function renderHistoryList() {
+            updateTableHeaders(['Name', 'Email', '12 months', 'Status', 'Actions']);
             const els = getPanelEls();
             const tbody = els ? els.listBody : null;
             if (!tbody) return;
@@ -2381,47 +2350,65 @@ async function markAllNotificationsRead() {
             state.items.forEach(item => {
                 const tr = document.createElement('tr');
                 tr.className = 'border-b border-gray-100 hover:bg-gray-50';
-                tr.setAttribute('data-certificate-id', item.certificate_id || '');
-                
-                const uploadDate = item.upload_date ? new Date(item.upload_date).toLocaleDateString() : '-';
-                const courseType = (item.course_type || '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                const viewedIds = getViewedCertificateIds();
-                const isViewed = viewedIds.has(String(item.certificate_id));
-                const viewBtnClass = isViewed
-                    ? 'px-3 py-1 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 font-semibold disabled:opacity-60 disabled:cursor-not-allowed'
-                    : 'px-3 py-1 rounded-lg border border-blue-300 text-blue-700 hover:bg-blue-50 font-semibold disabled:opacity-60 disabled:cursor-not-allowed';
-                const viewBtnText = isViewed ? 'Viewed' : 'View';
+                const completedAt = item.completed_at ? new Date(item.completed_at).toLocaleDateString() : '12 months';
+                const status = (item.status || 'active').toLowerCase();
+                const statusClass = status === 'active' ? 'border-green-300 text-green-700 bg-green-50' : 'border-gray-300 text-gray-600 bg-gray-100';
+                const isActive = status === 'active';
+                const uid = (item.user_id || '').replace(/'/g, "\\'");
+                const actionBtn = isActive
+                    ? `<button type="button" class="px-3 py-1.5 rounded-lg border border-red-300 text-red-700 bg-red-50 hover:bg-red-100 font-semibold text-sm" onclick="adminDeactivateUser('${uid}', this)">Deactivate</button>`
+                    : `<button type="button" class="px-3 py-1.5 rounded-lg border border-green-300 text-green-700 bg-green-50 hover:bg-green-100 font-semibold text-sm" onclick="adminActivateUser('${uid}', this)">Activate</button>`;
                 tr.innerHTML = `
-                    <td class="px-4 py-3 text-sm text-gray-900">${item.ambassadorName || '-'}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">${item.ambassadorEmail || '-'}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">${courseType}</td>
-                    <td class="px-4 py-3 text-sm text-gray-700">${uploadDate}</td>
-                    <td class="px-4 py-3 text-sm text-right space-x-2">
-                        <button class="${viewBtnClass}" 
-                                onclick="viewCertificate('${item.certificate_id}', this)">
-                            <span class="btn-text">${viewBtnText}</span>
-                        </button>
-                    </td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${escapeHtml(item.name || '-')}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">${escapeHtml(item.email || '-')}</td>
+                    <td class="px-4 py-3 text-sm text-gray-700">${escapeHtml(completedAt)}</td>
+                    <td class="px-4 py-3"><span class="status-badge ${statusClass}">${escapeHtml(item.status || 'active')}</span></td>
+                    <td class="px-4 py-3 text-right">${actionBtn}</td>
                 `;
                 tbody.appendChild(tr);
             });
             if (els && els.emptyState) els.emptyState.classList.add('hidden');
-            // When opened from a certificate notification: scroll to row, highlight it, and open the certificate
-            if (state.scrollToCertificateId) {
-                const certId = state.scrollToCertificateId;
-                state.scrollToCertificateId = null;
-                const row = els && els.listBody ? els.listBody.querySelector(`tr[data-certificate-id="${certId}"]`) : null;
-                if (row) {
-                    row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    row.classList.add('bg-indigo-50');
-                    setTimeout(() => {
-                        row.classList.remove('bg-indigo-50');
-                    }, 2500);
-                }
-                // Open the certificate in a new tab so the admin can view it
-                if (typeof viewCertificate === 'function') {
-                    viewCertificate(certId, null);
-                }
+        }
+
+        async function adminDeactivateUser(userId, button) {
+            if (!confirm('Deactivate this user? They will no longer be able to sign in or access the system.')) return;
+            if (button) button.disabled = true;
+            try {
+                const res = await fetch(`/admin/api/users/${userId}/status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ status: 'inactive' })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Failed to deactivate');
+                showToast('User deactivated. They can no longer access the system.', false);
+                fetchList();
+            } catch (e) {
+                showToast(e.message || 'Failed to deactivate user', true);
+            } finally {
+                if (button) button.disabled = false;
+            }
+        }
+
+        async function adminActivateUser(userId, button) {
+            if (!confirm('Reactivate this user? They will be able to sign in again.')) return;
+            if (button) button.disabled = true;
+            try {
+                const res = await fetch(`/admin/api/users/${userId}/status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ status: 'active' })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Failed to activate');
+                showToast('User reactivated.', false);
+                fetchList();
+            } catch (e) {
+                showToast(e.message || 'Failed to activate user', true);
+            } finally {
+                if (button) button.disabled = false;
             }
         }
 
@@ -3415,16 +3402,13 @@ async function markAllNotificationsRead() {
                                 placeholder="Type your feedback here..."
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-800 bg-white mb-3"></textarea>
                             
-                            <!-- Status Select moved here (under feedback input) -->
+                            <!-- Status Select: Only \"Needs Update\" and \"Approved\" available in this popup -->
                             <select 
                                 id="simpleStatusSelect" 
                                 onchange="handleSimpleStatusUpdate('${articleId}')"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-800 bg-white mb-3">
-                                <option value="pending" ${status === 'pending' ? 'selected' : ''}>Pending Review</option>
-                                <option value="needs_update" ${status === 'needs_update' ? 'selected' : ''}>Needs Update</option>
+                                <option value="needs_update" ${(status === 'pending' || status === 'needs_update') ? 'selected' : ''}>Needs Update</option>
                                 <option value="approved" ${status === 'approved' ? 'selected' : ''}>Approved</option>
-                                <option value="published" ${status === 'published' ? 'selected' : ''}>Published</option>
-                                <option value="rejected" ${status === 'rejected' ? 'selected' : ''}>Rejected</option>
                             </select>
                             
                             <div class="relative">
@@ -4598,7 +4582,7 @@ async function markAllNotificationsRead() {
                 'ambassadors': 'Ambassadors',
                 'partners': 'Partners',
                 'articles': 'Articles',
-                'certificates': 'Certificates'
+                'history': 'History'
             };
             label.textContent = labels[category] || 'All';
             
@@ -4608,7 +4592,7 @@ async function markAllNotificationsRead() {
                 'ambassadors': 'Search by name, email, or access code...',
                 'partners': 'Search by company name, contact, or email...',
                 'articles': 'Search by title, author, or content...',
-                'certificates': 'Search certificates...'
+                'history': 'Search history...'
             };
             input.placeholder = placeholders[category] || placeholders['all'];
             
@@ -4659,8 +4643,10 @@ async function markAllNotificationsRead() {
                     <button onclick="quickSearch('status:published')" class="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors">Published</button>
                     <button onclick="quickSearch('status:needs_update')" class="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded-full hover:bg-orange-200 transition-colors">Needs Update</button>
                 `,
-                'certificates': `
+                'history': `
                     <span class="text-xs text-gray-500 py-1">Quick filters:</span>
+                    <button onclick="quickSearch('status:active')" class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors">Active</button>
+                    <button onclick="quickSearch('status:inactive')" class="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors">Inactive</button>
                 `
             };
             
@@ -4839,7 +4825,7 @@ async function markAllNotificationsRead() {
                     const displayName = item.name || item.contact_person || item.title || item.ambassadorName || 'Unknown';
                     const icon = state.tab === 'articles' ? 'bx-file' : 
                                 state.tab === 'partners' ? 'bx-buildings' : 
-                                state.tab === 'certificates' ? 'bx-certificate' : 'bx-user';
+                                state.tab === 'history' ? 'bx-history' : 'bx-user';
                     suggestions.push({
                         text: displayName,
                         subtext: item.email || item.authorNameRole || item.ambassadorEmail || '',
@@ -5001,7 +4987,7 @@ async function markAllNotificationsRead() {
                 fetchList();
             });
             
-            ['ambassadors', 'partners', 'articles', 'certificates'].forEach(tab => {
+            ['ambassadors', 'partners', 'articles', 'history'].forEach(tab => {
                 const els = elements.panels[tab];
                 if (!els) return;
                 if (els.prevPage) {
@@ -5094,16 +5080,16 @@ async function markAllNotificationsRead() {
                     }
                 }
                 if (statusFilter) statusFilter.style.display = 'none';
-            } else if (tabName === 'certificates') {
+            } else if (tabName === 'history') {
                 if (articleStatusFilters) {
                     articleStatusFilters.style.display = 'none';
                 }
                 if (statusFilter) {
                     statusFilter.style.display = 'block';
                     statusFilter.innerHTML = `
-                        <option value="all">All Certificates</option>
-                        <option value="verified">Verified</option>
-                        <option value="pending">Pending</option>
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
                     `;
                 }
             } else {
@@ -5126,7 +5112,7 @@ async function markAllNotificationsRead() {
                 ambassadors: document.getElementById('tabAmbassadors'),
                 partners: document.getElementById('tabPartners'),
                 articles: document.getElementById('tabArticles'),
-                certificates: document.getElementById('tabCertificates')
+                history: document.getElementById('tabHistory')
             };
             
             Object.entries(tabs).forEach(([name, element]) => {
@@ -5167,7 +5153,7 @@ async function markAllNotificationsRead() {
                 ambassadors: 'tabAmbassadors',
                 partners: 'tabPartners',
                 articles: 'tabArticles',
-                certificates: 'tabCertificates'
+                history: 'tabHistory'
             };
             
             // Get all tab elements
@@ -5315,100 +5301,14 @@ async function markAllNotificationsRead() {
             }
         }
 
-        async function viewCertificate(certificateId, button) {
-            try {
-                if (button) setButtonLoading(button, true, 'Opening...');
-                // First, get the certificate to find the filename
-                const certResponse = await fetch('/admin/api/certificates', {
-                    credentials: 'include'
-                });
-                
-                if (!certResponse.ok) {
-                    throw new Error('Failed to fetch certificates');
-                }
-                
-                const certData = await certResponse.json();
-                const certificate = certData.certificates?.find(c => c.certificate_id === certificateId);
-                
-                if (!certificate || !certificate.filename) {
-                    throw new Error('Certificate not found');
-                }
-                
-                // Get the signed URL from the server
-                const fileResponse = await fetch(`/uploads/certificates/${certificate.filename}`, {
-                    credentials: 'include'
-                });
-                
-                if (!fileResponse.ok) {
-                    const errorData = await fileResponse.json().catch(() => ({}));
-                    throw new Error(errorData.error || 'Failed to fetch certificate file');
-                }
-                
-                const urlData = await fileResponse.json();
-                if (!urlData.success || !urlData.url) {
-                    throw new Error('Invalid response from server');
-                }
-                
-                // Open the signed URL directly in a new tab
-                window.open(urlData.url, '_blank');
-                // Mark as viewed so the View button turns gray
-                markCertificateViewed(certificateId);
-                if (state.tab === 'certificates') renderCertificatesList();
-            } catch (error) {
-                console.error('Error viewing certificate:', error);
-                showToast(`Failed to view certificate: ${error.message}`, true);
-            } finally {
-                if (button) setButtonLoading(button, false);
-            }
-        }
-
-        async function verifyCertificate(certificateId, verified, button) {
-            if (!confirm(`Are you sure you want to ${verified ? 'verify' : 'reject'} this certificate?`)) {
-                return;
-            }
-
-            try {
-                setButtonLoading(button, true, verified ? 'Verifying...' : 'Rejecting...');
-                const response = await fetch(`/admin/api/certificates/${certificateId}/verify`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify({ verified })
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Failed to update certificate');
-                }
-
-                showToast(`Certificate ${verified ? 'verified' : 'rejected'} successfully`, false);
-                fetchList(); // Refresh the list
-            } catch (error) {
-                console.error('Error verifying certificate:', error);
-                showToast(error.message || 'Failed to update certificate', true);
-            } finally {
-                setButtonLoading(button, false);
-            }
-        }
-
         // ============================================
         // INITIALIZE (EXISTING - UNCHANGED)
         // ============================================
         document.addEventListener('DOMContentLoaded', () => {
             loadAdminInfo();
-            const params = new URLSearchParams(window.location.search);
-            const certId = params.get('certificate');
-            if (certId) {
-                state.scrollToCertificateId = certId;
-                switchTab('certificates');
-            } else {
-                showPanelForTab('ambassadors');
-                fetchStats();
-                fetchList();
-            }
+            showPanelForTab('ambassadors');
+            fetchStats();
+            fetchList();
             bindEvents();
             setupTabsWithPolling();
             
@@ -5492,9 +5392,10 @@ async function markAllNotificationsRead() {
         window.switchTab = switchTab; // Expose switchTab function for inline onclick handlers
         window.submitLinkedInAudit = submitLinkedInAudit;
         window.submitSpeakerProfile = submitSpeakerProfile;
-        window.viewCertificate = viewCertificate;
-        window.verifyCertificate = verifyCertificate;
         
+        // Expose for inline handlers
+        window.adminDeactivateUser = adminDeactivateUser;
+        window.adminActivateUser = adminActivateUser;
         // Expose enhanced search functions
         window.toggleSearchCategoryDropdown = toggleSearchCategoryDropdown;
         window.setSearchCategory = setSearchCategory;

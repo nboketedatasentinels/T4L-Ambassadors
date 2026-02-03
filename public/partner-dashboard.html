@@ -344,7 +344,7 @@
           </a>
           <a href="/chat-pillar-partner.html" class="partner-nav-link">
             <i class="bx bxs-group"></i>
-            <span>Partners Community</span>
+            <span>T4L Ecosysem</span>
           </a>
           <a href="https://www.t4leader.com/event" class="partner-nav-link" target="_blank" rel="noopener noreferrer">
             <i class="bx bx-calendar-event"></i>
@@ -1013,10 +1013,11 @@
           .then(data => {
             console.log('✅ User data loaded:', data);
             
-            // Update the welcome message
+            // Update the welcome message (prefer organization name for partners)
             const welcomeHeading = document.getElementById('welcomeHeading');
-            if (welcomeHeading && data.name) {
-              welcomeHeading.textContent = `Welcome, ${data.name}!`;
+            if (welcomeHeading) {
+              const displayName = data.organizationName || data.organization_name || data.name || 'Partner';
+              welcomeHeading.textContent = `Welcome, ${displayName}!`;
             }
             
             // Update the avatar initials

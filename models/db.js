@@ -5,8 +5,8 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { v4: uuidv4 } = require("uuid");
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://vcfsjwqxfcpzqzcjabol.supabase.co';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjZnNqd3F4ZmNwenF6Y2phYm9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3Mzg4NDAsImV4cCI6MjA3NzMxNDg0MH0.Ulq5brZwRcaSpcJCaO2OxkCTu-VpEp8WgGsMQU3mSlo';
+const supabaseUrl = process.env.SUPABASE_URL 
+const supabaseKey = process.env.SUPABASE_ANON_KEY 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ============================================

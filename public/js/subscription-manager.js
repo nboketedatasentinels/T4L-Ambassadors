@@ -215,7 +215,7 @@ class SubscriptionManager {
                   </p>
                   <ul class="text-sm text-gray-600 space-y-1.5">
                     <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> Access to Events</li>
-                    <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> Partner Opportunities</li>
+                    <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> Visibility Opportunities</li>
                     <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> Impact Log</li>
                     <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> Chat & Communication</li>
                   </ul>

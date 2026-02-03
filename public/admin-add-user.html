@@ -387,21 +387,6 @@
                 </div>
             </form>
             
-            <!-- Info Box -->
-            <div class="mx-6 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div class="flex items-start gap-3">
-                    <i class="bx bx-info-circle text-blue-600 text-xl mt-0.5"></i>
-                    <div>
-                        <h4 class="text-sm font-semibold text-blue-900">How it works</h4>
-                        <ul class="text-sm text-blue-700 mt-2 space-y-1">
-                            <li>• Click "Generate" to create a unique code (verified against database)</li>
-                            <li>• Generate a secure password for the ambassador</li>
-                            <li>• An email will be sent with the access code and password</li>
-                            <li>• Ambassadors can reset password after first login</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -560,21 +545,7 @@
                     <p id="parPasswordError" class="mt-1 text-sm text-red-600 hidden"></p>
                 </div>
                 
-                <!-- Status -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        Status
-                    </label>
-                    <select id="parStatus" name="status"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
-                        <option value="approved">Approved</option>
-                        <option value="pending">Pending</option>
-                        <option value="inactive">Inactive</option>
-                    </select>
-                    <p class="text-xs text-gray-500 mt-2">
-                        Partners are typically created as "Approved" by default
-                    </p>
-                </div>
+                <!-- Status removed for partners: backend will use its default -->
                 
                 <!-- Form Actions -->
                 <div class="flex justify-end gap-3 pt-4">
@@ -592,21 +563,6 @@
                 </div>
             </form>
             
-            <!-- Info Box -->
-            <div class="mx-6 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div class="flex items-start gap-3">
-                    <i class="bx bx-info-circle text-blue-600 text-xl mt-0.5"></i>
-                    <div>
-                        <h4 class="text-sm font-semibold text-blue-900">Partner vs Ambassador</h4>
-                        <ul class="text-sm text-blue-700 mt-2 space-y-1">
-                            <li>• <strong>Ambassadors:</strong> Use codes starting with "T4LA-"</li>
-                            <li>• <strong>Partners:</strong> Use codes starting with "T4LP-"</li>
-                            <li>• Partners can post opportunities for ambassadors</li>
-                            <li>• Default password is "welcome123" for both</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -1557,8 +1513,8 @@
                     organization_name: document.getElementById('parCompany').value.trim(),
                     email: document.getElementById('parEmail').value.trim(),
                     access_code: document.getElementById('parAccessCode').value.trim(),
-                    password: document.getElementById('parPassword').value.trim(),
-                    status: document.getElementById('parStatus').value
+                    password: document.getElementById('parPassword').value.trim()
+                    // status removed: partner status will use backend default
                 };
                 
                 console.log('Saving partner:', formData);

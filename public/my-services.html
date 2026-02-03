@@ -186,7 +186,7 @@
           </a>
           <a href="/chat-pillar-partner.html" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50">
             <i class="bx bxs-group text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
-            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">Partners Community</span>
+            <span class="text-[10px] mt-1.5 font-medium text-gray-600 group-hover:text-[#4b0d9f] transition-colors duration-200">T4L Ecosysem</span>
           </a>
           <a href="https://www.t4leader.com/event" class="flex flex-col items-center cursor-pointer group transition-all duration-200 py-2 px-3 rounded-lg hover:bg-purple-50" target="_blank" rel="noopener noreferrer">
             <i class="bx bx-calendar-event text-2xl text-gray-600 group-hover:text-[#4b0d9f] group-hover:scale-110 transition-all duration-200"></i>
@@ -660,7 +660,12 @@
           });
           
           if (!response.ok) {
-            throw new Error('Failed to load services');
+            // If not authenticated or not a partner, send them to sign-in
+            if (response.status === 401 || response.status === 403) {
+              window.location.href = '/partner-signin';
+              return;
+            }
+            throw new Error(`Failed to load services (status ${response.status})`);
           }
           
           const data = await response.json();
@@ -671,8 +676,10 @@
           
         } catch (error) {
           console.error('Error loading services:', error);
-          alert('Failed to load services. Please try again.');
           myServices = [];
+          // Show a graceful empty state instead of a scary popup
+          updateTabCounts();
+          renderServicesTable();
         }
       }
       

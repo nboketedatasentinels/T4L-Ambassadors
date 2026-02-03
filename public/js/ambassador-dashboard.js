@@ -189,7 +189,7 @@ async function loadPartnerCalls() {
       partnerCallsContainer.innerHTML = `
         <div class="text-center py-8">
           <i class="bx bx-info-circle text-4xl text-gray-400 mb-2"></i>
-          <p class="text-gray-500 text-sm">No partner opportunities available yet</p>
+          <p class="text-gray-500 text-sm">No visibility opportunities available yet</p>
         </div>
       `;
       return;
@@ -199,7 +199,7 @@ async function loadPartnerCalls() {
       .map((post) => {
         const formattedDate = formatDate(post.created_at);
         const icon = getPostTypeIcon(post.category);
-        const title = escapeHtml(post.title || 'Partner Opportunity');
+        const title = escapeHtml(post.title || 'Visibility Opportunity');
         const content = escapeHtml(post.content || '');
 
         return `
@@ -229,7 +229,7 @@ async function loadPartnerCalls() {
       partnerCallsContainer.innerHTML = `
         <div class="text-center py-8">
           <i class="bx bx-error-circle text-4xl text-red-400 mb-2"></i>
-          <p class="text-gray-500 text-sm">Unable to load partner opportunities</p>
+          <p class="text-gray-500 text-sm">Unable to load visibility opportunities</p>
           <button onclick="loadPartnerCalls()" class="mt-2 text-purple-600 text-xs font-medium hover:text-purple-700 transition-colors">
             Try Again
           </button>
@@ -561,7 +561,7 @@ async function loadPartnerCalls() {
       partnerCallsContainer.innerHTML = `
         <div class="text-center py-8">
           <i class="bx bx-info-circle text-4xl text-gray-400 mb-2"></i>
-          <p class="text-gray-500 text-sm">No partner opportunities available yet</p>
+          <p class="text-gray-500 text-sm">No visibility opportunities available yet</p>
         </div>
       `;
       return;
@@ -571,7 +571,7 @@ async function loadPartnerCalls() {
       .map((post) => {
         const formattedDate = formatDate(post.created_at);
         const icon = getPostTypeIcon(post.category);
-        const title = escapeHtml(post.title || 'Partner Opportunity');
+        const title = escapeHtml(post.title || 'Visibility Opportunity');
         const content = escapeHtml(post.content || '');
 
         return `
@@ -601,7 +601,7 @@ async function loadPartnerCalls() {
       partnerCallsContainer.innerHTML = `
         <div class="text-center py-8">
           <i class="bx bx-error-circle text-4xl text-red-400 mb-2"></i>
-          <p class="text-gray-500 text-sm">Unable to load partner opportunities</p>
+          <p class="text-gray-500 text-sm">Unable to load visibility opportunities</p>
           <button onclick="loadPartnerCalls()" class="mt-2 text-purple-600 text-xs font-medium hover:text-purple-700 transition-colors">
             Try Again
           </button>
@@ -943,7 +943,7 @@ async function loadPartnerCalls() {
       partnerCallsContainer.innerHTML = `
         <div class="text-center py-8">
           <i class="bx bx-info-circle text-4xl text-gray-400 mb-2"></i>
-          <p class="text-gray-500 text-sm">No partner opportunities available yet</p>
+          <p class="text-gray-500 text-sm">No visibility opportunities available yet</p>
         </div>
       `;
       return;
@@ -953,7 +953,7 @@ async function loadPartnerCalls() {
       .map((post) => {
         const formattedDate = formatDate(post.created_at);
         const icon = getPostTypeIcon(post.category);
-        const title = escapeHtml(post.title || 'Partner Opportunity');
+        const title = escapeHtml(post.title || 'Visibility Opportunity');
         const content = escapeHtml(post.content || '');
 
         return `
@@ -983,7 +983,7 @@ async function loadPartnerCalls() {
       partnerCallsContainer.innerHTML = `
         <div class="text-center py-8">
           <i class="bx bx-error-circle text-4xl text-red-400 mb-2"></i>
-          <p class="text-gray-500 text-sm">Unable to load partner opportunities</p>
+          <p class="text-gray-500 text-sm">Unable to load visibility opportunities</p>
           <button onclick="loadPartnerCalls()" class="mt-2 text-purple-600 text-xs font-medium hover:text-purple-700 transition-colors">
             Try Again
           </button>
@@ -1337,7 +1337,7 @@ async function loadPartnerCalls() {
       partnerCallsContainer.innerHTML = `
         <div class="text-center py-8">
           <i class="bx bx-info-circle text-4xl text-gray-400 mb-2"></i>
-          <p class="text-gray-500 text-sm">No partner opportunities available yet</p>
+          <p class="text-gray-500 text-sm">No visibility opportunities available yet</p>
         </div>
       `;
       return;
@@ -1346,7 +1346,7 @@ async function loadPartnerCalls() {
     partnerCallsContainer.innerHTML = latestPosts.map(post => {
       const formattedDate = formatDate(post.created_at);
       const icon = getPostTypeIcon(post.category);
-      const title = escapeHtml(post.title || 'Partner Opportunity');
+      const title = escapeHtml(post.title || 'Visibility Opportunity');
       const content = escapeHtml(post.content || '');
       
       return `
@@ -1373,7 +1373,7 @@ async function loadPartnerCalls() {
       partnerCallsContainer.innerHTML = `
         <div class="text-center py-8">
           <i class="bx bx-error-circle text-4xl text-red-400 mb-2"></i>
-          <p class="text-gray-500 text-sm">Unable to load partner opportunities</p>
+          <p class="text-gray-500 text-sm">Unable to load visibility opportunities</p>
           <button onclick="loadPartnerCalls()" class="mt-2 text-purple-600 text-xs font-medium hover:text-purple-700 transition-colors">
             Try Again
           </button>
@@ -1945,7 +1945,7 @@ async function loadPartnerCalls() {
       partnerCallsContainer.innerHTML = `
         <div class="text-center py-8">
           <i class="bx bx-info-circle text-4xl text-gray-400 mb-2"></i>
-          <p class="text-gray-500 text-sm">No partner opportunities available yet</p>
+          <p class="text-gray-500 text-sm">No visibility opportunities available yet</p>
         </div>
       `;
       return;
@@ -1954,7 +1954,7 @@ async function loadPartnerCalls() {
     partnerCallsContainer.innerHTML = latestPosts.map(post => {
       const formattedDate = formatDate(post.created_at);
       const icon = getPostTypeIcon(post.category);
-      const title = escapeHtml(post.title || 'Partner Opportunity');
+      const title = escapeHtml(post.title || 'Visibility Opportunity');
       const content = escapeHtml(post.content || '');
       
       return `
@@ -1981,7 +1981,7 @@ async function loadPartnerCalls() {
       partnerCallsContainer.innerHTML = `
         <div class="text-center py-8">
           <i class="bx bx-error-circle text-4xl text-red-400 mb-2"></i>
-          <p class="text-gray-500 text-sm">Unable to load partner opportunities</p>
+          <p class="text-gray-500 text-sm">Unable to load visibility opportunities</p>
           <button onclick="loadPartnerCalls()" class="mt-2 text-purple-600 text-xs font-medium hover:text-purple-700 transition-colors">
             Try Again
           </button>

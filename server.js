@@ -5353,13 +5353,15 @@ app.get("/api/me", requireAuth, async (req, res) => {
       status: user.status,
     };
 
-    // Add name field based on role
+    // Add name / organization fields based on role
     if (role === "ambassador") {
       response.name = user.first_name || user.name || "Ambassador";
     } else if (role === "partner") {
-      // IMPORTANT: Map contact_person to contactName for frontend
+      // Prefer organization name for display; also expose contact/organization separately
       response.name =
         user.contact_person || user.organization_name || "Partner";
+      response.organizationName = user.organization_name || null;
+      response.contactName = user.contact_person || null;
     } else if (role === "admin") {
       response.name = user.first_name || user.name || "Admin";
     } else {
@@ -5391,6 +5393,8 @@ app.get("/api/profile", requireAuth, async (req, res) => {
       role: user.role,
       status: user.status,
       access_code: user.access_code,
+      // Joined date for "Joined since" / "Member Since" UI
+      joinedAt: user.created_at || user.createdAt || null,
     };
 
     if (role === "ambassador") {
@@ -6266,6 +6270,84 @@ function scheduleDailyReminders() {
       sendDailyRemindersToAllAmbassadors();
     }, 24 * 60 * 60 * 1000); // 24 hours
   }, msUntil9AM);
+}
+
+// ============================================
+// LinkedIn profile audit reminder (once, after first week)
+// ============================================
+// After an ambassador's first week in the program, send admins a one-time
+// notification to upload that ambassador's LinkedIn profile audit.
+
+async function checkAndSendLinkedInAuditReminders() {
+  try {
+    const { data: ambassadors, error: fetchError } = await supabase
+      .from("ambassadors")
+      .select("ambassador_id, user_id, first_name, last_name, linkedin_audit_reminder_sent_at, users(created_at)")
+      .is("linkedin_audit_reminder_sent_at", null);
+
+    if (fetchError) {
+      if (fetchError.code === "42703" || fetchError.message?.includes("linkedin_audit_reminder_sent_at")) {
+        console.log("⏭️ LinkedIn audit reminder: column not yet migrated, skipping.");
+        return;
+      }
+      console.error("❌ LinkedIn audit reminder fetch error:", fetchError.message);
+      return;
+    }
+
+    if (!ambassadors || ambassadors.length === 0) return;
+
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const eligible = ambassadors.filter((a) => {
+      const createdAt = a.users?.created_at || a.created_at;
+      if (!createdAt) return false;
+      return new Date(createdAt) <= oneWeekAgo;
+    });
+
+    if (eligible.length === 0) return;
+
+    const { data: admins } = await supabase.from("admins").select("user_id");
+    if (!admins || admins.length === 0) return;
+
+    for (const amb of eligible) {
+      const name = [amb.first_name, amb.last_name].filter(Boolean).join(" ") || "An ambassador";
+      const title = "Upload LinkedIn profile audit";
+      const message = `${name} joined the program over a week ago. Please upload their LinkedIn profile audit when ready.`;
+      const link = "/admin-linkedin-audits.html";
+
+      for (const admin of admins) {
+        await createNotification(
+          admin.user_id,
+          "admin",
+          "linkedin_audit_reminder",
+          title,
+          message,
+          link,
+          null,
+          null,
+          null,
+          null
+        );
+      }
+
+      await supabase
+        .from("ambassadors")
+        .update({ linkedin_audit_reminder_sent_at: new Date().toISOString() })
+        .eq("ambassador_id", amb.ambassador_id);
+    }
+
+    if (eligible.length > 0) {
+      console.log(`✅ LinkedIn audit reminder: sent for ${eligible.length} ambassador(s).`);
+    }
+  } catch (err) {
+    console.error("❌ LinkedIn audit reminder error:", err.message);
+  }
+}
+
+function scheduleLinkedInAuditReminders() {
+  const run = () => checkAndSendLinkedInAuditReminders();
+  setTimeout(run, 60 * 1000);
+  setInterval(run, 24 * 60 * 60 * 1000);
+  console.log("⏰ LinkedIn audit reminders: run in 1 min, then every 24h.");
 }
 
 // ============================================
@@ -7424,6 +7506,134 @@ app.get(
       });
     } catch (error) {
       console.error("Error fetching journey summary:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// ------------------------
+// Admin History API (12-month journey completers, with deactivation)
+// ------------------------
+app.get(
+  "/admin/api/history",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      // Ambassadors who have completed 12-month journey (journey_progress.current_month >= 12)
+      const { data: progressRows, error: progressError } = await supabase
+        .from("journey_progress")
+        .select("ambassador_id, current_month, last_updated, start_date")
+        .gte("current_month", 12);
+
+      if (progressError) {
+        console.error("Error fetching history journey progress:", progressError);
+        return res.status(500).json({ error: "Failed to load history" });
+      }
+
+      if (!progressRows || progressRows.length === 0) {
+        return res.json({ history: [], total: 0 });
+      }
+
+      const ambassadorIds = progressRows.map((r) => r.ambassador_id);
+      const { data: ambassadors, error: ambError } = await supabase
+        .from("ambassadors")
+        .select("ambassador_id, user_id, email, first_name, last_name")
+        .in("ambassador_id", ambassadorIds);
+
+      if (ambError || !ambassadors || ambassadors.length === 0) {
+        return res.json({ history: [], total: 0 });
+      }
+
+      const userIds = [...new Set(ambassadors.map((a) => a.user_id))];
+      const { data: users, error: usersError } = await supabase
+        .from("users")
+        .select("user_id, status, created_at, last_login")
+        .in("user_id", userIds);
+
+      if (usersError) {
+        return res.status(500).json({ error: "Failed to load user status" });
+      }
+      const userMap = (users || []).reduce((acc, u) => {
+        acc[u.user_id] = u;
+        return acc;
+      }, {});
+
+      const progressMap = progressRows.reduce((acc, p) => {
+        acc[p.ambassador_id] = p;
+        return acc;
+      }, {});
+
+      const history = ambassadors.map((amb) => {
+        const prog = progressMap[amb.ambassador_id];
+        const u = userMap[amb.user_id] || {};
+        return {
+          ambassador_id: amb.ambassador_id,
+          user_id: amb.user_id,
+          name: [amb.first_name, amb.last_name].filter(Boolean).join(" ") || amb.email,
+          email: amb.email,
+          current_month: prog ? prog.current_month : 12,
+          completed_at: prog ? prog.last_updated : null,
+          start_date: prog ? prog.start_date : null,
+          status: u.status || "active",
+          created_at: u.created_at,
+          last_login: u.last_login,
+        };
+      });
+
+      // Sort by completed_at / last_updated descending
+      history.sort((a, b) => {
+        const ta = a.completed_at ? new Date(a.completed_at).getTime() : 0;
+        const tb = b.completed_at ? new Date(b.completed_at).getTime() : 0;
+        return tb - ta;
+      });
+
+      return res.json({ history, total: history.length });
+    } catch (error) {
+      console.error("Error in /admin/api/history:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+app.patch(
+  "/admin/api/users/:id/status",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const userId = req.params.id;
+      const { status } = req.body;
+      if (!["active", "inactive", "suspended", "pending"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      const { data: user, error: fetchError } = await supabase
+        .from("users")
+        .select("user_id, user_type")
+        .eq("user_id", userId)
+        .single();
+
+      if (fetchError || !user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      if (user.user_type === "admin") {
+        return res.status(403).json({ error: "Cannot change admin user status" });
+      }
+
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq("user_id", userId);
+
+      if (updateError) {
+        console.error("Error updating user status:", updateError);
+        return res.status(500).json({ error: "Failed to update status" });
+      }
+
+      return res.json({ success: true, status });
+    } catch (error) {
+      console.error("Error in PATCH /admin/api/users/:id/status:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   }
@@ -10597,6 +10807,9 @@ app.listen(PORT, () => {
   // Start daily reminder scheduler
   scheduleDailyReminders();
   console.log('✅ Daily journey reminder system initialized');
+
+  // Start LinkedIn audit reminder (once per ambassador, after first week)
+  scheduleLinkedInAuditReminders();
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(
     `[journey] Journey progress tracking ENABLED with REAL-TIME updates`
