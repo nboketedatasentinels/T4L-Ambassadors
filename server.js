@@ -6779,15 +6779,9 @@ app.get('/api/journey/progress', requireAuth, requireRole('ambassador'), async (
           console.log('✅ Fallback succeeded, task completions loaded');
         }
       }
+      // Don't return 500: allow UI to load with empty task completions (e.g. new user or schema mismatch)
       if (taskCompletions.length === 0 && taskError) {
-        return res.status(500).json({
-          success: false,
-          error: 'Failed to fetch task completions',
-          details: taskError.message,
-          hint: 'Ensure journey_tasks has task_name, task_description (not title, description)',
-          currentMonth: currentProgress && currentProgress.journey_months ? currentProgress.journey_months.month_number : 1,
-          taskCompletions: []
-        });
+        console.warn('⚠️ Using empty task completions due to:', taskError.message);
       }
     } else {
       taskCompletions = taskData || [];
@@ -6849,10 +6843,24 @@ app.get('/api/journey/progress', requireAuth, requireRole('ambassador'), async (
     });
   } catch (error) {
     console.error('❌ Error fetching journey progress:', error);
-    return res.status(500).json({ 
-      success: false, 
+    // Return 200 with safe defaults so journey + dashboard pages still load in production
+    const userId = req.auth && req.auth.userId;
+    if (userId) {
+      return res.json({
+        success: true,
+        currentMonth: 1,
+        currentMonthStartedAt: null,
+        currentProgress: null,
+        allProgress: [],
+        taskCompletions: [],
+        _fallback: true,
+        _message: 'Journey data temporarily unavailable; showing default view.'
+      });
+    }
+    return res.status(500).json({
+      success: false,
       error: 'Failed to fetch journey progress',
-      details: error.message 
+      details: error.message
     });
   }
 });

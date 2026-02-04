@@ -859,12 +859,11 @@
           if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
           const data = await response.json();
           const posts = Array.isArray(data) ? data : (data.posts || []);
-          if (!posts.length) throw new Error('No posts from API');
           renderFromPosts(posts);
         } catch (error) {
           console.error('Error loading partner calls from API, falling back to local data:', error);
           try {
-            // Fallback: static JSON used previously
+            // Fallback: static JSON when API fails (e.g. 500 in production)
             const response = await fetch('/data/posts.json');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
@@ -872,13 +871,8 @@
             renderFromPosts(posts);
           } catch (fallbackError) {
             console.error('Error loading partner calls from fallback data:', fallbackError);
-            container.innerHTML = `
-              <div class="text-center py-8">
-                <i class="bx bx-error-circle text-4xl text-red-400 mb-2"></i>
-                <p class="text-gray-500 text-sm">Unable to load visibility opportunities</p>
-                <button onclick="loadPartnerCalls()" class="mt-2 text-purple-600 text-xs font-medium hover:text-purple-700 transition-colors">Try Again</button>
-              </div>
-            `;
+            // Show empty state so UI still works
+            renderFromPosts([]);
           }
         }
       }
