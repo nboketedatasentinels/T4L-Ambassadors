@@ -598,13 +598,13 @@
             window._partnerPostsCache = myPosts;
             window._currentOpportunityFilter = window._currentOpportunityFilter || 'all';
 
-            if (myPosts.length > 0) {
-              // Update stats
-              const activePostsElement = document.getElementById('activePosts');
-              if (activePostsElement) {
-                activePostsElement.textContent = myPosts.length;
-              }
+            // Always update Active Posts stat (show 0 or the count; loader is only while loading)
+            const activePostsElement = document.getElementById('activePosts');
+            if (activePostsElement) {
+              activePostsElement.textContent = myPosts.length;
+            }
 
+            if (myPosts.length > 0) {
               // Render cards (respecting current filter)
               renderPostsFiltered();
               
