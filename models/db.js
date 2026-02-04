@@ -5,9 +5,24 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const { v4: uuidv4 } = require("uuid");
 
-const supabaseUrl = process.env.SUPABASE_URL 
-const supabaseKey = process.env.SUPABASE_ANON_KEY 
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.warn('⚠️ SUPABASE_URL or SUPABASE_ANON_KEY is missing. Set them in .env for production; DB calls will fail and APIs will return safe fallbacks where implemented.');
+}
+
+let supabase;
+try {
+  supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseKey || 'placeholder-key');
+} catch (err) {
+  console.error('❌ Supabase createClient failed:', err.message);
+  throw err;
+}
+
+const isDev = process.env.NODE_ENV !== 'production';
+const _consoleLog = console.log.bind(console);
+const log = (...args) => { if (isDev) _consoleLog(...args); };
 
 // ============================================
 // HELPER FUNCTIONS - FIXED FOR CENTRALIZED USERS
@@ -129,7 +144,7 @@ async function createNotification(
       notificationData.certificate_id = certificateId;
     }
 
-    console.log("📝 Creating notification:", notificationData);
+    log("📝 Creating notification:", notificationData);
 
     let { data, error } = await supabase
       .from("notifications")
@@ -156,7 +171,7 @@ async function createNotification(
           return null;
         }
         
-        console.log("✅ Notification created (without certificate_id due to constraint):", retryResult.data);
+        log("✅ Notification created (without certificate_id due to constraint):", retryResult.data);
         return retryResult.data;
       }
       
@@ -174,7 +189,7 @@ async function createNotification(
       return null;
     }
 
-    console.log("✅ Notification created:", data);
+    log("✅ Notification created:", data);
     return data;
   } catch (error) {
     console.error("⚠️ Notification error:", error.message);
@@ -186,7 +201,7 @@ async function createNotification(
 // ============================================
 async function getUserByEmail(email, role = 'ambassador') {
   try {
-    console.log(`🔍 getUserByEmail: Looking for ${role} with email: ${email}`);
+    log(`🔍 getUserByEmail: Looking for ${role} with email: ${email}`);
 
     // Step 1: Get user from users table
     const { data: userData, error: userError } = await supabase
@@ -197,7 +212,7 @@ async function getUserByEmail(email, role = 'ambassador') {
       .single();
 
     if (userError || !userData) {
-      console.log(`⚠️ No user found with email: ${email} and type: ${role}`);
+      log(`⚠️ No user found with email: ${email} and type: ${role}`);
       return null;
     }
 
@@ -233,7 +248,7 @@ async function getUserByEmail(email, role = 'ambassador') {
     }
 
     const normalized = normalizer(userData, roleData);
-    console.log(`✅ Found ${role}:`, normalized.id, normalized.email);
+    log(`✅ Found ${role}:`, normalized.id, normalized.email);
     return normalized;
   } catch (error) {
     console.error('❌ getUserByEmail error:', error);
@@ -246,7 +261,7 @@ async function getUserByEmail(email, role = 'ambassador') {
 // ============================================
 async function getUserById(id, role = 'ambassador') {
   try {
-    console.log(`🔍 getUserById: Looking for ${role} with ID: ${id}`);
+    log(`🔍 getUserById: Looking for ${role} with ID: ${id}`);
 
     let roleTable, roleIdField, normalizer;
     
@@ -276,7 +291,7 @@ async function getUserById(id, role = 'ambassador') {
 
     // If not found by user_id, try by role-specific ID (for backward compatibility)
     if (roleError || !roleData) {
-      console.log(`⚠️ No ${role} found with user_id: ${id}, trying ${roleIdField}...`);
+      log(`⚠️ No ${role} found with user_id: ${id}, trying ${roleIdField}...`);
       
       const result = await supabase
         .from(roleTable)
@@ -289,7 +304,7 @@ async function getUserById(id, role = 'ambassador') {
     }
 
     if (roleError || !roleData) {
-      console.log(`❌ No ${role} found with ID: ${id}`);
+      log(`❌ No ${role} found with ID: ${id}`);
       return null;
     }
 
@@ -306,7 +321,7 @@ async function getUserById(id, role = 'ambassador') {
     }
 
     const normalized = normalizer(userData, roleData);
-    console.log(`✅ Found ${role}:`, normalized.id, normalized.email);
+    log(`✅ Found ${role}:`, normalized.id, normalized.email);
     return normalized;
   } catch (error) {
     console.error('❌ getUserById error:', error);
@@ -319,7 +334,7 @@ async function getUserById(id, role = 'ambassador') {
 // ============================================
 async function createUser(userData, role = 'ambassador') {
   try {
-    console.log(`📝 Creating ${role} with email:`, userData.email);
+    log(`📝 Creating ${role} with email:`, userData.email);
 
     // Step 1: Create user in users table
     const userInsert = {
@@ -342,7 +357,7 @@ async function createUser(userData, role = 'ambassador') {
       throw userError;
     }
 
-    console.log('✅ User created with user_id:', newUser.user_id);
+    log('✅ User created with user_id:', newUser.user_id);
 
     // Step 2: Create role-specific profile
     let roleTable, roleInsert, normalizer;
@@ -401,7 +416,7 @@ async function createUser(userData, role = 'ambassador') {
     }
 
     const normalized = normalizer(newUser, roleData);
-    console.log(`✅ ${role} created successfully:`, normalized.id);
+    log(`✅ ${role} created successfully:`, normalized.id);
     return normalized;
   } catch (error) {
     console.error('❌ createUser error:', error);
@@ -414,7 +429,7 @@ async function createUser(userData, role = 'ambassador') {
 // ============================================
 async function updateUser(id, updates, role = 'ambassador') {
   try {
-    console.log(`📝 Updating ${role} with ID:`, id);
+    log(`📝 Updating ${role} with ID:`, id);
 
     // Determine which fields go to users table vs role table
     const userUpdates = {};
@@ -525,7 +540,7 @@ async function updateUser(id, updates, role = 'ambassador') {
     }
 
     const normalized = normalizer(updatedUserData, updatedRoleData);
-    console.log(`✅ ${role} updated successfully:`, normalized.id);
+    log(`✅ ${role} updated successfully:`, normalized.id);
     return normalized;
   } catch (error) {
     console.error('❌ updateUser error:', error);
@@ -538,7 +553,7 @@ async function updateUser(id, updates, role = 'ambassador') {
 // ============================================
 async function deleteUser(id, role = 'ambassador') {
   try {
-    console.log(`🗑️ Deleting ${role} with ID:`, id);
+    log(`🗑️ Deleting ${role} with ID:`, id);
 
     let roleTable, roleIdField;
     
@@ -575,7 +590,7 @@ async function deleteUser(id, role = 'ambassador') {
       throw error;
     }
 
-    console.log(`✅ ${role} deleted successfully`);
+    log(`✅ ${role} deleted successfully`);
     return true;
   } catch (error) {
     console.error('❌ deleteUser error:', error);
@@ -642,7 +657,7 @@ async function listUsers(role = 'ambassador', filters = {}) {
     // Normalize the joined data
     const items = (data || []).map(item => normalizer(item.users, item));
 
-    console.log(`✅ Listed ${items.length} ${role}s`);
+    log(`✅ Listed ${items.length} ${role}s`);
     return { items, total: count || 0, limit, offset };
   } catch (error) {
     console.error('❌ listUsers error:', error);
@@ -714,7 +729,7 @@ async function getServiceById(serviceId) {
 
 async function createService(serviceData) {
   try {
-    console.log('💾 Creating service:', serviceData);
+    log('💾 Creating service:', serviceData);
 
     const { data: service, error } = await supabase
       .from('services')
@@ -727,7 +742,7 @@ async function createService(serviceData) {
       throw error;
     }
 
-    console.log('✅ Service created:', service.service_id);
+    log('✅ Service created:', service.service_id);
     return service;
   } catch (error) {
     console.error('❌ createService error:', error);
@@ -1122,7 +1137,7 @@ async function deleteSession(sessionId) {
 
 async function createLinkedInAudit(auditData) {
   try {
-    console.log('📝 Creating LinkedIn audit for ambassador:', auditData.ambassador_id);
+    log('📝 Creating LinkedIn audit for ambassador:', auditData.ambassador_id);
     
     const { data, error } = await supabase
       .from('linkedin_audits')
@@ -1135,7 +1150,7 @@ async function createLinkedInAudit(auditData) {
       throw error;
     }
 
-    console.log('✅ LinkedIn audit created:', data.audit_id);
+    log('✅ LinkedIn audit created:', data.audit_id);
     return data;
   } catch (error) {
     console.error('❌ createLinkedInAudit error:', error);
@@ -1145,7 +1160,7 @@ async function createLinkedInAudit(auditData) {
 
 async function getLinkedInAuditByAmbassador(ambassadorId) {
   try {
-    console.log('🔍 Fetching LinkedIn audit for ambassador:', ambassadorId);
+    log('🔍 Fetching LinkedIn audit for ambassador:', ambassadorId);
     
     const { data, error } = await supabase
       .from('linkedin_audits')
@@ -1164,11 +1179,11 @@ async function getLinkedInAuditByAmbassador(ambassadorId) {
     }
 
     if (!data) {
-      console.log('⚠️ No LinkedIn audit found for ambassador:', ambassadorId);
+      log('⚠️ No LinkedIn audit found for ambassador:', ambassadorId);
       return null;
     }
 
-    console.log('✅ Found LinkedIn audit:', data.audit_id);
+    log('✅ Found LinkedIn audit:', data.audit_id);
     return data;
   } catch (error) {
     console.error('❌ getLinkedInAuditByAmbassador error:', error);
@@ -1178,7 +1193,7 @@ async function getLinkedInAuditByAmbassador(ambassadorId) {
 
 async function updateLinkedInAudit(auditId, updates) {
   try {
-    console.log('📝 Updating LinkedIn audit:', auditId);
+    log('📝 Updating LinkedIn audit:', auditId);
     
     updates.updated_at = new Date().toISOString();
     
@@ -1194,7 +1209,7 @@ async function updateLinkedInAudit(auditId, updates) {
       throw error;
     }
 
-    console.log('✅ LinkedIn audit updated:', data.audit_id);
+    log('✅ LinkedIn audit updated:', data.audit_id);
     return data;
   } catch (error) {
     console.error('❌ updateLinkedInAudit error:', error);
@@ -1204,7 +1219,7 @@ async function updateLinkedInAudit(auditId, updates) {
 
 async function deleteLinkedInAudit(auditId) {
   try {
-    console.log('🗑️ Deleting LinkedIn audit:', auditId);
+    log('🗑️ Deleting LinkedIn audit:', auditId);
     
     const { error } = await supabase
       .from('linkedin_audits')
@@ -1216,7 +1231,7 @@ async function deleteLinkedInAudit(auditId) {
       throw error;
     }
 
-    console.log('✅ LinkedIn audit deleted');
+    log('✅ LinkedIn audit deleted');
     return true;
   } catch (error) {
     console.error('❌ deleteLinkedInAudit error:', error);
@@ -1226,7 +1241,7 @@ async function deleteLinkedInAudit(auditId) {
 
 async function getLinkedInAudits(filters = {}) {
   try {
-    console.log('🔍 Fetching LinkedIn audits with filters:', filters);
+    log('🔍 Fetching LinkedIn audits with filters:', filters);
     
     let query = supabase
       .from('linkedin_audits')
@@ -1263,7 +1278,7 @@ async function getLinkedInAudits(filters = {}) {
       return { audits: [], total: 0 };
     }
 
-    console.log(`✅ Found ${data?.length || 0} LinkedIn audits`);
+    log(`✅ Found ${data?.length || 0} LinkedIn audits`);
     return { audits: data || [], total: count || 0 };
   } catch (error) {
     console.error('❌ getLinkedInAudits error:', error);

@@ -88,6 +88,14 @@ function buildStatsFromProgress(apiData) {
   };
 }
 
+function getDefaultJourneyStats() {
+  return buildStatsFromProgress({
+    success: true,
+    currentMonth: 1,
+    taskCompletions: []
+  });
+}
+
 async function fetchJourneyStats() {
   try {
     console.log('📊 Fetching journey stats from /api/journey/progress...');
@@ -102,12 +110,14 @@ async function fetchJourneyStats() {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      console.warn('⚠️ Journey progress API returned', response.status, '- using default stats');
+      return getDefaultJourneyStats();
     }
 
     const apiData = await response.json();
     if (apiData.success === false) {
-      throw new Error(apiData.error || 'Failed to load journey progress');
+      console.warn('⚠️ Journey progress API returned success: false - using default stats');
+      return getDefaultJourneyStats();
     }
 
     const data = buildStatsFromProgress(apiData);
@@ -123,7 +133,7 @@ async function fetchJourneyStats() {
     return data;
   } catch (error) {
     console.error('❌ Error fetching journey stats:', error);
-    throw error;
+    return getDefaultJourneyStats();
   }
 }
 
