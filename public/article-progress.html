@@ -871,6 +871,8 @@
                     const hasLink = article.publication_link || article.publicationLink;
                     const pubLink = article.publication_link || article.publicationLink;
                     const safeTitle = (article.title || 'Untitled Article').replace(/"/g, '&quot;');
+                    const linkedInPostText = `Exciting news! 🎉 After writing my article and going through the review process, it has officially been published by @Transformation Leader.\n\n${pubLink}`;
+                    const linkedInShareUrl = 'https://www.linkedin.com/feed/?shareActive=true&text=' + encodeURIComponent(linkedInPostText);
                     
                     return `
                         <div class="article-item" style="background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%); border-color: #10b981;">
@@ -899,15 +901,25 @@
                                                 <i class="bx bx-link" style="margin-right: 0.25rem;"></i>
                                                 ${pubLink}
                                             </p>
-                                            <button 
-                                                type="button"
-                                                class="btn-share-link"
-                                                data-link="${pubLink}"
-                                                data-title="${safeTitle}"
-                                                style="padding: 0.45rem 0.85rem; border-radius: 9999px; border: none; background: #4b0d9f10; color: #4b0d9f; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;">
-                                                <i class="bx bx-share-alt" style="font-size: 1rem;"></i>
-                                                Share / Copy link
-                                            </button>
+                                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+                                                <button 
+                                                    type="button"
+                                                    class="btn-share-link"
+                                                    data-link="${pubLink}"
+                                                    data-title="${safeTitle}"
+                                                    style="padding: 0.45rem 0.85rem; border-radius: 9999px; border: none; background: #4b0d9f10; color: #4b0d9f; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;">
+                                                    <i class="bx bx-share-alt" style="font-size: 1rem;"></i>
+                                                    Share / Copy link
+                                                </button>
+                                                <a 
+                                                    href="${linkedInShareUrl}"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    style="padding: 0.45rem 0.95rem; border-radius: 9999px; border: none; background: #0A66C2; color: #ffffff; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem; text-decoration: none;">
+                                                    <i class="bx bxl-linkedin-square" style="font-size: 1rem;"></i>
+                                                    Post on LinkedIn
+                                                </a>
+                                            </div>
                                         </div>
                                     ` : `
                                         <p style="font-size: 0.875rem; color: #9ca3af; font-style: italic;">

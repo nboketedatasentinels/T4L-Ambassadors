@@ -6999,12 +6999,24 @@ app.post('/api/journey/tasks/toggle', requireAuth, requireRole('ambassador'), as
     }
     const ambassadorId = ambassador.ambassador_id || ambassador.id;
 
-    // Get task_id from journey_tasks table
-    const { data: task, error: taskError } = await supabase
+    // Resolve month_id from journey_months (so we can scope task lookup by month)
+    let monthId = null;
+    if (monthNumber != null) {
+      const { data: monthRow, error: monthErr } = await supabase
+        .from('journey_months')
+        .select('month_id')
+        .eq('month_number', parseInt(monthNumber, 10))
+        .maybeSingle();
+      if (!monthErr && monthRow) monthId = monthRow.month_id;
+    }
+
+    // Build task query: by task_identifier, and by month_id if we have it
+    let taskQuery = supabase
       .from('journey_tasks')
       .select('task_id, month_id, task_name')
-      .eq('task_identifier', taskIdentifier)
-      .maybeSingle();
+      .eq('task_identifier', taskIdentifier);
+    if (monthId) taskQuery = taskQuery.eq('month_id', monthId);
+    const { data: task, error: taskError } = await taskQuery.maybeSingle();
 
     if (taskError) {
       console.error('❌ Database error looking up task:', taskIdentifier, taskError);
@@ -7016,15 +7028,13 @@ app.post('/api/journey/tasks/toggle', requireAuth, requireRole('ambassador'), as
 
     if (!task) {
       console.error('❌ Task not found in database:', taskIdentifier);
-      console.error('   Searched for task_identifier:', taskIdentifier);
-      console.error('   Month number:', monthNumber);
+      console.error('   Searched for task_identifier:', taskIdentifier, 'month_id:', monthId || '(any)');
       
-      // Helpful error message
       return res.status(404).json({ 
         error: 'Task not found',
         taskIdentifier,
         monthNumber,
-        hint: 'This task may not exist in the journey_tasks table. Run the migration script to add missing tasks.'
+        hint: 'journey_tasks may be empty. Run migrations/ensure-journey-months-and-tasks.sql in Supabase SQL Editor, then migrations/populate-journey-tasks.sql for all 12 months.'
       });
     }
 

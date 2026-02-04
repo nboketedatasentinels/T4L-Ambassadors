@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS ambassadors (
     profile_completion_percentage INTEGER DEFAULT 0,
     subscription_type VARCHAR(20) DEFAULT 'free' CHECK (subscription_type IN ('free', 'paid')),
     generated_password TEXT,
+    linkedin_audit_reminder_sent_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -234,18 +235,18 @@ ALTER TABLE notifications ADD CONSTRAINT notifications_reference_check CHECK (
 );
 
 -- ============================================
--- 11. SESSIONS TABLE
+-- 11. SESSIONS TABLE (session_id stores the token string)
 -- ============================================
 CREATE TABLE IF NOT EXISTS sessions (
-    session_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    session_id TEXT PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    token TEXT NOT NULL UNIQUE,
+    role VARCHAR(20) NOT NULL CHECK (role IN ('ambassador', 'partner', 'admin')),
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 
 -- ============================================
@@ -255,10 +256,14 @@ CREATE TABLE IF NOT EXISTS linkedin_audits (
     audit_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     ambassador_id UUID NOT NULL REFERENCES ambassadors(ambassador_id) ON DELETE CASCADE,
     admin_id UUID REFERENCES admins(admin_id) ON DELETE SET NULL,
-    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled')),
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'submitted', 'reviewed', 'completed', 'approved', 'in_progress', 'cancelled')),
     notes TEXT,
     recommendations TEXT,
     score INTEGER CHECK (score >= 0 AND score <= 100),
+    feedback TEXT NOT NULL DEFAULT '',
+    linkedin_url TEXT,
+    speaker_bio_url TEXT,
+    submitted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
