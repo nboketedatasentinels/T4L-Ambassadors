@@ -51,6 +51,9 @@ function normalizeAmbassadorData(userData, ambassadorData) {
     cv_filename: ambassadorData.cv_filename,
     professional_headline: ambassadorData.professional_headline,
     professional_summary: ambassadorData.professional_summary,
+    data_sharing_consent: ambassadorData.data_sharing_consent,
+    linkedin_profile_url: ambassadorData.linkedin_profile_url,
+    speaker_profile_url: ambassadorData.speaker_profile_url,
     profile_completion_percentage: ambassadorData.profile_completion_percentage,
     subscription_type: ambassadorData.subscription_type || 'free', // ✅ NEW: Subscription type
     generated_password: ambassadorData.generated_password || '', // ✅ Include password for admin reference

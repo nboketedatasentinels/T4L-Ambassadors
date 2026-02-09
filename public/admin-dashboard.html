@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/images/favicon.png" />
     <!-- v2.0 - Force browser to not cache this page -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -511,6 +512,12 @@
                        class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm hover:shadow flex items-center gap-2">
                         <i class="bx bxl-linkedin-square text-lg"></i>
                         <span class="hidden md:inline">LinkedIn Audits</span>
+                    </a>
+                    <!-- Users Feedback & Support Link -->
+                    <a href="/admin-support.html"
+                       class="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg font-medium hover:from-purple-700 hover:to-purple-800 transition-all shadow-sm hover:shadow flex items-center gap-2">
+                        <i class="bx bx-message-dots text-lg"></i>
+                        <span class="hidden md:inline">Users Feedback &amp; Support</span>
                     </a>
                     
                     <!-- Notification Bell -->
@@ -1024,7 +1031,7 @@
                     <div class="space-y-3">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">
-                                LinkedIn Profile URL
+                                LinkedIn Profile Audit
                             </label>
                             <input 
                                 type="url"
@@ -2883,9 +2890,9 @@ async function markAllNotificationsRead() {
                         <div>
                             <h4 class="font-semibold text-gray-900 mb-2">Profile Details</h4>
                             <div class="bg-gray-50 rounded-lg p-4">
-                                <!-- Add this after the LinkedIn Profile URL section -->
+                                <!-- Add this after the LinkedIn Profile Audit section -->
                                 <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Speaker Bio URL</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Speaker Bio Audit</label>
                                     <a id="viewSpeakerBioUrl" href="#" target="_blank" class="text-blue-600 hover:underline">-</a>
                                 </div>
                                 
@@ -3302,6 +3309,10 @@ async function markAllNotificationsRead() {
             let status = (article.status || 'pending').toLowerCase();
             let dateStr = article.createdAt || article.created_at || 
                          (article.date ? new Date(article.date).toLocaleString() : '-');
+            // Remove milliseconds from ISO timestamp for display (e.g. .584906 removed from 2026-02-06T15:45:12.584906+00:00)
+            if (typeof dateStr === 'string' && dateStr.includes('.')) {
+                dateStr = dateStr.replace(/\.\d+/, '');
+            }
             
             // Get review history
             let reviewHistory = article.review_history || [];

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="/images/favicon.png" />
   <title>Professional Profile Setup</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
@@ -17,7 +18,7 @@
   </style>
 </head>
 
-<body class="min-h-screen bg-[#f9fafb] flex items-center justify-center relative overflow-hidden">
+<body class="min-h-screen bg-[#f9fafb] flex items-center justify-center relative overflow-x-hidden">
 
   <!-- Background Blobs -->
   <div class="blob w-96 h-96 bg-gradient-to-br from-[#c4b5fd] to-[#4b0d7f] opacity-25 top-[-80px] right-[-80px]"></div>
@@ -57,6 +58,49 @@
           class="w-full rounded-xl border border-gray-300 px-4 py-3 text-[#1f2937]
                  focus:outline-none focus:ring-2 focus:ring-[#4b0d7f]"
         />
+      </div>
+
+      <!-- LinkedIn Profile URL (optional) -->
+      <div>
+        <label class="block text-sm font-medium text-[#1f2937] mb-1">
+          LinkedIn Profile URL
+          <span class="text-xs font-normal text-gray-500">(optional)</span>
+        </label>
+        <input
+          type="url"
+          name="linkedinProfileUrl"
+          placeholder="https://linkedin.com/in/your-profile"
+          class="w-full rounded-xl border border-gray-300 px-4 py-3 text-[#1f2937]
+                 focus:outline-none focus:ring-2 focus:ring-[#4b0d7f]"
+        />
+      </div>
+
+      <!-- Speaker Profile URL (optional) -->
+      <div>
+        <label class="block text-sm font-medium text-[#1f2937] mb-1">
+          Speaker Profile URL
+          <span class="text-xs font-normal text-gray-500">(optional)</span>
+        </label>
+        <input
+          type="url"
+          name="speakerProfileUrl"
+          placeholder="Link to your speaker profile, media kit or portfolio"
+          class="w-full rounded-xl border border-gray-300 px-4 py-3 text-[#1f2937]
+                 focus:outline-none focus:ring-2 focus:ring-[#4b0d7f]"
+        />
+      </div>
+
+      <!-- Data sharing consent -->
+      <div class="flex items-start gap-2">
+        <input
+          id="dataConsent"
+          name="dataConsent"
+          type="checkbox"
+          class="mt-1 h-4 w-4 rounded border-gray-300 text-[#4b0d7f] focus:ring-[#4b0d7f]"
+        />
+        <label for="dataConsent" class="text-xs text-[#374151]">
+          I consent to my data being shared with T4L Partners to receive updates and notifications about opportunities.
+        </label>
       </div>
 
       <!-- About Section -->
@@ -154,6 +198,12 @@
         return;
       }
 
+      // Require privacy / data sharing consent before proceeding
+      if (!form.dataConsent.checked) {
+        alert('To continue, please consent to your data being shared with T4L Partners for updates and opportunities.');
+        return;
+      }
+
       // Disable submit button
       submitBtn.disabled = true;
       submitBtn.textContent = "Saving...";
@@ -167,7 +217,10 @@
           credentials: 'include',
           body: JSON.stringify({
             professional_headline: form.headline.value.trim(),
-            professional_summary: textarea.value.trim()
+            professional_summary: textarea.value.trim(),
+            linkedin_profile_url: (form.linkedinProfileUrl.value || '').trim(),
+            speaker_profile_url: (form.speakerProfileUrl.value || '').trim(),
+            data_sharing_consent: !!form.dataConsent.checked
           })
         });
 

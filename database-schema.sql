@@ -48,6 +48,9 @@ CREATE TABLE IF NOT EXISTS ambassadors (
     cv_filename VARCHAR(255),
     professional_headline TEXT,
     professional_summary TEXT,
+    linkedin_profile_url TEXT,
+    speaker_profile_url TEXT,
+    data_sharing_consent BOOLEAN DEFAULT FALSE,
     profile_completion_percentage INTEGER DEFAULT 0,
     subscription_type VARCHAR(20) DEFAULT 'free' CHECK (subscription_type IN ('free', 'paid')),
     generated_password TEXT,
@@ -393,6 +396,26 @@ CREATE TABLE IF NOT EXISTS journey_progress (
 );
 
 CREATE INDEX IF NOT EXISTS idx_journey_progress_ambassador_id ON journey_progress(ambassador_id);
+
+-- ============================================
+-- 19. SUPPORT_FEEDBACK TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS support_feedback (
+    feedback_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    ambassador_id UUID REFERENCES ambassadors(ambassador_id) ON DELETE SET NULL,
+    role VARCHAR(20) NOT NULL,
+    category VARCHAR(50),
+    subject TEXT,
+    message TEXT NOT NULL,
+    status VARCHAR(20) DEFAULT 'open' CHECK (status IN ('open','in_progress','resolved','closed')),
+    screenshot_filename TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_support_feedback_user_id ON support_feedback(user_id);
+CREATE INDEX IF NOT EXISTS idx_support_feedback_status ON support_feedback(status);
 
 -- ============================================
 -- POPULATE JOURNEY TASKS

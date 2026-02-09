@@ -308,6 +308,22 @@
                   <p class="text-sm text-gray-600">Email</p>
                   <p class="font-medium text-gray-900 break-words">${application.ambassadorProfile?.email || 'Not provided'}</p>
                 </div>
+                ${application.ambassadorProfile?.linkedinProfileUrl ? `
+                  <div class="min-w-0">
+                    <p class="text-sm text-gray-600">LinkedIn Profile</p>
+                    <a href="${application.ambassadorProfile.linkedinProfileUrl}" target="_blank" rel="noopener noreferrer" class="text-purple-600 hover:text-purple-700 hover:underline break-words">
+                      ${application.ambassadorProfile.linkedinProfileUrl}
+                    </a>
+                  </div>
+                ` : ''}
+                ${application.ambassadorProfile?.speakerProfileUrl ? `
+                  <div class="min-w-0">
+                    <p class="text-sm text-gray-600">Speaker Profile</p>
+                    <a href="${application.ambassadorProfile.speakerProfileUrl}" target="_blank" rel="noopener noreferrer" class="text-purple-600 hover:text-purple-700 hover:underline break-words">
+                      ${application.ambassadorProfile.speakerProfileUrl}
+                    </a>
+                  </div>
+                ` : ''}
               </div>
             </div>
             
@@ -336,7 +352,10 @@
               <i class="bx bx-user-circle"></i>
               Professional Profile
             </h3>
-            ${application.ambassadorProfile?.professionalHeadline || application.ambassadorProfile?.professionalSummary ? `
+            ${application.ambassadorProfile?.professionalHeadline ||
+            application.ambassadorProfile?.professionalSummary ||
+            application.ambassadorProfile?.linkedinProfileUrl ||
+            application.ambassadorProfile?.speakerProfileUrl ? `
               <div class="space-y-4 min-w-0">
                 ${application.ambassadorProfile?.professionalHeadline ? `
                   <div class="min-w-0">
@@ -348,6 +367,22 @@
                   <div class="min-w-0">
                     <p class="text-sm font-medium text-gray-500 mb-1">Professional Summary</p>
                     <p class="text-gray-700 whitespace-pre-wrap break-words summary-text">${application.ambassadorProfile.professionalSummary}</p>
+                  </div>
+                ` : ''}
+                ${application.ambassadorProfile?.linkedinProfileUrl ? `
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-gray-500 mb-1">LinkedIn Profile URL</p>
+                    <a href="${application.ambassadorProfile.linkedinProfileUrl}" target="_blank" rel="noopener noreferrer" class="text-purple-600 hover:text-purple-700 hover:underline break-words">
+                      ${application.ambassadorProfile.linkedinProfileUrl}
+                    </a>
+                  </div>
+                ` : ''}
+                ${application.ambassadorProfile?.speakerProfileUrl ? `
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-gray-500 mb-1">Speaker Profile URL</p>
+                    <a href="${application.ambassadorProfile.speakerProfileUrl}" target="_blank" rel="noopener noreferrer" class="text-purple-600 hover:text-purple-700 hover:underline break-words">
+                      ${application.ambassadorProfile.speakerProfileUrl}
+                    </a>
                   </div>
                 ` : ''}
               </div>

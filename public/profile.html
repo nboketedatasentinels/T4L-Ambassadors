@@ -340,9 +340,15 @@
               .substring(0, 2);
             avatar.textContent = initials;
             
-            // Update role badge
+            // Update role badge (Top Voice for ambassadors)
             const roleBadge = document.getElementById('profileRole');
-            roleBadge.textContent = data.role ? data.role.charAt(0).toUpperCase() + data.role.slice(1) : '';
+            let roleLabel = '';
+            if (data.role === 'ambassador') {
+              roleLabel = 'Top Voice';
+            } else if (data.role) {
+              roleLabel = data.role.charAt(0).toUpperCase() + data.role.slice(1);
+            }
+            roleBadge.textContent = roleLabel;
             
             // Update form fields
             if (data.role === 'partner') {
@@ -370,8 +376,15 @@
             
             document.getElementById('emailInput').value = data.email || '';
             
-            // Update account information
-            document.getElementById('userRole').textContent = data.role ? data.role.charAt(0).toUpperCase() + data.role.slice(1) : '-';
+            // Update account information (Top Voice for ambassadors)
+            const userRoleEl = document.getElementById('userRole');
+            let accountRoleLabel = '-';
+            if (data.role === 'ambassador') {
+              accountRoleLabel = 'Top Voice';
+            } else if (data.role) {
+              accountRoleLabel = data.role.charAt(0).toUpperCase() + data.role.slice(1);
+            }
+            userRoleEl.textContent = accountRoleLabel;
             // Member since / joined date
             const memberSinceEl = document.getElementById('memberSince');
             if (memberSinceEl) {

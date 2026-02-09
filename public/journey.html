@@ -1941,7 +1941,7 @@
       modalOverlay.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 9999;';
       
       // Determine the URL label based on the title
-      const urlLabel = title.includes('LinkedIn') ? 'LinkedIn Profile URL:' : 'Speaker Bio URL:';
+      const urlLabel = title.includes('LinkedIn') ? 'LinkedIn Profile Audit:' : 'Speaker Bio Audit:';
       
       modalOverlay.innerHTML = `
         <div style="background: white; border-radius: 16px; max-width: 600px; width: 90%; max-height: 80vh; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
@@ -3903,8 +3903,6 @@ Best,
           showToast(`Your month ${currentMonth} activities are being reviewed. Your next month activities will open soon.`, 'error', { duration: 8000, centered: true });
           return;
         }
-
-        if (!confirm('Move to the next month? This action cannot be undone.')) return;
 
         try {
           const newMonth = journeyData.currentMonth + 1;

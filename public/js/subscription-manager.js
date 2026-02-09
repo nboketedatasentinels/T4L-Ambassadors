@@ -7,7 +7,9 @@ class SubscriptionManager {
   constructor() {
     this.subscriptionType = null;
     this.hasFullAccess = false;
-    this.freeFeatures = ['events', 'partners', 'impact-log', 'chat'];
+    // Free ambassadors do NOT have access to visibility (Partner Calls).
+    // They only get events, impact log, and T4L Ecosystem chat.
+    this.freeFeatures = ['events', 'impact-log', 'chat'];
   }
 
   async checkSubscription() {
@@ -215,9 +217,8 @@ class SubscriptionManager {
                   </p>
                   <ul class="text-sm text-gray-600 space-y-1.5">
                     <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> Access to Events</li>
-                    <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> Visibility Opportunities</li>
                     <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> Impact Log</li>
-                    <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> Chat & Communication</li>
+                    <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> T4L Ecosystem (Community &amp; chat)</li>
                   </ul>
                 </div>
               </div>
@@ -231,7 +232,7 @@ class SubscriptionManager {
                       <li class="flex items-center gap-2"><i class="fas fa-rocket text-[#4b0d7f] text-xs"></i> Journey Progress Tracking</li>
                       <li class="flex items-center gap-2"><i class="fas fa-file-alt text-[#4b0d7f] text-xs"></i> Article Publishing</li>
                       <li class="flex items-center gap-2"><i class="fas fa-user-cog text-[#4b0d7f] text-xs"></i> Advanced Profile Features</li>
-                      <li class="flex items-center gap-2"><i class="fas fa-briefcase text-[#4b0d7f] text-xs"></i> Professional Services</li>
+                      <li class="flex items-center gap-2"><i class="fas fa-briefcase text-[#4b0d7f] text-xs"></i> Visibility Opportunities (Partner Calls)</li>
                       <li class="flex items-center gap-2"><i class="fas fa-image text-[#4b0d7f] text-xs"></i> Media Kit Access</li>
                       <li class="flex items-center gap-2"><i class="fas fa-chart-line text-[#4b0d7f] text-xs"></i> Analytics & Insights</li>
                       <li class="flex items-center gap-2"><i class="fas fa-headset text-[#4b0d7f] text-xs"></i> Priority Support</li>

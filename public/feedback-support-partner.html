@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/images/favicon.png" />
+    <title>Feedback &amp; Support | T4L Partner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+          "Segoe UI", sans-serif;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 flex items-center justify-center px-4">
+    <div class="w-full max-w-2xl mx-auto">
+      <div class="mb-6 flex items-center justify-between gap-4">
+        <div class="text-left">
+          <p class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            T4L Partner Care
+          </p>
+          <h1 class="mt-3 text-2xl font-bold text-slate-900">Feedback &amp; Support</h1>
+          <p class="mt-2 text-sm text-slate-600">
+            Let us know if something isn’t working or if you have suggestions to improve the partner experience.
+          </p>
+        </div>
+        <a
+          href="/partner-dashboard.html"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 transition whitespace-nowrap"
+        >
+          <i class="bx bx-left-arrow-alt text-base"></i>
+          Back to Home
+        </a>
+      </div>
+
+      <form id="feedbackForm" class="bg-white/80 backdrop-blur rounded-2xl shadow-xl border border-slate-100 p-6 space-y-5 mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+            <select
+              id="category"
+              class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white"
+            >
+              <option value="bug">Something is broken</option>
+              <option value="idea">Feature idea / improvement</option>
+              <option value="content">Content / copy issue</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Short title</label>
+            <input
+              id="subject"
+              type="text"
+              placeholder="e.g. Issue adding a new opportunity"
+              class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Describe what happened</label>
+          <textarea
+            id="message"
+            rows="5"
+            class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
+            placeholder="Share what you were trying to do, what you expected to happen, and what actually happened..."
+          ></textarea>
+          <p class="mt-1 text-[11px] text-slate-500">
+            Please avoid sharing passwords or highly sensitive information.
+          </p>
+        </div>
+
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Attach screenshot (optional)</label>
+            <label class="inline-flex items-center gap-2 px-3 py-2 border border-dashed border-slate-300 rounded-xl cursor-pointer text-xs text-slate-600 hover:border-emerald-400 hover:bg-emerald-50/40 transition">
+              <i class="bx bx-image-alt text-emerald-600 text-lg"></i>
+              <span id="screenshotLabel">Upload PNG, JPG, or JPEG (max 5MB)</span>
+              <input id="screenshot" type="file" accept="image/*" class="hidden" />
+            </label>
+          </div>
+          <div class="flex flex-col items-start md:items-end gap-2">
+            <p id="feedbackStatus" class="text-[11px] text-slate-500"></p>
+            <button
+              id="submitBtn"
+              type="submit"
+              class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold shadow-md hover:shadow-lg hover:bg-emerald-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <span id="submitLabel">Send feedback</span>
+              <span id="submitSpinner" class="hidden h-4 w-4 border-2 border-white/40 border-top-white rounded-full animate-spin"></span>
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Toast -->
+      <div
+        id="toast"
+        class="fixed inset-x-0 top-4 flex justify-center pointer-events-none hidden"
+      >
+        <div
+          id="toastInner"
+          class="pointer-events-auto inline-flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium bg-slate-900 text-white"
+        ></div>
+      </div>
+    </div>
+
+    <script>
+      async function ensurePartner() {
+        try {
+          const res = await fetch('/api/me', { credentials: 'include' });
+          if (!res.ok) throw new Error('unauth');
+          const me = await res.json();
+          if (!me || me.role !== 'partner') {
+            window.location.href = '/partner-signin.html';
+          }
+        } catch {
+          window.location.href = '/partner-signin.html';
+        }
+      }
+      ensurePartner();
+
+      const form = document.getElementById('feedbackForm');
+      const screenshotInput = document.getElementById('screenshot');
+      const screenshotLabel = document.getElementById('screenshotLabel');
+      const submitBtn = document.getElementById('submitBtn');
+      const submitLabel = document.getElementById('submitLabel');
+      const submitSpinner = document.getElementById('submitSpinner');
+      const statusEl = document.getElementById('feedbackStatus');
+      const toast = document.getElementById('toast');
+      const toastInner = document.getElementById('toastInner');
+
+      function showToast(message, variant = 'success') {
+        toastInner.textContent = message;
+        toastInner.className =
+          'pointer-events-auto inline-flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium ' +
+          (variant === 'error'
+            ? 'bg-red-600 text-white'
+            : 'bg-emerald-600 text-white');
+        toast.classList.remove('hidden');
+        setTimeout(() => {
+          toast.classList.add('hidden');
+        }, 3500);
+      }
+
+      screenshotInput.addEventListener('change', () => {
+        const file = screenshotInput.files[0];
+        if (!file) {
+          screenshotLabel.textContent = 'Upload PNG, JPG, or JPEG (max 5MB)';
+          return;
+        }
+        screenshotLabel.textContent = file.name;
+      });
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const category = document.getElementById('category').value;
+        const subject = document.getElementById('subject').value.trim();
+        const message = document.getElementById('message').value.trim();
+
+        if (message.length < 10) {
+          showToast('Please add a bit more detail so we can support you.', 'error');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitLabel.textContent = 'Sending...';
+        submitSpinner.classList.remove('hidden');
+        statusEl.textContent = 'Sending your feedback to the T4L team...';
+
+        try {
+          const fd = new FormData();
+          fd.append('category', category);
+          fd.append('subject', subject);
+          fd.append('message', message);
+          if (screenshotInput.files[0]) {
+            fd.append('screenshot', screenshotInput.files[0]);
+          }
+
+          const res = await fetch('/api/support/feedback', {
+            method: 'POST',
+            body: fd,
+            credentials: 'include',
+          });
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok) {
+            throw new Error(data.error || 'Failed to send feedback');
+          }
+
+          form.reset();
+          screenshotLabel.textContent = 'Upload PNG, JPG, or JPEG (max 5MB)';
+          statusEl.textContent = 'Thanks! Your message has been received.';
+          showToast('Thank you for helping us improve the partner experience.');
+        } catch (err) {
+          console.error('Feedback error', err);
+          statusEl.textContent = '';
+          showToast(err.message || 'Something went wrong. Please try again.', 'error');
+        } finally {
+          submitBtn.disabled = false;
+          submitLabel.textContent = 'Send feedback';
+          submitSpinner.classList.add('hidden');
+        }
+      });
+    </script>
+    <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
+  </body>
+</html>
+

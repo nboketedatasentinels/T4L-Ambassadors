@@ -778,7 +778,8 @@
       'pending': 'type-article_pending',
       'submitted': 'type-application_submitted',
       'ambassador_consent': 'type-ambassador_consent',
-      'ambassador_consent_to_publish': 'type-ambassador_consent'
+      'ambassador_consent_to_publish': 'type-ambassador_consent',
+      'linkedin_audit_submitted': 'type-ready_to_publish'
     };
     return typeClasses[normalizedType] || typeClasses[type] || 'type-default';
   }
@@ -805,7 +806,8 @@
       'pending': 'bx-time-five',
       'submitted': 'bx-file',
       'ambassador_consent': 'bx-check-shield',
-      'ambassador_consent_to_publish': 'bx-check-shield'
+      'ambassador_consent_to_publish': 'bx-check-shield',
+      'linkedin_audit_submitted': 'bx-link-alt'
     };
     return icons[normalizedType] || icons[type] || 'bx-bell';
   }

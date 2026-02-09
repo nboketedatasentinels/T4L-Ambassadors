@@ -406,6 +406,43 @@ app.use((req, res, next) => {
   next();
 });
 
+// ------------------------
+// About Me gate BEFORE static assets
+// ------------------------
+app.get("/about-me.html", requireAuth, requireRole("ambassador"), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+
+    // Check if professional profile is already complete
+    const { data: ambassador, error } = await supabase
+      .from("ambassadors")
+      .select("professional_headline, professional_summary, data_sharing_consent")
+      .eq("user_id", userId)
+      .single();
+
+    if (error) {
+      console.error("Error checking profile:", error);
+      return res.sendFile(path.join(__dirname, "public", "about-me.html"));
+    }
+
+    // If profile is already complete (headline + summary + consent), redirect to dashboard
+    if (
+      ambassador?.professional_headline &&
+      ambassador?.professional_summary &&
+      ambassador?.data_sharing_consent
+    ) {
+      log("✅ Profile already complete, redirecting to dashboard");
+      return res.redirect("/ambassador-dashboard.html");
+    }
+
+    // Profile not complete, serve the about-me page
+    res.sendFile(path.join(__dirname, "public", "about-me.html"));
+  } catch (error) {
+    console.error("Error serving about-me page:", error);
+    return res.redirect("/signin");
+  }
+});
+
 // Serve static assets
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -603,6 +640,39 @@ const cvStorage = multer.diskStorage({
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     cb(null, "cv-" + uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+// Multer configuration for support screenshots (images only)
+const supportStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const supportDir = path.join(__dirname, "uploads", "support");
+    if (!fs.existsSync(supportDir)) {
+      fs.mkdirSync(supportDir, { recursive: true });
+    }
+    cb(null, supportDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(
+      null,
+      "support-" + uniqueSuffix + path.extname(file.originalname || ".png")
+    );
+  },
+});
+
+const supportUpload = multer({
+  storage: supportStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype || !file.mimetype.startsWith("image/")) {
+      return cb(
+        Object.assign(new multer.MulterError("LIMIT_FILE_TYPE"), {
+          message: "Only image screenshots are allowed",
+        })
+      );
+    }
+    cb(null, true);
   },
 });
 
@@ -1378,6 +1448,19 @@ app.post("/api/services/:id/request", requireAuth, async (req, res) => {
       ? `${ambassador.first_name} ${ambassador.last_name || ""}`.trim()
       : "An ambassador";
 
+    const linkedinUrl = ambassador.linkedin_profile_url || null;
+    const speakerUrl = ambassador.speaker_profile_url || null;
+
+    const profileSnippet =
+      linkedinUrl || speakerUrl
+        ? [
+            linkedinUrl ? `LinkedIn: ${linkedinUrl}` : null,
+            speakerUrl ? `Speaker profile: ${speakerUrl}` : null,
+          ]
+            .filter(Boolean)
+            .join(" • ")
+        : null;
+
     log("📬 Creating notifications...");
 
     // Get partner user_id
@@ -1392,7 +1475,9 @@ app.post("/api/services/:id/request", requireAuth, async (req, res) => {
         "partner",
         "service_request",
         "📋 New Service Request",
-        `${ambassadorName} has requested your service "${service.title}"`,
+        `${ambassadorName} has requested your service "${service.title}"${
+          profileSnippet ? ` · ${profileSnippet}` : ""
+        }`,
         `/my-services.html`,
         null, // 🚨 MUST BE NULL FOR SERVICE REQUESTS
         requestId // 🚨 THIS IS THE SERVICE REQUEST ID
@@ -2342,7 +2427,9 @@ app.get(
       if (application.ambassador_id) {
         const { data: ambassador } = await supabase
           .from("ambassadors")
-          .select("first_name, last_name, email, cv_filename, professional_headline, professional_summary")
+          .select(
+            "first_name, last_name, email, cv_filename, professional_headline, professional_summary, linkedin_profile_url, speaker_profile_url"
+          )
           .eq("ambassador_id", application.ambassador_id)
           .single();
 
@@ -2356,6 +2443,8 @@ app.get(
             cvFilename: ambassador.cv_filename,
             professionalHeadline: ambassador.professional_headline,
             professionalSummary: ambassador.professional_summary,
+            linkedinProfileUrl: ambassador.linkedin_profile_url || null,
+            speakerProfileUrl: ambassador.speaker_profile_url || null,
           };
         }
       }
@@ -3204,7 +3293,39 @@ async function requireAuth(req, res, next) {
     }
     return res.status(401).json({ error: "Unauthorized" });
   }
-  req.auth = sess;
+
+  // ✅ EXTRA SAFETY: Always trust the canonical role from the users table
+  // This prevents any stale / incorrect role stored in the sessions table
+  // from causing a partner to be seen as an ambassador (or vice‑versa).
+  let effectiveRole = sess.role;
+  try {
+    const { data: userRow, error } = await supabase
+      .from("users")
+      .select("user_type")
+      .eq("user_id", sess.userId)
+      .single();
+
+    if (!error && userRow && userRow.user_type) {
+      if (
+        userRow.user_type === "ambassador" ||
+        userRow.user_type === "partner" ||
+        userRow.user_type === "admin"
+      ) {
+        if (userRow.user_type !== sess.role) {
+          log("⚠️ Session role mismatch, correcting from DB", {
+            userId: sess.userId,
+            sessionRole: sess.role,
+            dbRole: userRow.user_type,
+          });
+        }
+        effectiveRole = userRow.user_type;
+      }
+    }
+  } catch (err) {
+    console.error("⚠️ Failed to verify role from users table:", err.message);
+  }
+
+  req.auth = { ...sess, role: effectiveRole };
   next();
 }
 
@@ -3807,9 +3928,16 @@ app.post("/signin", async (req, res) => {
 
     log(`Ambassador signed in: ${emailLower}, Session: ${sessionId}`);
 
-    // Check if professional profile is complete
-    const hasCompletedProfile = user.professional_headline && user.professional_summary;
-    const redirectUrl = hasCompletedProfile ? "/ambassador-dashboard.html" : "/about-me.html";
+    // Decide where to send the ambassador after sign-in.
+    // If they haven't completed About Me (headline + summary + consent),
+    // send them there; otherwise go straight to the dashboard.
+    const hasCompletedProfile =
+      user.professional_headline &&
+      user.professional_summary &&
+      user.data_sharing_consent;
+    const redirectUrl = hasCompletedProfile
+      ? "/ambassador-dashboard.html"
+      : "/about-me.html";
 
     log(`Profile complete: ${hasCompletedProfile}, redirecting to: ${redirectUrl}`);
 
@@ -4139,6 +4267,27 @@ app.post('/admin/api/ambassadors/:id/linkedin-audit', requireAuth, requireRole('
     }
 
     log('✅ LinkedIn audit stored successfully:', auditData?.audit_id);
+
+    // Notify the ambassador that their LinkedIn audit is ready
+    try {
+      const ambassadorUserId =
+        ambassador.user_id || (await getAmbassadorUserIdFromAmbassadorId(ambassadorId));
+
+      if (ambassadorUserId) {
+        await createNotification(
+          ambassadorUserId,
+          "ambassador",
+          "linkedin_audit_submitted",
+          "Your LinkedIn profile audit is ready",
+          "Your LinkedIn profile has been reviewed. View your audit feedback and recommendations.",
+          "/journey.html" // Ambassadors can see audits from their journey page
+        );
+      } else {
+        console.error("⚠️ Could not resolve ambassador user_id for LinkedIn audit notification");
+      }
+    } catch (notifError) {
+      console.error("⚠️ Failed to create LinkedIn audit notification:", notifError?.message || notifError);
+    }
 
     // Transform response for frontend
     const transformedAudit = auditData ? {
@@ -4964,8 +5113,9 @@ app.get(
         return res.redirect("/signin");
       }
 
-      // Check if professional profile is complete - redirect to about-me if not
-      if (!user.professional_headline || !user.professional_summary) {
+    // Check if professional profile is complete - redirect to about-me if not.
+    // Once headline & summary are saved, About Me should not be shown again.
+    if (!user.professional_headline || !user.professional_summary) {
         log("Profile incomplete, redirecting to about-me");
         return res.redirect("/about-me.html");
       }
@@ -5425,97 +5575,353 @@ app.post("/api/profile/password", requireAuth, async (req, res) => {
 app.post("/api/profile/about-me", requireAuth, requireRole("ambassador"), async (req, res) => {
   try {
     const userId = req.auth.userId;
-    const { professional_headline, professional_summary } = req.body || {};
+    const {
+      professional_headline,
+      professional_summary,
+      linkedin_profile_url,
+      speaker_profile_url,
+      data_sharing_consent,
+    } = req.body || {};
+
+    log("📝 ========== ABOUT-ME PROFILE SAVE ==========");
+    log("   User ID:", userId);
+    log("   Headline:", professional_headline?.substring(0, 30));
+    log("   Summary length:", professional_summary?.length);
+    log("   Consent:", data_sharing_consent);
 
     // Validation
     if (!professional_headline || !professional_summary) {
-      return res.status(400).json({ 
-        error: "Professional headline and summary are required" 
+      log("❌ Missing required fields");
+      return res.status(400).json({
+        error: "Professional headline and summary are required",
       });
     }
 
-    // Validate minimum word count for summary
-    // NOTE: This should stay in sync with the MIN_WORDS constant in `public/about-me.html`
+    // Require explicit data sharing consent
+    if (!data_sharing_consent) {
+      log("❌ Missing consent");
+      return res.status(400).json({
+        error:
+          "You must consent to your data being shared with T4L Partners to continue",
+      });
+    }
+
+    // Validate minimum word count
     const MIN_SUMMARY_WORDS = 70;
-    const wordCount = professional_summary.trim().split(/\s+/).filter(word => word.length > 0).length;
+    const wordCount = professional_summary
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0).length;
+
     if (wordCount < MIN_SUMMARY_WORDS) {
-      return res.status(400).json({ 
-        error: `Professional summary must be at least ${MIN_SUMMARY_WORDS} words` 
+      log("❌ Summary too short:", wordCount, "words");
+      return res.status(400).json({
+        error: `Professional summary must be at least ${MIN_SUMMARY_WORDS} words`,
       });
     }
 
-    // Get ambassador record
-    const { data: ambassador, error: fetchError } = await supabase
-      .from("ambassadors")
-      .select("ambassador_id")
-      .eq("user_id", userId)
-      .single();
+    log("✅ Validation passed");
 
-    if (fetchError || !ambassador) {
-      console.error("Ambassador not found for user:", userId);
-      return res.status(404).json({ error: "Ambassador profile not found" });
+    // ✅ Use getUserById helper to resolve ambassador and ambassador_id
+    log("🔍 Looking up ambassador for user_id:", userId);
+    const ambassador = await getUserById(userId, "ambassador");
+
+    if (!ambassador) {
+      console.error("❌ Ambassador not found for user_id:", userId);
+
+      // Extra debug info to help diagnose setup issues
+      try {
+        const { data: user } = await supabase
+          .from("users")
+          .select("user_id, email, user_type")
+          .eq("user_id", userId)
+          .single();
+        log("   User in users table:", user);
+
+        const { data: allAmbs } = await supabase
+          .from("ambassadors")
+          .select("ambassador_id, user_id, email")
+          .limit(5);
+        log("   Sample ambassadors:", allAmbs);
+      } catch (debugErr) {
+        console.error("   Debug lookup failed:", debugErr);
+      }
+
+      return res.status(404).json({
+        error: "Ambassador profile not found",
+        details:
+          "Your account may not be properly set up. Please contact support.",
+      });
     }
 
-    // Update ambassador profile with professional info
-    const { data: updated, error: updateError } = await supabase
+    const ambassadorId = ambassador.ambassador_id || ambassador.id;
+    log("✅ Found ambassador_id:", ambassadorId);
+
+    // Build update payload
+    const updatePayload = {
+      professional_headline: professional_headline.trim(),
+      professional_summary: professional_summary.trim(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // Try to include consent flag; if the column doesn't exist,
+    // we'll handle the error and retry without it.
+    try {
+      updatePayload.data_sharing_consent = true;
+    } catch (e) {
+      log("⚠️ data_sharing_consent could not be set on payload");
+    }
+
+    // Optional links
+    if (typeof linkedin_profile_url === "string" && linkedin_profile_url.trim()) {
+      updatePayload.linkedin_profile_url = linkedin_profile_url.trim();
+    }
+    if (
+      typeof speaker_profile_url === "string" &&
+      speaker_profile_url.trim()
+    ) {
+      updatePayload.speaker_profile_url = speaker_profile_url.trim();
+    }
+
+    log("💾 Updating ambassador profile...");
+    log("   Payload keys:", Object.keys(updatePayload));
+
+    let { data: updated, error: updateError } = await supabase
       .from("ambassadors")
-      .update({
-        professional_headline: professional_headline.trim(),
-        professional_summary: professional_summary.trim(),
-        updated_at: new Date().toISOString()
-      })
-      .eq("ambassador_id", ambassador.ambassador_id)
+      .update(updatePayload)
+      .eq("ambassador_id", ambassadorId)
       .select()
       .single();
 
-    if (updateError) {
-      console.error("Error updating professional profile:", updateError);
-      return res.status(500).json({ error: "Failed to save professional profile" });
+    // If the error is specifically about data_sharing_consent missing, retry without it
+    if (
+      updateError &&
+      (updateError.code === "PGRST204" ||
+        (typeof updateError.message === "string" &&
+          updateError.message.includes("data_sharing_consent")))
+    ) {
+      log("⚠️ Retrying profile update without data_sharing_consent column...");
+      delete updatePayload.data_sharing_consent;
+
+      const retry = await supabase
+        .from("ambassadors")
+        .update(updatePayload)
+        .eq("ambassador_id", ambassadorId)
+        .select()
+        .single();
+
+      updated = retry.data;
+      updateError = retry.error;
+
+      if (!updateError) {
+        log("✅ Profile saved successfully (without consent column)");
+        return res.json({
+          success: true,
+          message: "Professional profile saved successfully",
+          redirect: "/ambassador-dashboard.html",
+          warning:
+            "Consent tracking column is missing in the database; please run the ambassadors ALTER TABLE migration.",
+        });
+      }
     }
 
-    log(`✅ Professional profile saved for ambassador: ${ambassador.ambassador_id}`);
+    if (updateError) {
+      console.error("❌ Update error:", updateError);
+      console.error("   Code:", updateError.code);
+      console.error("   Message:", updateError.message);
+      console.error("   Details:", updateError.details);
+
+      return res.status(500).json({
+        error: "Failed to save professional profile",
+        details: updateError.message,
+      });
+    }
+
+    log("✅ Profile saved successfully");
+    log("========== ABOUT-ME SAVE COMPLETE ==========\n");
 
     return res.json({
       success: true,
       message: "Professional profile saved successfully",
-      redirect: "/ambassador-dashboard.html"
+      redirect: "/ambassador-dashboard.html",
     });
   } catch (error) {
-    console.error("Error saving professional profile:", error);
-    return res.status(500).json({ error: "Internal server error" });
+    console.error("❌ ========== ABOUT-ME ERROR ==========");
+    console.error("Error:", error.message);
+    console.error("Stack:", error.stack);
+
+    return res.status(500).json({
+      error: "Internal server error",
+      details:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Please try again",
+    });
   }
 });
 
-// Protected route for about-me.html - redirects if profile already complete
-app.get("/about-me.html", requireAuth, requireRole("ambassador"), async (req, res) => {
-  try {
-    const userId = req.auth.userId;
-    
-    // Check if professional profile is already complete
-    const { data: ambassador, error } = await supabase
-      .from("ambassadors")
-      .select("professional_headline, professional_summary")
-      .eq("user_id", userId)
-      .single();
+// ------------------------
+// Feedback & Support (Ambassador + Partner)
+// ------------------------
+app.post(
+  "/api/support/feedback",
+  requireAuth,
+  (req, res, next) => {
+    supportUpload.single("screenshot")(req, res, (err) => {
+      if (err) {
+        console.error("❌ Support screenshot upload error:", err.message);
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({
+            error: "Screenshot too large (max 5MB)",
+          });
+        }
+        if (err.code === "LIMIT_FILE_TYPE") {
+          return res.status(400).json({
+            error: err.message || "Only image screenshots are allowed",
+          });
+        }
+        return res.status(400).json({
+          error: "Failed to upload screenshot",
+          details: err.message,
+        });
+      }
+      next();
+    });
+  },
+  async (req, res) => {
+    try {
+      const userId = req.auth.userId;
+      const role = req.auth.role || "ambassador";
 
-    if (error) {
-      console.error("Error checking profile:", error);
-      return res.sendFile(path.join(__dirname, "public", "about-me.html"));
+      // Only ambassadors and partners can submit support feedback
+      if (!["ambassador", "partner"].includes(role)) {
+        return res.status(403).json({ error: "Only ambassadors and partners can send feedback." });
+      }
+      const { category, subject, message } = req.body || {};
+
+      if (!message || String(message).trim().length < 10) {
+        return res.status(400).json({
+          error: "Please provide a short description of the issue (at least 10 characters).",
+        });
+      }
+
+      // Try to link to ambassador_id if available (for ambassadors)
+      let ambassadorId = null;
+      if (role === "ambassador") {
+        try {
+          const { data: amb } = await supabase
+            .from("ambassadors")
+            .select("ambassador_id")
+            .eq("user_id", userId)
+            .single();
+          ambassadorId = amb?.ambassador_id || null;
+        } catch {
+          ambassadorId = null;
+        }
+      }
+
+      const screenshot_filename = req.file ? path.basename(req.file.path) : null;
+
+      const { data, error } = await supabase
+        .from("support_feedback")
+        .insert([
+          {
+            user_id: userId,
+            ambassador_id: ambassadorId,
+            role,
+            category: category || null,
+            subject: subject || null,
+            message: String(message).trim(),
+            screenshot_filename,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error("❌ Error saving support feedback:", error);
+        return res.status(500).json({ error: "Failed to submit feedback" });
+      }
+
+      // Notify all admins about new feedback
+      try {
+        const { data: admins } = await supabase
+          .from("admins")
+          .select("user_id");
+
+        if (admins && admins.length > 0) {
+          const senderLabel = role === "partner" ? "a partner" : "an ambassador";
+          const categoryLabel = category ? ` (${category})` : "";
+
+          for (const admin of admins) {
+            await createNotification(
+              admin.user_id,
+              "admin",
+              "support_feedback",
+              "🆘 New Support Feedback",
+              `You received new feedback${categoryLabel} from ${senderLabel}.`,
+              "/admin-support.html",
+              null,
+              null,
+              null
+            );
+          }
+        }
+      } catch (notifyErr) {
+        console.error("⚠️ Failed to notify admins about feedback:", notifyErr);
+        // Do not fail the request if notifications break
+      }
+
+      return res.json({
+        success: true,
+        message: "Thanks for your feedback! Our team will review it.",
+        feedback: { id: data.feedback_id },
+      });
+    } catch (err) {
+      console.error("❌ Support feedback error:", err);
+      return res.status(500).json({ error: "Failed to submit feedback" });
     }
-
-    // If profile is already complete, redirect to dashboard
-    if (ambassador?.professional_headline && ambassador?.professional_summary) {
-      log("✅ Profile already complete, redirecting to dashboard");
-      return res.redirect("/ambassador-dashboard.html");
-    }
-
-    // Profile not complete, serve the about-me page
-    res.sendFile(path.join(__dirname, "public", "about-me.html"));
-  } catch (error) {
-    console.error("Error serving about-me page:", error);
-    return res.redirect("/signin");
   }
-});
+);
+
+// Admin: list all support feedback
+app.get(
+  "/admin/api/support-feedback",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const { data, error } = await supabase
+        .from("support_feedback")
+        .select(
+          `
+          feedback_id,
+          user_id,
+          ambassador_id,
+          role,
+          category,
+          subject,
+          message,
+          status,
+          screenshot_filename,
+          created_at,
+          updated_at
+        `
+        )
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("❌ Error loading support feedback:", error);
+        return res.status(500).json({ error: "Failed to load feedback" });
+      }
+
+      return res.json({ items: data || [] });
+    } catch (err) {
+      console.error("❌ Support feedback list error:", err);
+      return res.status(500).json({ error: "Failed to load feedback" });
+    }
+  }
+);
 
 // ------------------------
 // Journey API Endpoints - ENHANCED WITH REAL-TIME TRACKING
