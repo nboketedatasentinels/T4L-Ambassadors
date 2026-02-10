@@ -677,7 +677,14 @@
       }
 
       const data = await response.json();
-      const notifications = data.notifications || [];
+      let notifications = data.notifications || [];
+
+      // For admins, hide ambassador application status notifications
+      if (currentUserRole === 'admin') {
+        notifications = notifications.filter(
+          (n) => n.type !== 'application_status_change'
+        );
+      }
       const unreadCount = data.unreadCount || 0;
 
       // Update badge on bell icons
