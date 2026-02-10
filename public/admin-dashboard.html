@@ -4247,19 +4247,39 @@ async function markAllNotificationsRead() {
             modal.classList.add('flex');
             
             try {
-                // Fetch user data
-                const endpoint = userType === 'partner' 
-                    ? `/admin/api/partners` 
-                    : `/admin/api/ambassadors`;
-                    
-                const response = await fetch(endpoint, { credentials: 'include' });
-                if (!response.ok) throw new Error('Failed to fetch data');
-                
-                const data = await response.json();
-                const items = userType === 'partner' ? data.partners : data.items || data.ambassadors || [];
-                
-                // Find the specific user
-                const user = items.find(item => item.id === id || item.partner_id === id || item.ambassador_id === id);
+                let user = null;
+
+                if (userType === 'partner') {
+                    // First try to find the partner in the currently loaded list for this page
+                    const currentItems = Array.isArray(state.items) ? state.items : [];
+                    user = currentItems.find(item => String(item.id) === String(id));
+
+                    // Fallback: fetch all partners from the server if not found locally
+                    if (!user) {
+                        const response = await fetch('/admin/api/partners', { credentials: 'include' });
+                        if (!response.ok) throw new Error('Failed to fetch partners');
+
+                        const data = await response.json();
+                        const items = data.partners || [];
+
+                        user = items.find(item => {
+                            const itemId = String(item.id ?? item.partner_id);
+                            const targetId = String(id);
+                            return itemId === targetId;
+                        });
+                    }
+                } else {
+                    // Ambassadors: fetch a single ambassador by ID to avoid pagination issues
+                    const response = await fetch(`/admin/api/ambassadors/${id}`, { credentials: 'include' });
+                    if (!response.ok) {
+                        if (response.status === 404) {
+                            throw new Error('Ambassador not found');
+                        }
+                        throw new Error('Failed to fetch ambassador');
+                    }
+
+                    user = await response.json();
+                }
                 
                 if (!user) {
                     throw new Error('User not found');
