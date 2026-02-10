@@ -10229,9 +10229,39 @@ app.get("/api/posts", requireAuth, async (req, res) => {
             console.error("Error fetching applications:", error);
           }
 
-          const applicationStatusMap = new Map(
-            (applications || []).map((app) => [app.post_id, app.status])
-          );
+          // Normalize status values for ambassadors:
+          // - DB may store variants like "approved", "APPROVED ", "accepted_by_partner", etc.
+          // - Some rows may have different casing or extra whitespace.
+          // We normalize everything to: "pending" | "accepted" | "rejected".
+          // Any non-empty status that is NOT "pending" or "rejected" is treated as "accepted".
+          // When multiple applications exist per post, we keep the "best" status:
+          // accepted > rejected > pending.
+          const statusPriority = { pending: 1, rejected: 2, accepted: 3 };
+          const applicationStatusMap = new Map();
+
+          (applications || []).forEach((app) => {
+            const raw = (app.status || "").toString().trim().toLowerCase();
+            let normalizedStatus;
+
+            if (raw === "rejected") {
+              normalizedStatus = "rejected";
+            } else if (!raw || raw === "pending") {
+              normalizedStatus = "pending";
+            } else {
+              // Any other non-empty status (approved, accepted_by_partner, etc.)
+              // is treated as accepted for the ambassador UI.
+              normalizedStatus = "accepted";
+            }
+
+            const current = applicationStatusMap.get(app.post_id);
+            if (
+              !current ||
+              (statusPriority[normalizedStatus] || 0) >
+                (statusPriority[current] || 0)
+            ) {
+              applicationStatusMap.set(app.post_id, normalizedStatus);
+            }
+          });
 
           const postsWithStatus = (posts || []).map((post) => ({
             ...post,
