@@ -5277,6 +5277,758 @@ app.get("/impactlog-partner.html", requireAuth, requireRole("partner"), (req, re
   res.sendFile(path.join(__dirname, "public", "impactlog-partner.html"));
 });
 
+// Public event participation page (no auth required)
+app.get("/event/:slug", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "event-participate.html"));
+});
+
+// ============================================
+// IMPACT LOG API ENDPOINTS
+// ============================================
+
+// Helper: Generate a random slug for public event links
+function generateSlug(length = 8) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+// Helper: Calculate SCP for an impact entry
+function calculateSCP(entry) {
+  const base = (entry.people_impacted || 0) + (entry.hours_contributed || 0) * 2 + (entry.usd_value || 0) * 0.01;
+  const multiplier = entry.verification_multiplier || 1.0;
+  return Math.round(base * multiplier * 100) / 100;
+}
+
+// Helper: Check if user already earned points this month
+async function hasEarnedPointsThisMonth(userId, month) {
+  const { data } = await supabase
+    .from('impact_entries')
+    .select('entry_id')
+    .eq('user_id', userId)
+    .eq('points_month', month)
+    .gt('points_earned', 0)
+    .limit(1);
+  return data && data.length > 0;
+}
+
+// ---- GET /api/impact/entries - List impact entries for current user ----
+app.get("/api/impact/entries", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const { esg_category, entry_type, limit: lim, offset: off } = req.query;
+
+    let query = supabase
+      .from('impact_entries')
+      .select('*', { count: 'exact' })
+      .eq('user_id', userId);
+
+    if (esg_category) query = query.eq('esg_category', esg_category);
+    if (entry_type) query = query.eq('entry_type', entry_type);
+
+    const limit = parseInt(lim) || 20;
+    const offset = parseInt(off) || 0;
+
+    query = query.order('created_at', { ascending: false })
+                 .range(offset, offset + limit - 1);
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    res.json({ entries: data || [], total: count || 0, limit, offset });
+  } catch (error) {
+    console.error('Error fetching impact entries:', error);
+    res.status(500).json({ error: 'Failed to fetch impact entries' });
+  }
+});
+
+// ---- GET /api/impact/stats - Get aggregated impact stats for current user ----
+app.get("/api/impact/stats", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+
+    const { data: entries, error } = await supabase
+      .from('impact_entries')
+      .select('people_impacted, hours_contributed, usd_value, scp_earned, points_earned, esg_category, verification_level, entry_type')
+      .eq('user_id', userId);
+
+    if (error) throw error;
+
+    const stats = {
+      total_people_impacted: 0,
+      total_hours: 0,
+      total_usd_value: 0,
+      total_scp: 0,
+      total_points: 0,
+      total_entries: (entries || []).length,
+      by_esg: { environmental: 0, social: 0, governance: 0 },
+      by_tier: { tier_1: 0, tier_2: 0, tier_3: 0, tier_4: 0 },
+      events_participated: 0
+    };
+
+    (entries || []).forEach(e => {
+      stats.total_people_impacted += e.people_impacted || 0;
+      stats.total_hours += parseFloat(e.hours_contributed) || 0;
+      stats.total_usd_value += parseFloat(e.usd_value) || 0;
+      stats.total_scp += parseFloat(e.scp_earned) || 0;
+      stats.total_points += e.points_earned || 0;
+      if (e.esg_category) stats.by_esg[e.esg_category] = (stats.by_esg[e.esg_category] || 0) + (e.people_impacted || 0);
+      if (e.verification_level) stats.by_tier[e.verification_level] = (stats.by_tier[e.verification_level] || 0) + 1;
+      if (e.entry_type === 'event_derived') stats.events_participated++;
+    });
+
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching impact stats:', error);
+    res.status(500).json({ error: 'Failed to fetch impact stats' });
+  }
+});
+
+// ---- POST /api/impact/entries - Create individual impact entry ----
+app.post("/api/impact/entries", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const role = req.auth.role;
+    const {
+      title, description, esg_category,
+      people_impacted, hours_contributed, usd_value,
+      impact_unit, activity_date, evidence_url,
+      external_verifier_email
+    } = req.body;
+
+    if (!title || !esg_category) {
+      return res.status(400).json({ error: 'Title and ESG category are required' });
+    }
+
+    const actDate = activity_date ? new Date(activity_date) : new Date();
+    const isPastDated = actDate < new Date(new Date().toDateString());
+    const verificationLevel = isPastDated ? 'tier_1' : (evidence_url ? 'tier_3' : 'tier_1');
+    const verificationMultiplier = verificationLevel === 'tier_1' ? 1.0 : verificationLevel === 'tier_2' ? 1.5 : verificationLevel === 'tier_3' ? 2.0 : 2.5;
+
+    // Points: Regular users earn 1 point per month for first entry
+    const pointsMonth = `${actDate.getFullYear()}-${String(actDate.getMonth() + 1).padStart(2, '0')}`;
+    let pointsEarned = 0;
+    if (role !== 'ambassador' && role !== 'partner') {
+      const alreadyEarned = await hasEarnedPointsThisMonth(userId, pointsMonth);
+      if (!alreadyEarned) pointsEarned = 1;
+    }
+
+    const entryData = {
+      entry_id: uuidv4(),
+      user_id: userId,
+      user_role: role === 'admin' ? 'user' : role,
+      entry_type: 'individual',
+      title,
+      description: description || '',
+      esg_category,
+      people_impacted: parseInt(people_impacted) || 0,
+      hours_contributed: parseFloat(hours_contributed) || 0,
+      usd_value: parseFloat(usd_value) || 0,
+      impact_unit: impact_unit || 'people',
+      activity_date: actDate.toISOString().split('T')[0],
+      is_past_dated: isPastDated,
+      verification_level: verificationLevel,
+      verification_multiplier: verificationMultiplier,
+      evidence_url: evidence_url || null,
+      external_verifier_email: external_verifier_email || null,
+      points_earned: pointsEarned,
+      points_month: pointsMonth,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    // Calculate SCP
+    entryData.scp_earned = calculateSCP(entryData);
+
+    const { data, error } = await supabase
+      .from('impact_entries')
+      .insert([entryData])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(201).json({ entry: data, message: 'Impact entry created successfully' });
+  } catch (error) {
+    console.error('Error creating impact entry:', error);
+    res.status(500).json({ error: 'Failed to create impact entry' });
+  }
+});
+
+// ---- DELETE /api/impact/entries/:id - Delete impact entry ----
+app.delete("/api/impact/entries/:id", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const entryId = req.params.id;
+
+    // Verify ownership
+    const { data: entry } = await supabase
+      .from('impact_entries')
+      .select('user_id, entry_type')
+      .eq('entry_id', entryId)
+      .single();
+
+    if (!entry || entry.user_id !== userId) {
+      return res.status(403).json({ error: 'Not authorized to delete this entry' });
+    }
+
+    if (entry.entry_type === 'event_derived') {
+      return res.status(400).json({ error: 'Cannot delete event-derived entries' });
+    }
+
+    const { error } = await supabase
+      .from('impact_entries')
+      .delete()
+      .eq('entry_id', entryId);
+
+    if (error) throw error;
+
+    res.json({ message: 'Impact entry deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting impact entry:', error);
+    res.status(500).json({ error: 'Failed to delete impact entry' });
+  }
+});
+
+// ---- GET /api/impact/events - List impact events ----
+app.get("/api/impact/events", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const { filter, status: eventStatus } = req.query;
+
+    let query = supabase.from('impact_events').select('*', { count: 'exact' });
+
+    if (filter === 'mine') {
+      query = query.eq('created_by', userId);
+    }
+    if (eventStatus) {
+      query = query.eq('status', eventStatus);
+    }
+
+    query = query.order('created_at', { ascending: false }).limit(50);
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    // For each event, get participant count
+    const eventsWithCounts = await Promise.all((data || []).map(async (event) => {
+      const { count: pCount } = await supabase
+        .from('event_participants')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_id', event.event_id);
+      return { ...event, participant_count: pCount || 0 };
+    }));
+
+    res.json({ events: eventsWithCounts, total: count || 0 });
+  } catch (error) {
+    console.error('Error fetching impact events:', error);
+    res.status(500).json({ error: 'Failed to fetch impact events' });
+  }
+});
+
+// ---- GET /api/impact/events/public/:slug - Get event by public slug (no auth) ----
+// NOTE: This MUST be defined before /api/impact/events/:id to prevent "public" matching as :id
+app.get("/api/impact/events/public/:slug", async (req, res) => {
+  try {
+    const slug = req.params.slug;
+
+    const { data: event, error } = await supabase
+      .from('impact_events')
+      .select('*')
+      .eq('public_slug', slug)
+      .single();
+
+    if (error || !event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Get participant count
+    const { count } = await supabase
+      .from('event_participants')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', event.event_id);
+
+    // Get creator name
+    let creatorName = 'Transformation Leader';
+    if (event.creator_role === 'ambassador') {
+      const { data: amb } = await supabase.from('ambassadors').select('first_name, last_name').eq('user_id', event.created_by).single();
+      if (amb) creatorName = `${amb.first_name || ''} ${amb.last_name || ''}`.trim();
+    } else if (event.creator_role === 'partner') {
+      const { data: part } = await supabase.from('partners').select('organization_name').eq('user_id', event.created_by).single();
+      if (part) creatorName = part.organization_name;
+    }
+
+    res.json({
+      event: {
+        event_id: event.event_id,
+        title: event.title,
+        description: event.description,
+        esg_category: event.esg_category,
+        total_impact_value: event.total_impact_value,
+        impact_unit: event.impact_unit,
+        event_date: event.event_date,
+        start_time: event.start_time,
+        end_time: event.end_time,
+        status: event.status,
+        creator_name: creatorName,
+        public_slug: event.public_slug
+      },
+      participant_count: count || 0
+    });
+  } catch (error) {
+    console.error('Error fetching public event:', error);
+    res.status(500).json({ error: 'Failed to fetch event' });
+  }
+});
+
+// ---- GET /api/impact/events/:id - Get single event details ----
+app.get("/api/impact/events/:id", async (req, res) => {
+  try {
+    const eventId = req.params.id;
+
+    const { data: event, error } = await supabase
+      .from('impact_events')
+      .select('*')
+      .eq('event_id', eventId)
+      .single();
+
+    if (error || !event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Get participants
+    const { data: participants, count } = await supabase
+      .from('event_participants')
+      .select('*', { count: 'exact' })
+      .eq('event_id', eventId)
+      .order('created_at', { ascending: false });
+
+    // Get creator info
+    let creatorName = 'Unknown';
+    if (event.creator_role === 'ambassador') {
+      const { data: amb } = await supabase.from('ambassadors').select('first_name, last_name').eq('user_id', event.created_by).single();
+      if (amb) creatorName = `${amb.first_name || ''} ${amb.last_name || ''}`.trim();
+    } else if (event.creator_role === 'partner') {
+      const { data: part } = await supabase.from('partners').select('organization_name').eq('user_id', event.created_by).single();
+      if (part) creatorName = part.organization_name;
+    }
+
+    res.json({
+      event: { ...event, creator_name: creatorName },
+      participants: participants || [],
+      participant_count: count || 0
+    });
+  } catch (error) {
+    console.error('Error fetching event details:', error);
+    res.status(500).json({ error: 'Failed to fetch event details' });
+  }
+});
+
+// ---- POST /api/impact/events - Create shared impact event ----
+app.post("/api/impact/events", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const role = req.auth.role;
+
+    if (role !== 'ambassador' && role !== 'partner' && role !== 'admin') {
+      return res.status(403).json({ error: 'Only ambassadors, partners, and admins can create events' });
+    }
+
+    const {
+      title, description, esg_category,
+      total_impact_value, impact_unit,
+      event_date, start_time, end_time,
+      expected_participants, evidence_url,
+      external_verifier_email
+    } = req.body;
+
+    if (!title || !esg_category || !total_impact_value || !event_date || !start_time || !end_time) {
+      return res.status(400).json({ error: 'Missing required fields: title, esg_category, total_impact_value, event_date, start_time, end_time' });
+    }
+
+    const slug = generateSlug(8);
+
+    const eventData = {
+      event_id: uuidv4(),
+      created_by: userId,
+      creator_role: role,
+      title,
+      description: description || '',
+      esg_category,
+      total_impact_value: parseInt(total_impact_value),
+      impact_unit: impact_unit || 'people',
+      event_date,
+      start_time,
+      end_time,
+      status: 'open',
+      verification_level: 'tier_2',
+      verification_multiplier: 1.5,
+      expected_participants: expected_participants ? parseInt(expected_participants) : null,
+      evidence_url: evidence_url || null,
+      external_verifier_email: external_verifier_email || null,
+      public_slug: slug,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('impact_events')
+      .insert([eventData])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Create master impact entry for the creator
+    const masterEntry = {
+      entry_id: uuidv4(),
+      user_id: userId,
+      user_role: role,
+      entry_type: 'event_master',
+      event_id: data.event_id,
+      title: `[Event] ${title}`,
+      description: description || '',
+      esg_category,
+      people_impacted: parseInt(total_impact_value),
+      hours_contributed: 0,
+      usd_value: 0,
+      impact_unit: impact_unit || 'people',
+      activity_date: event_date,
+      verification_level: 'tier_2',
+      verification_multiplier: 1.5,
+      scp_earned: 0,
+      points_earned: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    masterEntry.scp_earned = calculateSCP(masterEntry);
+
+    await supabase.from('impact_entries').insert([masterEntry]);
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+    res.status(201).json({
+      event: data,
+      public_link: `${baseUrl}/event/${slug}`,
+      message: 'Shared impact event created successfully'
+    });
+  } catch (error) {
+    console.error('Error creating impact event:', error);
+    res.status(500).json({ error: 'Failed to create impact event' });
+  }
+});
+
+// ---- POST /api/impact/events/:id/participate - Join an event ----
+app.post("/api/impact/events/:id/participate", async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const { display_name, anonymous_hash } = req.body;
+
+    // Get event
+    const { data: event, error: eventError } = await supabase
+      .from('impact_events')
+      .select('*')
+      .eq('event_id', eventId)
+      .single();
+
+    if (eventError || !event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    if (event.status === 'closed') {
+      return res.status(400).json({ error: 'This event is closed. Participation is no longer possible.' });
+    }
+
+    // Determine participant identity
+    let userId = null;
+    let participantType = 'anonymous';
+    let anonHash = anonymous_hash || null;
+
+    // Check if user is authenticated
+    const sess = await getSession(req);
+    if (sess && sess.userId) {
+      userId = sess.userId;
+      participantType = 'user';
+
+      // Check for duplicate
+      const { data: existing } = await supabase
+        .from('event_participants')
+        .select('participant_id')
+        .eq('event_id', eventId)
+        .eq('user_id', userId)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        return res.status(409).json({ error: 'You have already registered for this event', already_registered: true });
+      }
+    } else {
+      // Anonymous participant
+      if (!anonHash) {
+        anonHash = crypto.createHash('sha256').update(`${req.ip}-${req.headers['user-agent']}-${Date.now()}`).digest('hex').substring(0, 32);
+      }
+
+      // Check for duplicate anonymous
+      const { data: existingAnon } = await supabase
+        .from('event_participants')
+        .select('participant_id')
+        .eq('event_id', eventId)
+        .eq('anonymous_hash', anonHash)
+        .limit(1);
+
+      if (existingAnon && existingAnon.length > 0) {
+        return res.status(409).json({ error: 'You have already registered for this event', already_registered: true });
+      }
+    }
+
+    const participantData = {
+      participant_id: uuidv4(),
+      event_id: eventId,
+      user_id: userId,
+      participant_type: participantType,
+      anonymous_hash: anonHash,
+      display_name: display_name || null,
+      created_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('event_participants')
+      .insert([participantData])
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        return res.status(409).json({ error: 'You have already registered for this event', already_registered: true });
+      }
+      throw error;
+    }
+
+    res.status(201).json({
+      participant: data,
+      message: 'Successfully registered for the event!'
+    });
+  } catch (error) {
+    console.error('Error participating in event:', error);
+    res.status(500).json({ error: 'Failed to register for event' });
+  }
+});
+
+// ---- POST /api/impact/events/:id/close - Close an event and calculate impact ----
+app.post("/api/impact/events/:id/close", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const eventId = req.params.id;
+
+    // Verify ownership
+    const { data: event } = await supabase
+      .from('impact_events')
+      .select('*')
+      .eq('event_id', eventId)
+      .single();
+
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+    if (event.created_by !== userId && req.auth.role !== 'admin') {
+      return res.status(403).json({ error: 'Not authorized to close this event' });
+    }
+    if (event.status === 'closed') {
+      return res.status(400).json({ error: 'Event is already closed' });
+    }
+
+    // Get all participants
+    const { data: participants } = await supabase
+      .from('event_participants')
+      .select('*')
+      .eq('event_id', eventId);
+
+    const participantCount = (participants || []).length;
+    const perParticipantImpact = participantCount > 0 ? Math.round((event.total_impact_value / participantCount) * 100) / 100 : 0;
+
+    // Update event
+    const { error: updateError } = await supabase
+      .from('impact_events')
+      .update({
+        status: 'closed',
+        actual_participants: participantCount,
+        per_participant_impact: perParticipantImpact,
+        updated_at: new Date().toISOString()
+      })
+      .eq('event_id', eventId);
+
+    if (updateError) throw updateError;
+
+    // Create derived impact entries for each logged-in participant
+    const derivedEntries = [];
+    for (const p of (participants || [])) {
+      if (p.user_id) {
+        // Determine participant's role
+        const { data: userData } = await supabase.from('users').select('user_type').eq('user_id', p.user_id).single();
+        const participantRole = userData?.user_type || 'user';
+
+        // Check points eligibility
+        const pointsMonth = `${new Date(event.event_date).getFullYear()}-${String(new Date(event.event_date).getMonth() + 1).padStart(2, '0')}`;
+        let pointsEarned = 0;
+        if (participantRole !== 'ambassador' && participantRole !== 'partner') {
+          const alreadyEarned = await hasEarnedPointsThisMonth(p.user_id, pointsMonth);
+          if (!alreadyEarned) pointsEarned = 1;
+        }
+
+        const derivedEntry = {
+          entry_id: uuidv4(),
+          user_id: p.user_id,
+          user_role: participantRole === 'admin' ? 'user' : participantRole,
+          entry_type: 'event_derived',
+          event_id: eventId,
+          title: `[Participated] ${event.title}`,
+          description: event.description || '',
+          esg_category: event.esg_category,
+          people_impacted: Math.round(perParticipantImpact),
+          hours_contributed: 0,
+          usd_value: 0,
+          impact_unit: event.impact_unit,
+          activity_date: event.event_date,
+          verification_level: 'tier_2',
+          verification_multiplier: 1.5,
+          points_earned: pointsEarned,
+          points_month: pointsMonth,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        derivedEntry.scp_earned = calculateSCP(derivedEntry);
+        derivedEntries.push(derivedEntry);
+      }
+
+      // Update participant impact share
+      await supabase
+        .from('event_participants')
+        .update({ impact_share: perParticipantImpact })
+        .eq('participant_id', p.participant_id);
+    }
+
+    // Batch insert derived entries
+    if (derivedEntries.length > 0) {
+      await supabase.from('impact_entries').insert(derivedEntries);
+    }
+
+    res.json({
+      message: 'Event closed successfully',
+      actual_participants: participantCount,
+      per_participant_impact: perParticipantImpact,
+      derived_entries_created: derivedEntries.length
+    });
+  } catch (error) {
+    console.error('Error closing event:', error);
+    res.status(500).json({ error: 'Failed to close event' });
+  }
+});
+
+// ---- DELETE /api/impact/events/:id - Delete an event ----
+app.delete("/api/impact/events/:id", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const eventId = req.params.id;
+
+    const { data: event } = await supabase
+      .from('impact_events')
+      .select('created_by')
+      .eq('event_id', eventId)
+      .single();
+
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+    if (event.created_by !== userId && req.auth.role !== 'admin') {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    // Delete event (CASCADE removes participants and related entries)
+    const { error } = await supabase
+      .from('impact_events')
+      .delete()
+      .eq('event_id', eventId);
+
+    if (error) throw error;
+
+    res.json({ message: 'Event deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    res.status(500).json({ error: 'Failed to delete event' });
+  }
+});
+
+// ---- GET /api/admin/impact/aggregated - Admin aggregated impact metrics ----
+app.get("/api/admin/impact/aggregated", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    // Get all impact entries
+    const { data: entries, error } = await supabase
+      .from('impact_entries')
+      .select('people_impacted, hours_contributed, usd_value, scp_earned, esg_category, verification_level, user_role, entry_type');
+
+    if (error) throw error;
+
+    // Get event count
+    const { count: eventCount } = await supabase
+      .from('impact_events')
+      .select('*', { count: 'exact', head: true });
+
+    const metrics = {
+      total_people_impacted: 0,
+      total_hours: 0,
+      total_usd_value: 0,
+      total_scp: 0,
+      total_entries: (entries || []).length,
+      total_events: eventCount || 0,
+      by_esg: { environmental: 0, social: 0, governance: 0 },
+      by_tier: { tier_1: 0, tier_2: 0, tier_3: 0, tier_4: 0 },
+      by_role: { ambassador: 0, partner: 0, user: 0 }
+    };
+
+    (entries || []).forEach(e => {
+      metrics.total_people_impacted += e.people_impacted || 0;
+      metrics.total_hours += parseFloat(e.hours_contributed) || 0;
+      metrics.total_usd_value += parseFloat(e.usd_value) || 0;
+      metrics.total_scp += parseFloat(e.scp_earned) || 0;
+      if (e.esg_category) metrics.by_esg[e.esg_category] = (metrics.by_esg[e.esg_category] || 0) + (e.people_impacted || 0);
+      if (e.verification_level) metrics.by_tier[e.verification_level] = (metrics.by_tier[e.verification_level] || 0) + 1;
+      if (e.user_role) metrics.by_role[e.user_role] = (metrics.by_role[e.user_role] || 0) + (e.people_impacted || 0);
+    });
+
+    res.json(metrics);
+  } catch (error) {
+    console.error('Error fetching aggregated impact:', error);
+    res.status(500).json({ error: 'Failed to fetch aggregated impact data' });
+  }
+});
+
+// ---- GET /api/impact/public-counter - Public impact counter (no auth) ----
+app.get("/api/impact/public-counter", async (req, res) => {
+  try {
+    const { data: entries } = await supabase
+      .from('impact_entries')
+      .select('people_impacted, hours_contributed');
+
+    let totalPeople = 0;
+    let totalHours = 0;
+    (entries || []).forEach(e => {
+      totalPeople += e.people_impacted || 0;
+      totalHours += parseFloat(e.hours_contributed) || 0;
+    });
+
+    const { count: eventCount } = await supabase
+      .from('impact_events')
+      .select('*', { count: 'exact', head: true });
+
+    res.json({
+      lives_impacted: totalPeople,
+      hours_contributed: Math.round(totalHours),
+      events_hosted: eventCount || 0
+    });
+  } catch (error) {
+    console.error('Error fetching public counter:', error);
+    res.status(500).json({ error: 'Failed to fetch impact data' });
+  }
+});
+
 // Legacy Impactlog.html - redirect based on role
 app.get("/Impactlog.html", requireAuth, async (req, res) => {
   try {
@@ -7965,7 +8717,7 @@ app.get(
       // Format response
       const formatted = items.map((amb) => ({
         id: amb.id,
-        name: amb.first_name || amb.name,
+        name: [amb.first_name, amb.last_name].filter(Boolean).join(" ") || amb.email || "Ambassador",
         email: amb.email,
         access_code: amb.access_code,
         password: amb.generated_password || "", // ✅ Include password for admin reference
@@ -8345,7 +9097,11 @@ app.get(
   requireRole("admin"),
   async (req, res) => {
     try {
-      const { items: partners } = await listUsers("partner", {});
+      const { items: partnerItems } = await listUsers("partner", {});
+      const partners = (partnerItems || []).map((p) => ({
+        ...p,
+        name: p.contact_person || p.organization_name || p.email || "Partner",
+      }));
       return res.json({ partners });
     } catch (error) {
       console.error("Error fetching partners:", error);

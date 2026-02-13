@@ -8,467 +8,638 @@
     <link rel="stylesheet" href="css/styles.css" />
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
     <style>
-      body {
-        background: linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 50%, #faf5ff 100%);
-        min-height: 100vh;
-      }
+      body { background: linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 50%, #faf5ff 100%); min-height: 100vh; }
       
-      .coming-soon-card {
-        background: white;
-        border-radius: 2rem;
-        box-shadow: 0 25px 50px -12px rgba(75, 13, 127, 0.15);
-        overflow: hidden;
-        position: relative;
-      }
-      
-      .coming-soon-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 6px;
-        background: linear-gradient(90deg, #4b0d7f, #a36737, #4b0d7f);
-        background-size: 200% 100%;
-        animation: gradient-shift 3s ease infinite;
-      }
-      
-      @keyframes gradient-shift {
-        0%, 100% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-      }
-      
-      @keyframes float {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-10px); }
-      }
-      
-      @keyframes pulse-ring {
-        0% { transform: scale(0.8); opacity: 1; }
-        100% { transform: scale(1.3); opacity: 0; }
-      }
-      
-      .float-animation {
-        animation: float 3s ease-in-out infinite;
-      }
-      
-      .icon-container {
-        position: relative;
-        display: inline-block;
-      }
-      
-      .icon-container::before {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 120px;
-        height: 120px;
-        background: rgba(75, 13, 127, 0.1);
-        border-radius: 50%;
-        animation: pulse-ring 2s ease-out infinite;
-      }
-      
-      .feature-item {
-        transition: all 0.3s ease;
-      }
-      
-      .feature-item:hover {
-        transform: translateX(8px);
-      }
-      
-      .notify-btn {
-        background: linear-gradient(135deg, #4b0d7f 0%, #6b21a8 100%);
-        transition: all 0.3s ease;
-      }
-      
-      .notify-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 25px rgba(75, 13, 127, 0.3);
-      }
-      
-      .back-btn {
-        transition: all 0.3s ease;
-      }
-      
-      .back-btn:hover {
-        transform: translateX(-4px);
-      }
-
-      /* Embedded Partner Sidebar */
-      .partner-sidebar {
-        width: 80px;
-        background: white;
-        box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 1.5rem 0;
-        position: sticky;
-        top: 0;
-        height: 100vh;
-        overflow-y: auto;
-        flex-shrink: 0;
-      }
-      
-      .partner-sidebar-logo {
-        background: #4b0d7f;
-        color: white;
-        padding: 0.5rem 0.75rem;
-        border-radius: 0.75rem;
-        font-weight: 700;
-        font-size: 0.875rem;
-        margin-bottom: 1.5rem;
-        letter-spacing: 0.5px;
-      }
-      
-      .partner-sidebar-nav {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-        width: 100%;
-        padding: 0 0.5rem;
-        flex: 1;
-      }
-      
-      .partner-nav-link {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 0.625rem 0.5rem;
-        border-radius: 0.625rem;
-        text-decoration: none;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        color: #6b7280;
-      }
-      
-      .partner-nav-link:hover {
-        background: rgba(75, 13, 127, 0.08);
-        color: #4b0d9f;
-      }
-      
-      .partner-nav-link.active {
-        background: rgba(75, 13, 127, 0.1);
-        color: #4b0d9f;
-      }
-      
-      .partner-nav-link i {
-        font-size: 1.5rem;
-        transition: transform 0.2s ease;
-      }
-      
-      .partner-nav-link:hover i {
-        transform: scale(1.1);
-      }
-      
-      .partner-nav-link span {
-        font-size: 0.625rem;
-        margin-top: 0.375rem;
-        font-weight: 500;
-        text-align: center;
-        line-height: 1.2;
-      }
-      
-      .partner-nav-link.logout:hover {
-        background: rgba(239, 68, 68, 0.1);
-        color: #dc2626;
-      }
-      
-      .partner-nav-spacer {
-        flex: 1;
-      }
-      
-      .partner-sidebar-toggle {
-        display: none;
-      }
+      /* Partner Sidebar */
+      .partner-sidebar { width: 80px; background: white; box-shadow: 2px 0 12px rgba(0,0,0,0.08); display: flex; flex-direction: column; align-items: center; padding: 1.5rem 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; flex-shrink: 0; }
+      .partner-sidebar-logo { background: #4b0d7f; color: white; padding: 0.5rem 0.75rem; border-radius: 0.75rem; font-weight: 700; font-size: 0.875rem; margin-bottom: 1.5rem; }
+      .partner-sidebar-nav { display: flex; flex-direction: column; gap: 0.25rem; width: 100%; padding: 0 0.5rem; flex: 1; }
+      .partner-nav-link { display: flex; flex-direction: column; align-items: center; padding: 0.625rem 0.5rem; border-radius: 0.625rem; text-decoration: none; cursor: pointer; transition: all 0.2s ease; color: #6b7280; }
+      .partner-nav-link:hover { background: rgba(75,13,127,0.08); color: #4b0d9f; }
+      .partner-nav-link.active { background: rgba(75,13,127,0.1); color: #4b0d9f; }
+      .partner-nav-link i { font-size: 1.5rem; transition: transform 0.2s ease; }
+      .partner-nav-link:hover i { transform: scale(1.1); }
+      .partner-nav-link span { font-size: 0.625rem; margin-top: 0.375rem; font-weight: 500; text-align: center; line-height: 1.2; }
+      .partner-nav-link.logout:hover { background: rgba(239,68,68,0.1); color: #dc2626; }
+      .partner-nav-spacer { flex: 1; }
+      .partner-sidebar-toggle { display: none; }
       
       @media (max-width: 768px) {
-        .partner-sidebar-toggle {
-          display: flex;
-          position: fixed;
-          top: 1rem;
-          left: 1rem;
-          z-index: 50;
-          background: #4b0d7f;
-          color: white;
-          border: none;
-          border-radius: 50%;
-          width: 44px;
-          height: 44px;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 4px 12px rgba(75, 13, 127, 0.3);
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        
-        .partner-sidebar-toggle:hover {
-          transform: scale(1.05);
-          box-shadow: 0 6px 16px rgba(75, 13, 127, 0.4);
-        }
-        
-        .partner-sidebar-toggle i {
-          font-size: 1.5rem;
-        }
-        
-        .partner-sidebar {
-          position: fixed;
-          left: 0;
-          top: 0;
-          transform: translateX(-100%);
-          transition: transform 0.3s ease;
-          z-index: 45;
-        }
-        
-        .partner-sidebar.active {
-          transform: translateX(0);
-        }
-        
-        .partner-sidebar-overlay {
-          display: none;
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.5);
-          z-index: 40;
-        }
-        
-        .partner-sidebar-overlay.active {
-          display: block;
-        }
+        .partner-sidebar-toggle { display: flex; position: fixed; top: 1rem; left: 1rem; z-index: 50; background: #4b0d7f; color: white; border: none; border-radius: 50%; width: 44px; height: 44px; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(75,13,127,0.3); cursor: pointer; }
+        .partner-sidebar { position: fixed; left: 0; top: 0; transform: translateX(-100%); transition: transform 0.3s ease; z-index: 45; }
+        .partner-sidebar.active { transform: translateX(0); }
+        .partner-sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; }
+        .partner-sidebar-overlay.active { display: block; }
+      }
+
+      /* Cards & Layout */
+      .impact-card { background: white; border-radius: 1.25rem; box-shadow: 0 4px 24px rgba(75,13,127,0.08); transition: all 0.3s ease; overflow: hidden; }
+      .impact-card:hover { box-shadow: 0 8px 32px rgba(75,13,127,0.12); transform: translateY(-2px); }
+      .stat-card { background: white; border-radius: 1rem; padding: 1.25rem; box-shadow: 0 2px 12px rgba(75,13,127,0.06); border: 1px solid rgba(75,13,127,0.06); }
+      .stat-value { font-size: 2rem; font-weight: 800; line-height: 1.1; }
+      .stat-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-top: 0.25rem; }
+      
+      /* Tabs */
+      .tab-btn { padding: 0.625rem 1.25rem; border-radius: 0.75rem; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; border: 2px solid transparent; background: white; color: #6b7280; }
+      .tab-btn:hover { background: #f3f0ff; color: #4b0d7f; }
+      .tab-btn.active { background: #4b0d7f; color: white; border-color: #4b0d7f; }
+      .tab-content { display: none; }
+      .tab-content.active { display: block; }
+      
+      /* Modals */
+      .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: none; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
+      .modal-overlay.active { display: flex; }
+      .modal-content { background: white; border-radius: 1.5rem; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px rgba(75,13,127,0.2); }
+      .modal-header { padding: 1.5rem 1.5rem 0; display: flex; align-items: center; justify-content: space-between; }
+      .modal-body { padding: 1.5rem; }
+      .modal-close { width: 36px; height: 36px; border-radius: 50%; border: none; background: #f3f4f6; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+      .modal-close:hover { background: #e5e7eb; transform: rotate(90deg); }
+      
+      /* Form */
+      .form-group { margin-bottom: 1rem; }
+      .form-label { display: block; font-weight: 600; font-size: 0.875rem; color: #374151; margin-bottom: 0.375rem; }
+      .form-input, .form-select, .form-textarea { width: 100%; padding: 0.625rem 0.875rem; border: 2px solid #e5e7eb; border-radius: 0.75rem; font-size: 0.875rem; transition: border-color 0.2s; background: white; }
+      .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: #4b0d7f; box-shadow: 0 0 0 3px rgba(75,13,127,0.1); }
+      .form-textarea { resize: vertical; min-height: 80px; }
+      
+      /* Buttons */
+      .btn-primary { background: linear-gradient(135deg, #4b0d7f 0%, #6b21a8 100%); color: white; border: none; padding: 0.625rem 1.5rem; border-radius: 0.75rem; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; gap: 0.5rem; }
+      .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(75,13,127,0.3); }
+      .btn-secondary { background: white; color: #4b0d7f; border: 2px solid #4b0d7f; padding: 0.625rem 1.5rem; border-radius: 0.75rem; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; }
+      .btn-secondary:hover { background: #f3f0ff; }
+      .btn-sm { padding: 0.375rem 0.875rem; font-size: 0.8125rem; border-radius: 0.5rem; }
+      .btn-danger { background: #fee2e2; color: #dc2626; border: none; }
+      .btn-danger:hover { background: #fecaca; }
+      
+      /* ESG badges */
+      .esg-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+      .esg-environmental { background: #d1fae5; color: #065f46; }
+      .esg-social { background: #dbeafe; color: #1e40af; }
+      .esg-governance { background: #fef3c7; color: #92400e; }
+      
+      .status-open { background: #d1fae5; color: #065f46; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+      .status-closed { background: #f3f4f6; color: #6b7280; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+      
+      .event-card { border: 1px solid #e5e7eb; border-radius: 1rem; padding: 1.25rem; transition: all 0.2s; background: white; }
+      .event-card:hover { border-color: #4b0d7f; box-shadow: 0 4px 16px rgba(75,13,127,0.08); }
+      
+      .entry-item { border-bottom: 1px solid #f3f4f6; padding: 1rem 0; display: flex; align-items: flex-start; gap: 1rem; }
+      .entry-item:last-child { border-bottom: none; }
+      .entry-icon { width: 40px; height: 40px; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+      
+      .share-link-box { background: #f9fafb; border: 2px dashed #e5e7eb; border-radius: 0.75rem; padding: 1rem; display: flex; align-items: center; gap: 0.75rem; }
+      .share-link-box input { flex: 1; border: none; background: transparent; font-size: 0.875rem; color: #374151; outline: none; }
+      
+      .empty-state { text-align: center; padding: 3rem 1rem; color: #9ca3af; }
+      .empty-state i { font-size: 3rem; margin-bottom: 1rem; }
+      
+      .loading-spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top-color: #4b0d7f; border-radius: 50%; animation: spin 0.6s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      
+      .share-btn { width: 40px; height: 40px; border-radius: 0.75rem; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-size: 1.25rem; }
+      .share-linkedin { background: #0077b5; color: white; }
+      .share-x { background: #000; color: white; }
+      .share-copy { background: #6b7280; color: white; }
+      .share-btn:hover { transform: scale(1.1); }
+      
+      .toast { position: fixed; bottom: 2rem; right: 2rem; background: #065f46; color: white; padding: 0.875rem 1.5rem; border-radius: 0.75rem; font-weight: 600; font-size: 0.875rem; z-index: 200; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.2); animation: slideUp 0.3s ease; }
+      .toast.error { background: #dc2626; }
+      .toast.show { display: flex; align-items: center; gap: 0.5rem; }
+      @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+      
+      .progress-bar { height: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
+      .progress-fill { height: 100%; border-radius: 999px; transition: width 0.6s ease; }
+      
+      @media (max-width: 768px) {
+        .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
       }
     </style>
 </head>
 <body class="font-sans">
-    <!-- Global Notification Script -->
     <script src="/js/notifications.js"></script>
     
     <!-- Mobile Toggle -->
-    <button class="partner-sidebar-toggle" id="sidebarToggle">
-      <i class="bx bx-menu text-xl"></i>
-    </button>
-    
-    <!-- Mobile Overlay -->
+    <button class="partner-sidebar-toggle" id="sidebarToggle"><i class="bx bx-menu text-xl"></i></button>
     <div class="partner-sidebar-overlay" id="sidebarOverlay"></div>
     
-    <!-- Main Layout Container -->
     <div class="flex min-h-screen">
-      <!-- Sidebar -->
+      <!-- Partner Sidebar -->
       <aside class="partner-sidebar" id="partnerSidebar">
         <div class="partner-sidebar-logo">T4L</div>
         <nav class="partner-sidebar-nav">
-          <a href="/partner-dashboard.html" class="partner-nav-link">
-            <i class="bx bxs-home"></i>
-            <span>Home</span>
-          </a>
-          <a href="/creat-Post.html" class="partner-nav-link">
-            <i class="bx bx-plus-circle"></i>
-            <span>Create Post</span>
-          </a>
-          <a href="/my-services.html" class="partner-nav-link">
-            <i class="bx bx-briefcase-alt-2"></i>
-            <span>Services</span>
-          </a>
-          <a href="/applications.html" class="partner-nav-link">
-            <i class="bx bx-file"></i>
-            <span>Applications</span>
-          </a>
-          <a href="/impactlog-partner.html" class="partner-nav-link active">
-            <i class="bx bx-line-chart"></i>
-            <span>Impact Log</span>
-          </a>
-          <a href="/feedback-support-partner.html" class="partner-nav-link">
-            <i class="bx bx-help-circle"></i>
-            <span>Feedback</span>
-          </a>
-          <a href="/chat-pillar-partner.html" class="partner-nav-link">
-            <i class="bx bxs-group"></i>
-            <span>T4L Ecosysem</span>
-          </a>
-          <a href="https://www.t4leader.com/event" class="partner-nav-link" target="_blank" rel="noopener noreferrer">
-            <i class="bx bx-calendar-event"></i>
-            <span>Events</span>
-          </a>
-          <a href="/profile-partner.html" class="partner-nav-link">
-            <i class="bx bx-user"></i>
-            <span>Profile</span>
-          </a>
-          
+          <a href="/partner-dashboard.html" class="partner-nav-link"><i class="bx bxs-home"></i><span>Home</span></a>
+          <a href="/creat-Post.html" class="partner-nav-link"><i class="bx bx-plus-circle"></i><span>Create Post</span></a>
+          <a href="/my-services.html" class="partner-nav-link"><i class="bx bx-briefcase-alt-2"></i><span>Services</span></a>
+          <a href="/applications.html" class="partner-nav-link"><i class="bx bx-file"></i><span>Applications</span></a>
+          <a href="/impactlog-partner.html" class="partner-nav-link active"><i class="bx bx-line-chart"></i><span>Impact Log</span></a>
+          <a href="/feedback-support-partner.html" class="partner-nav-link"><i class="bx bx-help-circle"></i><span>Feedback</span></a>
+          <a href="/chat-pillar-partner.html" class="partner-nav-link"><i class="bx bxs-group"></i><span>T4L Ecosystem</span></a>
+          <a href="https://www.t4leader.com/event" class="partner-nav-link" target="_blank" rel="noopener noreferrer"><i class="bx bx-calendar-event"></i><span>Events</span></a>
+          <a href="/profile-partner.html" class="partner-nav-link"><i class="bx bx-user"></i><span>Profile</span></a>
           <div class="partner-nav-spacer"></div>
-          
-          <div class="partner-nav-link logout" id="logoutBtn">
-            <i class="bx bx-log-out"></i>
-            <span>Logout</span>
-          </div>
+          <div class="partner-nav-link logout" id="logoutBtn"><i class="bx bx-log-out"></i><span>Logout</span></div>
         </nav>
       </aside>
-      
+
       <!-- Main Content -->
-      <main class="flex-1 p-4 md:p-6 lg:p-8">
-        <!-- Back Button -->
-        <a href="/partner-dashboard.html" class="back-btn inline-flex items-center text-gray-600 hover:text-purple-700 mb-6 font-medium">
-          <i class="bx bx-arrow-back text-xl mr-2"></i>
-          Back to Dashboard
-        </a>
-        
-        <!-- Impact Log Card -->
-        <div class="max-w-2xl mx-auto">
-          <div class="coming-soon-card p-8 md:p-12">
-            <!-- Icon -->
-            <div class="text-center mb-8">
-              <div class="icon-container float-animation">
-                <div class="w-24 h-24 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center mx-auto">
-                  <i class="bx bx-line-chart text-5xl text-purple-600"></i>
-                </div>
-              </div>
+      <main class="flex-1 p-4 md:p-6 lg:p-8 max-w-6xl">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+          <div>
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Impact Log</h1>
+            <p class="text-gray-500 text-sm mt-1">Track, share, and celebrate your organization's positive impact</p>
+          </div>
+          <div class="flex gap-2 flex-wrap">
+            <button onclick="openModal('logImpactModal')" class="btn-primary"><i class="bx bx-plus"></i> Log Impact</button>
+            <button onclick="openModal('createEventModal')" class="btn-secondary"><i class="bx bx-calendar-event"></i> Create Event</button>
+          </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div class="stat-card">
+            <div class="flex items-center gap-2 mb-1"><div class="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center"><i class="bx bx-group text-purple-600"></i></div></div>
+            <div class="stat-value text-purple-700" id="statPeople">--</div>
+            <div class="stat-label">People Impacted</div>
+          </div>
+          <div class="stat-card">
+            <div class="flex items-center gap-2 mb-1"><div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center"><i class="bx bx-time-five text-amber-600"></i></div></div>
+            <div class="stat-value text-amber-700" id="statHours">--</div>
+            <div class="stat-label">Hours Contributed</div>
+          </div>
+          <div class="stat-card">
+            <div class="flex items-center gap-2 mb-1"><div class="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center"><i class="bx bx-star text-green-600"></i></div></div>
+            <div class="stat-value text-green-700" id="statSCP">--</div>
+            <div class="stat-label">Social Capital Points</div>
+          </div>
+          <div class="stat-card">
+            <div class="flex items-center gap-2 mb-1"><div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center"><i class="bx bx-calendar-check text-blue-600"></i></div></div>
+            <div class="stat-value text-blue-700" id="statEntries">--</div>
+            <div class="stat-label">Impact Entries</div>
+          </div>
+        </div>
+
+        <!-- ESG Breakdown -->
+        <div class="impact-card p-5 mb-6">
+          <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">ESG Impact Breakdown</h3>
+          <div class="grid grid-cols-3 gap-4">
+            <div>
+              <div class="flex items-center gap-2 mb-2"><span class="esg-badge esg-environmental"><i class="bx bx-leaf"></i> Environmental</span></div>
+              <div class="progress-bar"><div class="progress-fill bg-green-500" id="esgEnvBar" style="width:0%"></div></div>
+              <p class="text-xs text-gray-500 mt-1"><span id="esgEnvVal">0</span> people</p>
             </div>
-            
-            <!-- Title -->
-            <div class="text-center mb-6">
-              <span class="inline-block px-4 py-1.5 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold mb-4">
-                You'll be joining us next month
-              </span>
-              <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-                Impact Log
-              </h1>
-              <p class="text-gray-600 text-lg max-w-md mx-auto">
-                Track and showcase your partner journey impact with powerful analytics and insights.
-              </p>
+            <div>
+              <div class="flex items-center gap-2 mb-2"><span class="esg-badge esg-social"><i class="bx bx-group"></i> Social</span></div>
+              <div class="progress-bar"><div class="progress-fill bg-blue-500" id="esgSocBar" style="width:0%"></div></div>
+              <p class="text-xs text-gray-500 mt-1"><span id="esgSocVal">0</span> people</p>
             </div>
-            
-            <!-- Divider -->
-            <div class="flex items-center justify-center my-8">
-              <div class="h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent w-full max-w-xs"></div>
-            </div>
-            
-            <!-- Features Preview -->
-            <div class="space-y-4 mb-8">
-              <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider text-center mb-4">
-                What to Expect
-              </h3>
-              
-              <div class="feature-item flex items-center gap-4 p-4 bg-gradient-to-r from-purple-50 to-transparent rounded-xl">
-                <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <i class="bx bx-bar-chart-alt-2 text-purple-600 text-xl"></i>
-                </div>
-                <div>
-                  <h4 class="font-semibold text-gray-800">Impact Metrics Dashboard</h4>
-                  <p class="text-sm text-gray-500">Visualize your partner engagement, opportunities created, and ambassador connections</p>
-                </div>
-              </div>
-              
-              <div class="feature-item flex items-center gap-4 p-4 bg-gradient-to-r from-pink-50 to-transparent rounded-xl">
-                <div class="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <i class="bx bx-group text-pink-600 text-xl"></i>
-                </div>
-                <div>
-                  <h4 class="font-semibold text-gray-800">Opportunity Impact Tracker</h4>
-                  <p class="text-sm text-gray-500">Track the visibility opportunities you've created and ambassadors you've engaged</p>
-                </div>
-              </div>
-              
-              <div class="feature-item flex items-center gap-4 p-4 bg-gradient-to-r from-amber-50 to-transparent rounded-xl">
-                <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <i class="bx bx-trophy text-amber-600 text-xl"></i>
-                </div>
-                <div>
-                  <h4 class="font-semibold text-gray-800">Collaboration Milestones</h4>
-                  <p class="text-sm text-gray-500">Celebrate successful partnerships and ambassador collaborations</p>
-                </div>
-              </div>
-              
-              <div class="feature-item flex items-center gap-4 p-4 bg-gradient-to-r from-green-50 to-transparent rounded-xl">
-                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <i class="bx bx-download text-green-600 text-xl"></i>
-                </div>
-                <div>
-                  <h4 class="font-semibold text-gray-800">Partner Reports</h4>
-                  <p class="text-sm text-gray-500">Generate professional reports showcasing your T4L partner impact</p>
-                </div>
-              </div>
-            </div>
-            
-            <!-- CTA -->
-            <div class="text-center">
-              <p class="text-gray-500 text-sm mb-4">
-                <i class="bx bx-time-five mr-1"></i>
-                We're working hard to bring this feature to you soon!
-              </p>
-              <a href="/partner-dashboard.html" class="notify-btn inline-flex items-center justify-center px-8 py-3 text-white font-semibold rounded-full">
-                <i class="bx bx-home mr-2"></i>
-                Return to Dashboard
-              </a>
+            <div>
+              <div class="flex items-center gap-2 mb-2"><span class="esg-badge esg-governance"><i class="bx bx-shield"></i> Governance</span></div>
+              <div class="progress-bar"><div class="progress-fill bg-amber-500" id="esgGovBar" style="width:0%"></div></div>
+              <p class="text-xs text-gray-500 mt-1"><span id="esgGovVal">0</span> people</p>
             </div>
           </div>
-          
-          <!-- Additional Info -->
-          <div class="text-center mt-8">
-            <p class="text-gray-500 text-sm">
-              Have suggestions for Impact Log? 
-              <a href="mailto:support@t4leader.com" class="text-purple-600 hover:text-purple-700 font-medium">
-                Share your ideas with us
-              </a>
-            </p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tab-bar flex gap-2 mb-6 overflow-x-auto pb-2">
+          <button class="tab-btn active" data-tab="entries">Our Entries</button>
+          <button class="tab-btn" data-tab="events">Shared Events</button>
+          <button class="tab-btn" data-tab="myevents">Our Events</button>
+          <button class="tab-btn" data-tab="share">Share Impact</button>
+        </div>
+
+        <!-- Tab: Our Entries -->
+        <div class="tab-content active" id="tab-entries">
+          <div id="entriesList" class="impact-card">
+            <div class="p-5"><div class="flex items-center justify-center py-8"><div class="loading-spinner"></div></div></div>
+          </div>
+        </div>
+
+        <!-- Tab: Shared Events -->
+        <div class="tab-content" id="tab-events">
+          <div id="eventsList" class="space-y-4">
+            <div class="flex items-center justify-center py-8"><div class="loading-spinner"></div></div>
+          </div>
+        </div>
+
+        <!-- Tab: Our Events -->
+        <div class="tab-content" id="tab-myevents">
+          <div id="myEventsList" class="space-y-4">
+            <div class="flex items-center justify-center py-8"><div class="loading-spinner"></div></div>
+          </div>
+        </div>
+
+        <!-- Tab: Share Impact -->
+        <div class="tab-content" id="tab-share">
+          <div class="impact-card p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Share Your Organization's Impact</h3>
+            <p class="text-gray-500 text-sm mb-6">Share your aggregated impact with your network. Only safe, approved metrics are shared — no verification tiers, no USD values, no admin data.</p>
+            
+            <div class="bg-gradient-to-br from-white to-purple-50 border-2 border-purple-100 rounded-2xl p-6 mb-6" id="shareCard">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-[#4b0d7f] rounded-xl flex items-center justify-center text-white font-bold text-sm">T4L</div>
+                <div>
+                  <p class="font-bold text-gray-900 text-sm">Our Impact with Transformation Leader</p>
+                  <p class="text-xs text-gray-500">Positive Impact | Sustainable Change</p>
+                </div>
+              </div>
+              <div class="grid grid-cols-3 gap-4 mb-4">
+                <div class="text-center">
+                  <div class="text-2xl font-bold text-purple-700" id="sharePeople">0+</div>
+                  <div class="text-xs text-gray-500">People Reached</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-2xl font-bold text-amber-600" id="shareHours">0</div>
+                  <div class="text-xs text-gray-500">Hours</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-2xl font-bold text-blue-600" id="shareEvents">0</div>
+                  <div class="text-xs text-gray-500">Events</div>
+                </div>
+              </div>
+              <p class="text-xs text-gray-400 text-center">Collective action matters.</p>
+            </div>
+
+            <div class="flex gap-3 justify-center">
+              <button onclick="shareToLinkedIn()" class="share-btn share-linkedin" title="Share on LinkedIn"><i class="bx bxl-linkedin"></i></button>
+              <button onclick="shareToX()" class="share-btn share-x" title="Share on X"><i class="bx bxl-twitter"></i></button>
+              <button onclick="copyShareText()" class="share-btn share-copy" title="Copy text"><i class="bx bx-copy"></i></button>
+            </div>
           </div>
         </div>
       </main>
     </div>
 
-    <!-- Sidebar Script -->
+    <!-- LOG IMPACT MODAL -->
+    <div class="modal-overlay" id="logImpactModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="text-xl font-bold text-gray-900">Log Impact</h2>
+          <button class="modal-close" onclick="closeModal('logImpactModal')"><i class="bx bx-x text-xl"></i></button>
+        </div>
+        <div class="modal-body">
+          <form id="logImpactForm" onsubmit="submitImpactEntry(event)">
+            <div class="form-group">
+              <label class="form-label">Activity Title *</label>
+              <input type="text" class="form-input" name="title" required placeholder="e.g. ESG Training for Local Businesses">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea class="form-textarea" name="description" placeholder="Brief description of the impact activity..."></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="form-group">
+                <label class="form-label">ESG Category *</label>
+                <select class="form-select" name="esg_category" required>
+                  <option value="">Select...</option>
+                  <option value="environmental">Environmental</option>
+                  <option value="social">Social</option>
+                  <option value="governance">Governance</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Activity Date *</label>
+                <input type="date" class="form-input" name="activity_date" required>
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+              <div class="form-group">
+                <label class="form-label">People Impacted</label>
+                <input type="number" class="form-input" name="people_impacted" min="0" placeholder="0">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Hours Contributed</label>
+                <input type="number" class="form-input" name="hours_contributed" min="0" step="0.5" placeholder="0">
+              </div>
+              <div class="form-group">
+                <label class="form-label">USD Value</label>
+                <input type="number" class="form-input" name="usd_value" min="0" step="0.01" placeholder="0.00">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Evidence Link (optional)</label>
+              <input type="url" class="form-input" name="evidence_url" placeholder="https://...">
+            </div>
+            <div class="flex justify-end gap-3 mt-4">
+              <button type="button" class="btn-secondary btn-sm" onclick="closeModal('logImpactModal')">Cancel</button>
+              <button type="submit" class="btn-primary btn-sm" id="submitEntryBtn"><i class="bx bx-check"></i> Log Impact</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- CREATE EVENT MODAL -->
+    <div class="modal-overlay" id="createEventModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="text-xl font-bold text-gray-900">Create Shared Impact Event</h2>
+          <button class="modal-close" onclick="closeModal('createEventModal')"><i class="bx bx-x text-xl"></i></button>
+        </div>
+        <div class="modal-body">
+          <form id="createEventForm" onsubmit="submitEvent(event)">
+            <div class="form-group">
+              <label class="form-label">Event Title *</label>
+              <input type="text" class="form-input" name="title" required placeholder="e.g. Corporate Volunteer Day">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea class="form-textarea" name="description" placeholder="What is this event about?"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="form-group">
+                <label class="form-label">ESG Category *</label>
+                <select class="form-select" name="esg_category" required>
+                  <option value="">Select...</option>
+                  <option value="environmental">Environmental</option>
+                  <option value="social">Social</option>
+                  <option value="governance">Governance</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Event Date *</label>
+                <input type="date" class="form-input" name="event_date" required>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="form-group">
+                <label class="form-label">Start Time *</label>
+                <input type="time" class="form-input" name="start_time" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">End Time *</label>
+                <input type="time" class="form-input" name="end_time" required>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="form-group">
+                <label class="form-label">Total Impact Value *</label>
+                <input type="number" class="form-input" name="total_impact_value" required min="1" placeholder="e.g. 500">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Impact Unit *</label>
+                <select class="form-select" name="impact_unit">
+                  <option value="people">People</option>
+                  <option value="trees">Trees</option>
+                  <option value="hours">Hours</option>
+                  <option value="items">Items</option>
+                  <option value="meals">Meals</option>
+                  <option value="kg">Kilograms</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Expected Participants (optional)</label>
+              <input type="number" class="form-input" name="expected_participants" min="1" placeholder="e.g. 50">
+            </div>
+            <div class="flex justify-end gap-3 mt-4">
+              <button type="button" class="btn-secondary btn-sm" onclick="closeModal('createEventModal')">Cancel</button>
+              <button type="submit" class="btn-primary btn-sm" id="submitEventBtn"><i class="bx bx-calendar-plus"></i> Create Event</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- EVENT DETAIL MODAL -->
+    <div class="modal-overlay" id="eventDetailModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="text-xl font-bold text-gray-900" id="eventDetailTitle">Event Details</h2>
+          <button class="modal-close" onclick="closeModal('eventDetailModal')"><i class="bx bx-x text-xl"></i></button>
+        </div>
+        <div class="modal-body" id="eventDetailBody"></div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"><i class="bx bx-check-circle"></i> <span id="toastMsg"></span></div>
+
+    <!-- Scripts -->
+    <script src="/js/subscription-manager.js"></script>
+    <script src="/signin.js"></script>
     <script>
-      // Mobile toggle
+    document.addEventListener('DOMContentLoaded', function () {
+      requireAuth('/partner-signin');
+      
+      // Sidebar toggle
       const toggle = document.getElementById('sidebarToggle');
       const sidebar = document.getElementById('partnerSidebar');
       const overlay = document.getElementById('sidebarOverlay');
-      
       if (toggle && sidebar && overlay) {
-        toggle.addEventListener('click', () => {
-          sidebar.classList.toggle('active');
-          overlay.classList.toggle('active');
-        });
-        
-        overlay.addEventListener('click', () => {
-          sidebar.classList.remove('active');
-          overlay.classList.remove('active');
-        });
+        toggle.addEventListener('click', () => { sidebar.classList.toggle('active'); overlay.classList.toggle('active'); });
+        overlay.addEventListener('click', () => { sidebar.classList.remove('active'); overlay.classList.remove('active'); });
       }
-      
+
       // Logout
-      const logoutBtnInline = document.getElementById('logoutBtn');
-      if (logoutBtnInline) {
-        logoutBtnInline.addEventListener('click', () => {
-          fetch('/api/logout', { 
-            method: 'POST',
-            credentials: 'include'
-          })
-          .then(() => {
-            window.location.href = '/partner-signin';
-          })
-          .catch(() => {
-            window.location.href = '/partner-signin';
-          });
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+          fetch('/api/logout', { method: 'POST', credentials: 'include' })
+            .then(() => { window.location.href = '/partner-signin'; })
+            .catch(() => { window.location.href = '/partner-signin'; });
         });
       }
-      
-      // Set active nav item based on current page
-      const currentPage = window.location.pathname.split('/').pop();
-      const navLinks = document.querySelectorAll('.partner-nav-link');
-      
-      navLinks.forEach(link => {
-        const href = link.getAttribute('href');
-        if (href && href.includes(currentPage)) {
-          navLinks.forEach(l => l.classList.remove('active'));
-          link.classList.add('active');
-        }
+
+      // Set default dates
+      document.querySelector('[name="activity_date"]').valueAsDate = new Date();
+      document.querySelector('[name="event_date"]').value = new Date().toISOString().split('T')[0];
+
+      // Tabs
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+          if (btn.dataset.tab === 'events') loadEvents();
+          if (btn.dataset.tab === 'myevents') loadMyEvents();
+        });
       });
-    </script>
-  <!-- Frontend auth guard: redirect if no valid session -->
-  <script src="/signin.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      requireAuth('/partner-signin');
+
+      loadStats();
+      loadEntries();
     });
-  </script>
+
+    // Reuse the exact same JS functions from ambassador (the API is the same)
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      const m = document.getElementById('toastMsg');
+      m.textContent = msg;
+      t.className = 'toast show' + (isError ? ' error' : '');
+      t.querySelector('i').className = isError ? 'bx bx-error-circle' : 'bx bx-check-circle';
+      setTimeout(() => { t.className = 'toast'; }, 3000);
+    }
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/impact/stats', { credentials: 'include' });
+        const stats = await res.json();
+        document.getElementById('statPeople').textContent = stats.total_people_impacted?.toLocaleString() || '0';
+        document.getElementById('statHours').textContent = Math.round(stats.total_hours || 0).toLocaleString();
+        document.getElementById('statSCP').textContent = Math.round(stats.total_scp || 0).toLocaleString();
+        document.getElementById('statEntries').textContent = stats.total_entries || '0';
+        const total = Math.max((stats.by_esg?.environmental || 0) + (stats.by_esg?.social || 0) + (stats.by_esg?.governance || 0), 1);
+        document.getElementById('esgEnvBar').style.width = ((stats.by_esg?.environmental || 0) / total * 100) + '%';
+        document.getElementById('esgSocBar').style.width = ((stats.by_esg?.social || 0) / total * 100) + '%';
+        document.getElementById('esgGovBar').style.width = ((stats.by_esg?.governance || 0) / total * 100) + '%';
+        document.getElementById('esgEnvVal').textContent = (stats.by_esg?.environmental || 0).toLocaleString();
+        document.getElementById('esgSocVal').textContent = (stats.by_esg?.social || 0).toLocaleString();
+        document.getElementById('esgGovVal').textContent = (stats.by_esg?.governance || 0).toLocaleString();
+        document.getElementById('sharePeople').textContent = (stats.total_people_impacted || 0) > 0 ? Math.round(stats.total_people_impacted / 10) * 10 + '+' : '0';
+        document.getElementById('shareHours').textContent = Math.round(stats.total_hours || 0);
+        document.getElementById('shareEvents').textContent = stats.events_participated || 0;
+      } catch (e) { console.error('Error loading stats:', e); }
+    }
+
+    async function loadEntries() {
+      try {
+        const res = await fetch('/api/impact/entries', { credentials: 'include' });
+        const { entries } = await res.json();
+        const container = document.getElementById('entriesList');
+        if (!entries || entries.length === 0) {
+          container.innerHTML = '<div class="empty-state"><i class="bx bx-line-chart"></i><h3 class="text-lg font-semibold text-gray-700 mb-2">No impact entries yet</h3><p class="text-sm mb-4">Start logging your organization\'s impact.</p><button onclick="openModal(\'logImpactModal\')" class="btn-primary btn-sm"><i class="bx bx-plus"></i> Log First Impact</button></div>';
+          return;
+        }
+        const esgIcons = { environmental: { icon: 'bx-leaf', bg: 'bg-green-100', color: 'text-green-600' }, social: { icon: 'bx-group', bg: 'bg-blue-100', color: 'text-blue-600' }, governance: { icon: 'bx-shield', bg: 'bg-amber-100', color: 'text-amber-600' } };
+        container.innerHTML = '<div class="p-5">' + entries.map(e => {
+          const esg = esgIcons[e.esg_category] || esgIcons.social;
+          const typeLabel = e.entry_type === 'event_derived' ? '<span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full ml-2">Event</span>' : e.entry_type === 'event_master' ? '<span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full ml-2">Event Creator</span>' : '';
+          return `<div class="entry-item"><div class="entry-icon ${esg.bg}"><i class="bx ${esg.icon} ${esg.color} text-xl"></i></div><div class="flex-1 min-w-0"><div class="flex items-center flex-wrap gap-1"><h4 class="font-semibold text-gray-900 text-sm truncate">${e.title}</h4>${typeLabel}<span class="esg-badge esg-${e.esg_category} ml-auto text-xs">${e.esg_category}</span></div><p class="text-xs text-gray-500 mt-0.5">${new Date(e.activity_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p><div class="flex gap-4 mt-1.5 text-xs text-gray-600">${e.people_impacted ? `<span><i class="bx bx-group"></i> ${e.people_impacted} people</span>` : ''}${parseFloat(e.hours_contributed) ? `<span><i class="bx bx-time-five"></i> ${e.hours_contributed}h</span>` : ''}${parseFloat(e.scp_earned) ? `<span><i class="bx bx-star"></i> ${Math.round(e.scp_earned)} SCP</span>` : ''}</div></div>${e.entry_type === 'individual' ? `<button onclick="deleteEntry('${e.entry_id}')" class="btn-sm btn-danger" title="Delete"><i class="bx bx-trash"></i></button>` : ''}</div>`;
+        }).join('') + '</div>';
+      } catch (e) { console.error('Error loading entries:', e); }
+    }
+
+    async function loadEvents() {
+      try {
+        const res = await fetch('/api/impact/events?status=open', { credentials: 'include' });
+        const { events } = await res.json();
+        const container = document.getElementById('eventsList');
+        if (!events || events.length === 0) {
+          container.innerHTML = '<div class="empty-state"><i class="bx bx-calendar-event"></i><h3 class="text-lg font-semibold text-gray-700 mb-2">No open events</h3><p class="text-sm">Check back later or create your own shared impact event.</p></div>';
+          return;
+        }
+        container.innerHTML = events.map(e => `<div class="event-card"><div class="flex items-start justify-between mb-3"><div><h3 class="font-bold text-gray-900">${e.title}</h3><p class="text-sm text-gray-500 mt-0.5">${new Date(e.event_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} &middot; ${e.start_time?.substring(0,5)} - ${e.end_time?.substring(0,5)}</p></div><span class="status-${e.status}">${e.status}</span></div><p class="text-sm text-gray-600 mb-3">${e.description || ''}</p><div class="flex items-center gap-4 text-sm text-gray-600 mb-3"><span class="esg-badge esg-${e.esg_category}">${e.esg_category}</span><span><i class="bx bx-target-lock"></i> ${e.total_impact_value?.toLocaleString()} ${e.impact_unit}</span><span><i class="bx bx-group"></i> ${e.participant_count || 0} joined</span></div><div class="flex gap-2"><button onclick="viewEventDetail('${e.event_id}')" class="btn-secondary btn-sm"><i class="bx bx-info-circle"></i> Details</button><button onclick="joinEvent('${e.event_id}')" class="btn-primary btn-sm"><i class="bx bx-check"></i> I Participated</button></div></div>`).join('');
+      } catch (e) { console.error('Error loading events:', e); }
+    }
+
+    async function loadMyEvents() {
+      try {
+        const res = await fetch('/api/impact/events?filter=mine', { credentials: 'include' });
+        const { events } = await res.json();
+        const container = document.getElementById('myEventsList');
+        if (!events || events.length === 0) {
+          container.innerHTML = '<div class="empty-state"><i class="bx bx-calendar-event"></i><h3 class="text-lg font-semibold text-gray-700 mb-2">No events created yet</h3><p class="text-sm mb-4">Create a shared impact event to rally participants.</p><button onclick="openModal(\'createEventModal\')" class="btn-primary btn-sm"><i class="bx bx-plus"></i> Create Event</button></div>';
+          return;
+        }
+        container.innerHTML = events.map(e => `<div class="event-card"><div class="flex items-start justify-between mb-3"><div><h3 class="font-bold text-gray-900">${e.title}</h3><p class="text-sm text-gray-500 mt-0.5">${new Date(e.event_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} &middot; ${e.start_time?.substring(0,5)} - ${e.end_time?.substring(0,5)}</p></div><span class="status-${e.status}">${e.status}</span></div><div class="flex items-center gap-4 text-sm text-gray-600 mb-3"><span class="esg-badge esg-${e.esg_category}">${e.esg_category}</span><span><i class="bx bx-target-lock"></i> ${e.total_impact_value?.toLocaleString()} ${e.impact_unit}</span><span><i class="bx bx-group"></i> ${e.participant_count || 0} participants</span></div><div class="share-link-box mb-3"><i class="bx bx-link text-gray-400"></i><input type="text" readonly value="${window.location.origin}/event/${e.public_slug}" id="link-${e.event_id}"><button onclick="copyLink('${e.event_id}')" class="btn-sm btn-secondary" style="padding:0.25rem 0.5rem"><i class="bx bx-copy"></i></button></div><div class="flex gap-2 flex-wrap"><button onclick="viewEventDetail('${e.event_id}')" class="btn-secondary btn-sm"><i class="bx bx-info-circle"></i> Details</button>${e.status === 'open' ? `<button onclick="closeEvent('${e.event_id}')" class="btn-primary btn-sm"><i class="bx bx-lock"></i> Close Event</button>` : ''}<button onclick="deleteEvent('${e.event_id}')" class="btn-sm btn-danger"><i class="bx bx-trash"></i> Delete</button><button onclick="shareEvent('${e.event_id}', '${e.title}', '${e.public_slug}')" class="btn-secondary btn-sm"><i class="bx bx-share-alt"></i> Share</button></div></div>`).join('');
+      } catch (e) { console.error('Error loading my events:', e); }
+    }
+
+    async function submitImpactEntry(evt) {
+      evt.preventDefault();
+      const form = evt.target;
+      const btn = document.getElementById('submitEntryBtn');
+      btn.disabled = true; btn.innerHTML = '<div class="loading-spinner"></div> Saving...';
+      try {
+        const data = Object.fromEntries(new FormData(form));
+        const res = await fetch('/api/impact/entries', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error);
+        showToast('Impact logged successfully!');
+        closeModal('logImpactModal');
+        form.reset();
+        document.querySelector('[name="activity_date"]').valueAsDate = new Date();
+        loadStats(); loadEntries();
+      } catch (e) { showToast(e.message || 'Failed to log impact', true);
+      } finally { btn.disabled = false; btn.innerHTML = '<i class="bx bx-check"></i> Log Impact'; }
+    }
+
+    async function submitEvent(evt) {
+      evt.preventDefault();
+      const form = evt.target;
+      const btn = document.getElementById('submitEventBtn');
+      btn.disabled = true; btn.innerHTML = '<div class="loading-spinner"></div> Creating...';
+      try {
+        const data = Object.fromEntries(new FormData(form));
+        const res = await fetch('/api/impact/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error);
+        showToast('Event created! Share the link with participants.');
+        closeModal('createEventModal');
+        form.reset();
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelector('[data-tab="myevents"]').classList.add('active');
+        document.getElementById('tab-myevents').classList.add('active');
+        loadMyEvents();
+      } catch (e) { showToast(e.message || 'Failed to create event', true);
+      } finally { btn.disabled = false; btn.innerHTML = '<i class="bx bx-calendar-plus"></i> Create Event'; }
+    }
+
+    async function joinEvent(eventId) {
+      try {
+        const res = await fetch(`/api/impact/events/${eventId}/participate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({}) });
+        const result = await res.json();
+        if (result.already_registered) { showToast('You have already registered for this event', true); return; }
+        if (!res.ok) throw new Error(result.error);
+        showToast('You have been registered for this event!');
+        loadEvents();
+      } catch (e) { showToast(e.message || 'Failed to join event', true); }
+    }
+
+    async function closeEvent(eventId) {
+      if (!confirm('Close this event? This will calculate and distribute impact to all participants. This cannot be undone.')) return;
+      try {
+        const res = await fetch(`/api/impact/events/${eventId}/close`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include' });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error);
+        showToast(`Event closed! ${result.actual_participants} participants, ${result.derived_entries_created} impact entries created.`);
+        loadMyEvents(); loadStats(); loadEntries();
+      } catch (e) { showToast(e.message || 'Failed to close event', true); }
+    }
+
+    async function deleteEntry(entryId) {
+      if (!confirm('Delete this impact entry?')) return;
+      try {
+        const res = await fetch(`/api/impact/entries/${entryId}`, { method: 'DELETE', credentials: 'include' });
+        if (!res.ok) { const r = await res.json(); throw new Error(r.error); }
+        showToast('Entry deleted'); loadStats(); loadEntries();
+      } catch (e) { showToast(e.message || 'Failed to delete', true); }
+    }
+
+    async function deleteEvent(eventId) {
+      if (!confirm('Delete this event and all associated data?')) return;
+      try {
+        const res = await fetch(`/api/impact/events/${eventId}`, { method: 'DELETE', credentials: 'include' });
+        if (!res.ok) { const r = await res.json(); throw new Error(r.error); }
+        showToast('Event deleted'); loadMyEvents(); loadStats();
+      } catch (e) { showToast(e.message || 'Failed to delete', true); }
+    }
+
+    async function viewEventDetail(eventId) {
+      try {
+        const res = await fetch(`/api/impact/events/${eventId}`, { credentials: 'include' });
+        const { event, participants, participant_count } = await res.json();
+        document.getElementById('eventDetailTitle').textContent = event.title;
+        document.getElementById('eventDetailBody').innerHTML = `<div class="space-y-4"><div class="flex gap-2 flex-wrap"><span class="esg-badge esg-${event.esg_category}">${event.esg_category}</span><span class="status-${event.status}">${event.status}</span></div><p class="text-gray-600 text-sm">${event.description || 'No description'}</p><div class="grid grid-cols-2 gap-4"><div class="bg-gray-50 rounded-lg p-3"><p class="text-xs text-gray-500">Date</p><p class="font-semibold text-sm">${new Date(event.event_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p></div><div class="bg-gray-50 rounded-lg p-3"><p class="text-xs text-gray-500">Time</p><p class="font-semibold text-sm">${event.start_time?.substring(0,5)} - ${event.end_time?.substring(0,5)}</p></div><div class="bg-gray-50 rounded-lg p-3"><p class="text-xs text-gray-500">Total Impact</p><p class="font-semibold text-sm">${event.total_impact_value?.toLocaleString()} ${event.impact_unit}</p></div><div class="bg-gray-50 rounded-lg p-3"><p class="text-xs text-gray-500">Participants</p><p class="font-semibold text-sm">${participant_count}</p></div>${event.status === 'closed' ? `<div class="bg-purple-50 rounded-lg p-3 col-span-2"><p class="text-xs text-purple-600">Per-Participant Impact</p><p class="font-bold text-purple-700">${event.per_participant_impact} ${event.impact_unit}</p></div>` : ''}</div>${event.creator_name ? `<p class="text-xs text-gray-500">Created by: <strong>${event.creator_name}</strong></p>` : ''}<div class="share-link-box"><i class="bx bx-link text-gray-400"></i><input type="text" readonly value="${window.location.origin}/event/${event.public_slug}"><button onclick="navigator.clipboard.writeText('${window.location.origin}/event/${event.public_slug}');showToast('Link copied!')" class="btn-sm btn-secondary" style="padding:0.25rem 0.5rem"><i class="bx bx-copy"></i></button></div>${participants && participants.length > 0 ? `<h4 class="font-semibold text-sm text-gray-700 mt-2">Participants (${participant_count})</h4><div class="max-h-48 overflow-y-auto space-y-1">${participants.map(p => `<div class="flex items-center gap-2 text-sm py-1.5 border-b border-gray-100"><i class="bx bx-user-circle text-gray-400"></i> ${p.display_name || (p.participant_type === 'user' ? 'Platform User' : 'Anonymous')} <span class="text-xs text-gray-400 ml-auto">${new Date(p.created_at).toLocaleDateString()}</span></div>`).join('')}</div>` : '<p class="text-sm text-gray-400">No participants yet</p>'}</div>`;
+        openModal('eventDetailModal');
+      } catch (e) { showToast('Failed to load event details', true); }
+    }
+
+    function copyLink(eventId) { const input = document.getElementById('link-' + eventId); navigator.clipboard.writeText(input.value); showToast('Link copied!'); }
+
+    function getShareText() {
+      const people = document.getElementById('sharePeople').textContent;
+      return `Our organization has contributed to community initiatives reaching ${people} people through the @TransformationLeader ecosystem.\n\nCollective action matters.\n\n#TransformationLeader #PositiveImpact`;
+    }
+    function shareToLinkedIn() { window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.origin)}&summary=${encodeURIComponent(getShareText())}`, '_blank'); }
+    function shareToX() { window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(getShareText())}`, '_blank'); }
+    function copyShareText() { navigator.clipboard.writeText(getShareText()); showToast('Share text copied!'); }
+    function shareEvent(eventId, title, slug) { navigator.clipboard.writeText(`We're hosting "${title}" - Join us and be part of something bigger.\n\n${window.location.origin}/event/${slug}\n\n#TransformationLeader #PositiveImpact`); showToast('Event share text copied!'); }
+    </script>
 </body>
 </html>

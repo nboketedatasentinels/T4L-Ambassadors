@@ -790,11 +790,27 @@ function createOpportunityCard(post) {
   let applyButtonHtml;
   if (hasApplied) {
     if (applicationStatus === 'accepted') {
-      // Show only an accepted icon (no button)
-      applyButtonHtml = `<span class="text-green-500 text-2xl" aria-label="Application accepted" title="Application accepted">✅</span>`;
+      // Show only an accepted icon with pill styling (no text)
+      applyButtonHtml = `
+        <span
+          class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#14213d] text-white text-xl border-2 border-[#0b1024] shadow-sm"
+          aria-label="Application accepted"
+          title="Application accepted"
+        >
+          ✅
+        </span>
+      `;
     } else if (applicationStatus === 'rejected') {
-      // Show only a rejected icon (no button)
-      applyButtonHtml = `<span class="text-red-500 text-2xl" aria-label="Application rejected" title="Application rejected">❌</span>`;
+      // Show only a rejected icon with pill styling (no text)
+      applyButtonHtml = `
+        <span
+          class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#14213d] text-white text-xl border-2 border-[#0b1024] shadow-sm"
+          aria-label="Application rejected"
+          title="Application rejected"
+        >
+          ❌
+        </span>
+      `;
     } else {
       applyButtonHtml = `<button disabled class="bg-yellow-400 text-white px-6 md:px-8 py-3 rounded-xl font-bold cursor-not-allowed opacity-75">⏳ Under Review</button>`;
     }

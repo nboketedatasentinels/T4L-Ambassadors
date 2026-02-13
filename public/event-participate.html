@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Impact Event | Transformation Leader</title>
+    <link rel="icon" type="image/png" href="/images/favicon.png" />
+    <meta property="og:title" content="Impact Event | Transformation Leader" />
+    <meta property="og:description" content="Join this impact event and be part of something bigger. Positive Impact | Sustainable Change." />
+    <meta property="og:type" content="website" />
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 50%, #faf5ff 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+      
+      .event-page { max-width: 520px; width: 100%; }
+      
+      /* Brand bar */
+      .brand-bar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
+      .brand-logo { background: #4b0d7f; color: white; padding: 0.5rem 0.875rem; border-radius: 0.75rem; font-weight: 800; font-size: 0.875rem; letter-spacing: 0.5px; }
+      .brand-text { font-size: 0.8125rem; color: #6b7280; }
+      .brand-text strong { color: #374151; }
+      
+      /* Event card */
+      .event-card { background: white; border-radius: 1.5rem; box-shadow: 0 25px 50px -12px rgba(75,13,127,0.15); overflow: hidden; position: relative; }
+      .event-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, #4b0d7f, #a36737, #4b0d7f); background-size: 200% 100%; animation: gradient 3s ease infinite; }
+      @keyframes gradient { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+      
+      .event-header { padding: 2rem 2rem 0; }
+      .event-body { padding: 0 2rem 2rem; }
+      
+      /* ESG badge */
+      .esg-badge { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.875rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: capitalize; }
+      .esg-environmental { background: #d1fae5; color: #065f46; }
+      .esg-social { background: #dbeafe; color: #1e40af; }
+      .esg-governance { background: #fef3c7; color: #92400e; }
+      
+      .status-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.875rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; }
+      .status-open { background: #d1fae5; color: #065f46; }
+      .status-closed { background: #fef2f2; color: #dc2626; }
+      
+      .event-title { font-size: 1.5rem; font-weight: 800; color: #111827; margin: 1rem 0 0.5rem; line-height: 1.3; }
+      .event-meta { font-size: 0.875rem; color: #6b7280; display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.375rem; }
+      .event-meta i { font-size: 1.1rem; }
+      .event-desc { font-size: 0.9375rem; color: #4b5563; line-height: 1.6; margin: 1rem 0; }
+      
+      .divider { height: 1px; background: linear-gradient(to right, transparent, #e5e7eb, transparent); margin: 1.25rem 0; }
+      
+      /* Impact stats */
+      .impact-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin: 1.25rem 0; }
+      .impact-stat { text-align: center; background: #f9fafb; border-radius: 0.75rem; padding: 0.875rem 0.5rem; }
+      .impact-stat-value { font-size: 1.375rem; font-weight: 800; color: #4b0d7f; }
+      .impact-stat-label { font-size: 0.6875rem; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.125rem; }
+      
+      /* Participate button */
+      .participate-btn { width: 100%; padding: 1rem; border: none; border-radius: 0.875rem; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.625rem; background: linear-gradient(135deg, #4b0d7f 0%, #6b21a8 100%); color: white; margin-top: 1.25rem; }
+      .participate-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(75,13,127,0.3); }
+      .participate-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+      .participate-btn.success { background: linear-gradient(135deg, #059669 0%, #10b981 100%); }
+      .participate-btn.closed { background: #9ca3af; }
+      
+      /* Name input */
+      .name-input { width: 100%; padding: 0.75rem 1rem; border: 2px solid #e5e7eb; border-radius: 0.75rem; font-size: 0.9375rem; margin-top: 1rem; transition: border-color 0.2s; }
+      .name-input:focus { outline: none; border-color: #4b0d7f; box-shadow: 0 0 0 3px rgba(75,13,127,0.1); }
+      
+      /* Creator info */
+      .creator-info { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: #6b7280; margin-top: 0.75rem; }
+      .creator-info i { color: #4b0d7f; }
+      
+      /* Loading */
+      .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem 2rem; }
+      .spinner { width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #4b0d7f; border-radius: 50%; animation: spin 0.6s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      
+      /* Error */
+      .error-state { text-align: center; padding: 3rem 2rem; }
+      .error-state i { font-size: 3rem; color: #dc2626; margin-bottom: 1rem; }
+      
+      /* Confirmation */
+      .confirmation { text-align: center; padding: 2rem; }
+      .confirmation-icon { width: 80px; height: 80px; background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
+      .confirmation-icon i { font-size: 2.5rem; color: #059669; }
+      
+      /* Footer */
+      .page-footer { text-align: center; margin-top: 1.5rem; font-size: 0.75rem; color: #9ca3af; }
+      .page-footer a { color: #4b0d7f; text-decoration: none; font-weight: 600; }
+      
+      /* Share section after participation */
+      .share-after { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; }
+      .share-btns { display: flex; gap: 0.75rem; justify-content: center; margin-top: 0.75rem; }
+      .share-btn { width: 44px; height: 44px; border-radius: 0.75rem; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; transition: all 0.2s; }
+      .share-btn:hover { transform: scale(1.1); }
+      .share-linkedin { background: #0077b5; color: white; }
+      .share-x { background: #000; color: white; }
+      .share-copy { background: #6b7280; color: white; }
+    </style>
+</head>
+<body>
+    <div class="event-page">
+      <!-- Brand -->
+      <div class="brand-bar">
+        <div class="brand-logo">T4L</div>
+        <div class="brand-text"><strong>Transformation Leader</strong><br>Positive Impact | Sustainable Change</div>
+      </div>
+
+      <!-- Event Card -->
+      <div class="event-card" id="eventCard">
+        <div class="loading" id="loadingState">
+          <div class="spinner"></div>
+          <p style="margin-top: 1rem; color: #6b7280; font-size: 0.875rem;">Loading event...</p>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="page-footer">
+        <p>Powered by <a href="https://www.t4leader.com" target="_blank">Transformation Leader</a></p>
+        <p style="margin-top:0.25rem;">Social sharing features are promotional and invitational in nature and must not be used as evidence of ESG performance or verification.</p>
+      </div>
+    </div>
+
+    <script>
+    const slug = window.location.pathname.split('/').pop();
+    let eventData = null;
+
+    async function loadEvent() {
+      try {
+        const res = await fetch(`/api/impact/events/public/${slug}`);
+        if (!res.ok) throw new Error('Event not found');
+        const { event, participant_count } = await res.json();
+        eventData = event;
+        renderEvent(event, participant_count);
+      } catch (e) {
+        document.getElementById('eventCard').innerHTML = `
+          <div class="error-state">
+            <i class="bx bx-error-circle"></i>
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: #111827; margin-bottom: 0.5rem;">Event Not Found</h2>
+            <p style="color: #6b7280; font-size: 0.9375rem;">This event may have been removed or the link is invalid.</p>
+          </div>`;
+      }
+    }
+
+    function renderEvent(event, participantCount) {
+      const esgIcons = { environmental: 'bx-leaf', social: 'bx-group', governance: 'bx-shield' };
+      const isClosed = event.status === 'closed';
+      
+      document.getElementById('eventCard').innerHTML = `
+        <div class="event-header">
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <span class="esg-badge esg-${event.esg_category}"><i class="bx ${esgIcons[event.esg_category] || 'bx-star'}"></i> ${event.esg_category}</span>
+            <span class="status-badge status-${event.status}">${isClosed ? 'Closed' : 'Open for Participation'}</span>
+          </div>
+          <h1 class="event-title">${event.title}</h1>
+          <div class="event-meta"><i class="bx bx-calendar"></i> ${new Date(event.event_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div>
+          <div class="event-meta"><i class="bx bx-time"></i> ${event.start_time?.substring(0,5)} - ${event.end_time?.substring(0,5)}</div>
+          ${event.creator_name ? `<div class="creator-info"><i class="bx bx-user-circle"></i> Hosted by <strong>${event.creator_name}</strong></div>` : ''}
+        </div>
+        <div class="event-body">
+          ${event.description ? `<p class="event-desc">${event.description}</p>` : ''}
+          <div class="divider"></div>
+          <div class="impact-stats">
+            <div class="impact-stat">
+              <div class="impact-stat-value">${event.total_impact_value?.toLocaleString()}</div>
+              <div class="impact-stat-label">${event.impact_unit}</div>
+            </div>
+            <div class="impact-stat">
+              <div class="impact-stat-value">${participantCount}</div>
+              <div class="impact-stat-label">Participants</div>
+            </div>
+            <div class="impact-stat">
+              <div class="impact-stat-value">Tier 2</div>
+              <div class="impact-stat-label">Verified</div>
+            </div>
+          </div>
+          ${!isClosed ? `
+            <input type="text" class="name-input" id="displayName" placeholder="Your name (optional)" maxlength="100">
+            <button class="participate-btn" id="participateBtn" onclick="participate()">
+              <i class="bx bx-check-circle" style="font-size:1.25rem"></i> I Participated
+            </button>
+            <p style="text-align: center; font-size: 0.75rem; color: #9ca3af; margin-top: 0.5rem;">One click. No sign-up required.</p>
+          ` : `
+            <button class="participate-btn closed" disabled>
+              <i class="bx bx-lock" style="font-size:1.25rem"></i> Event Closed
+            </button>
+            <p style="text-align: center; font-size: 0.75rem; color: #9ca3af; margin-top: 0.5rem;">This event is no longer accepting participants.</p>
+          `}
+        </div>
+      `;
+    }
+
+    async function participate() {
+      const btn = document.getElementById('participateBtn');
+      const displayName = document.getElementById('displayName')?.value?.trim() || '';
+      
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner" style="width:20px;height:20px;border-width:2px;"></div> Registering...';
+
+      // Generate anonymous hash for non-logged-in users
+      const anonHash = await generateAnonHash();
+
+      try {
+        const res = await fetch(`/api/impact/events/${eventData.event_id}/participate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ display_name: displayName, anonymous_hash: anonHash })
+        });
+        const result = await res.json();
+
+        if (result.already_registered) {
+          btn.className = 'participate-btn success';
+          btn.innerHTML = '<i class="bx bx-check-circle" style="font-size:1.25rem"></i> Already Registered';
+          btn.disabled = true;
+          return;
+        }
+
+        if (!res.ok) throw new Error(result.error);
+
+        // Show confirmation
+        showConfirmation();
+      } catch (e) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bx bx-check-circle" style="font-size:1.25rem"></i> I Participated';
+        alert(e.message || 'Failed to register. Please try again.');
+      }
+    }
+
+    function showConfirmation() {
+      const card = document.getElementById('eventCard');
+      card.innerHTML = `
+        <div class="confirmation">
+          <div class="confirmation-icon"><i class="bx bx-check"></i></div>
+          <h2 style="font-size: 1.5rem; font-weight: 800; color: #111827; margin-bottom: 0.5rem;">You're In!</h2>
+          <p style="color: #6b7280; font-size: 0.9375rem; margin-bottom: 0.5rem;">Your participation in <strong>"${eventData.title}"</strong> has been recorded.</p>
+          <p style="color: #9ca3af; font-size: 0.8125rem;">Impact will be distributed when the event closes.</p>
+          
+          <div class="share-after">
+            <p style="font-size: 0.8125rem; font-weight: 600; color: #374151;">Share that you participated</p>
+            <div class="share-btns">
+              <button onclick="shareParticipation('linkedin')" class="share-btn share-linkedin" title="Share on LinkedIn"><i class="bx bxl-linkedin"></i></button>
+              <button onclick="shareParticipation('x')" class="share-btn share-x" title="Share on X"><i class="bx bxl-twitter"></i></button>
+              <button onclick="shareParticipation('copy')" class="share-btn share-copy" title="Copy text"><i class="bx bx-copy"></i></button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function shareParticipation(platform) {
+      const text = `Proud to have participated in "${eventData.title}" with @TransformationLeader.\nImpact starts with showing up.\n\n#TransformationLeader #PositiveImpact`;
+      const url = window.location.href;
+
+      if (platform === 'linkedin') {
+        window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, '_blank');
+      } else if (platform === 'x') {
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+      } else {
+        navigator.clipboard.writeText(text);
+        alert('Copied to clipboard!');
+      }
+    }
+
+    async function generateAnonHash() {
+      // Create a reproducible hash from browser fingerprint
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.textBaseline = 'top';
+      ctx.font = '14px Arial';
+      ctx.fillText('fingerprint', 2, 2);
+      const canvasData = canvas.toDataURL();
+      
+      const raw = navigator.userAgent + screen.width + screen.height + canvasData + new Date().toDateString();
+      const encoder = new TextEncoder();
+      const data = encoder.encode(raw);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 32);
+    }
+
+    // Load on page ready
+    loadEvent();
+    </script>
+</body>
+</html>

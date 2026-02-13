@@ -612,7 +612,7 @@
                     const data = await ambResponse.json();
                     const recentAmb = data.ambassadors?.slice(0, 5).map(a => ({
                         id: a.id,
-                        name: a.name,
+                        name: a.name || a.email || 'Ambassador',
                         email: a.email,
                         role: 'ambassador',
                         status: a.status,
@@ -627,7 +627,7 @@
                     const data = await parResponse.json();
                     const recentPar = data.partners?.slice(0, 5).map(p => ({
                         id: p.id,
-                        name: p.name,
+                        name: p.name || p.contact_person || p.organization_name || p.email || 'Partner',
                         email: p.email,
                         role: 'partner',
                         status: p.status,
@@ -670,7 +670,7 @@
                             }"></i>
                         </div>
                         <div>
-                            <h4 class="font-semibold text-gray-900">${user.name}</h4>
+                            <h4 class="font-semibold text-gray-900">${user.name || user.email || 'Unknown'}</h4>
                             <p class="text-sm text-gray-600">${user.email}</p>
                         </div>
                     </div>
