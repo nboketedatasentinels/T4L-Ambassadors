@@ -3,280 +3,365 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Impact Event | Transformation Leader</title>
+    <title>Participate | Transformation Leader</title>
     <link rel="icon" type="image/png" href="/images/favicon.png" />
-    <meta property="og:title" content="Impact Event | Transformation Leader" />
-    <meta property="og:description" content="Join this impact event and be part of something bigger. Positive Impact | Sustainable Change." />
-    <meta property="og:type" content="website" />
+    <link rel="stylesheet" href="css/styles.css" />
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+    <meta property="og:title" content="Join Our Impact Event | Transformation Leader">
+    <meta property="og:description" content="Participate in a community impact event and be part of something bigger.">
+    <meta property="og:type" content="website">
     <style>
-      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 50%, #faf5ff 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem; }
-      
-      .event-page { max-width: 520px; width: 100%; }
-      
-      /* Brand bar */
-      .brand-bar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
-      .brand-logo { background: #4b0d7f; color: white; padding: 0.5rem 0.875rem; border-radius: 0.75rem; font-weight: 800; font-size: 0.875rem; letter-spacing: 0.5px; }
-      .brand-text { font-size: 0.8125rem; color: #6b7280; }
-      .brand-text strong { color: #374151; }
-      
-      /* Event card */
-      .event-card { background: white; border-radius: 1.5rem; box-shadow: 0 25px 50px -12px rgba(75,13,127,0.15); overflow: hidden; position: relative; }
-      .event-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, #4b0d7f, #a36737, #4b0d7f); background-size: 200% 100%; animation: gradient 3s ease infinite; }
-      @keyframes gradient { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
-      
-      .event-header { padding: 2rem 2rem 0; }
-      .event-body { padding: 0 2rem 2rem; }
-      
-      /* ESG badge */
-      .esg-badge { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.875rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: capitalize; }
-      .esg-environmental { background: #d1fae5; color: #065f46; }
-      .esg-social { background: #dbeafe; color: #1e40af; }
-      .esg-governance { background: #fef3c7; color: #92400e; }
-      
-      .status-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.875rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; }
-      .status-open { background: #d1fae5; color: #065f46; }
-      .status-closed { background: #fef2f2; color: #dc2626; }
-      
-      .event-title { font-size: 1.5rem; font-weight: 800; color: #111827; margin: 1rem 0 0.5rem; line-height: 1.3; }
-      .event-meta { font-size: 0.875rem; color: #6b7280; display: flex; align-items: center; gap: 0.375rem; margin-bottom: 0.375rem; }
-      .event-meta i { font-size: 1.1rem; }
-      .event-desc { font-size: 0.9375rem; color: #4b5563; line-height: 1.6; margin: 1rem 0; }
-      
-      .divider { height: 1px; background: linear-gradient(to right, transparent, #e5e7eb, transparent); margin: 1.25rem 0; }
-      
-      /* Impact stats */
-      .impact-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin: 1.25rem 0; }
-      .impact-stat { text-align: center; background: #f9fafb; border-radius: 0.75rem; padding: 0.875rem 0.5rem; }
-      .impact-stat-value { font-size: 1.375rem; font-weight: 800; color: #4b0d7f; }
-      .impact-stat-label { font-size: 0.6875rem; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.125rem; }
-      
-      /* Participate button */
-      .participate-btn { width: 100%; padding: 1rem; border: none; border-radius: 0.875rem; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.625rem; background: linear-gradient(135deg, #4b0d7f 0%, #6b21a8 100%); color: white; margin-top: 1.25rem; }
-      .participate-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(75,13,127,0.3); }
-      .participate-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-      .participate-btn.success { background: linear-gradient(135deg, #059669 0%, #10b981 100%); }
-      .participate-btn.closed { background: #9ca3af; }
-      
-      /* Name input */
-      .name-input { width: 100%; padding: 0.75rem 1rem; border: 2px solid #e5e7eb; border-radius: 0.75rem; font-size: 0.9375rem; margin-top: 1rem; transition: border-color 0.2s; }
-      .name-input:focus { outline: none; border-color: #4b0d7f; box-shadow: 0 0 0 3px rgba(75,13,127,0.1); }
-      
-      /* Creator info */
-      .creator-info { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: #6b7280; margin-top: 0.75rem; }
-      .creator-info i { color: #4b0d7f; }
-      
-      /* Loading */
-      .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem 2rem; }
-      .spinner { width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #4b0d7f; border-radius: 50%; animation: spin 0.6s linear infinite; }
+      :root { --primary: #4b0d7f; --primary-light: #7c3aed; }
+      body {
+        background: linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 50%, #faf5ff 100%);
+        min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        padding: 1rem;
+      }
+
+      .participate-card {
+        background: white; border-radius: 2rem; box-shadow: 0 25px 50px -12px rgba(75,13,127,0.15);
+        overflow: hidden; position: relative; max-width: 520px; width: 100%;
+      }
+      .participate-card::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px;
+        background: linear-gradient(90deg, #4b0d7f, #f59e0b, #4b0d7f);
+        background-size: 200% 100%; animation: gradient-shift 3s ease infinite;
+      }
+      @keyframes gradient-shift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+
+      .badge { padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+      .badge-env { background: #d1fae5; color: #065f46; }
+      .badge-social { background: #dbeafe; color: #1e40af; }
+      .badge-gov { background: #fef3c7; color: #92400e; }
+      .badge-open { background: #d1fae5; color: #065f46; }
+      .badge-closed { background: #fee2e2; color: #991b1b; }
+
+      .participate-btn {
+        background: linear-gradient(135deg, #4b0d7f, #6b21a8); color: white;
+        padding: 1rem 2rem; border-radius: 1rem; font-weight: 700; font-size: 1.1rem;
+        border: none; cursor: pointer; transition: all 0.3s; width: 100%;
+        display: flex; align-items: center; justify-content: center; gap: 0.75rem;
+      }
+      .participate-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(75,13,127,0.3); }
+      .participate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+      .success-container { text-align: center; padding: 2rem; }
+      .success-icon { width: 80px; height: 80px; background: #d1fae5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
+      .success-icon i { font-size: 2.5rem; color: #065f46; }
+
+      .spinner { width: 24px; height: 24px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; }
       @keyframes spin { to { transform: rotate(360deg); } }
-      
-      /* Error */
-      .error-state { text-align: center; padding: 3rem 2rem; }
-      .error-state i { font-size: 3rem; color: #dc2626; margin-bottom: 1rem; }
-      
-      /* Confirmation */
-      .confirmation { text-align: center; padding: 2rem; }
-      .confirmation-icon { width: 80px; height: 80px; background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
-      .confirmation-icon i { font-size: 2.5rem; color: #059669; }
-      
-      /* Footer */
-      .page-footer { text-align: center; margin-top: 1.5rem; font-size: 0.75rem; color: #9ca3af; }
-      .page-footer a { color: #4b0d7f; text-decoration: none; font-weight: 600; }
-      
-      /* Share section after participation */
-      .share-after { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb; }
-      .share-btns { display: flex; gap: 0.75rem; justify-content: center; margin-top: 0.75rem; }
-      .share-btn { width: 44px; height: 44px; border-radius: 0.75rem; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; transition: all 0.2s; }
-      .share-btn:hover { transform: scale(1.1); }
+
+      .error-container { text-align: center; padding: 2rem; }
+      .error-icon { width: 80px; height: 80px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
+      .error-icon i { font-size: 2.5rem; color: #dc2626; }
+
+      .metric-box { background: #f9fafb; border-radius: 0.75rem; padding: 0.75rem; text-align: center; }
+
+      /* Share buttons */
+      .share-btn { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; }
+      .share-btn:hover { transform: translateY(-1px); }
       .share-linkedin { background: #0077b5; color: white; }
       .share-x { background: #000; color: white; }
-      .share-copy { background: #6b7280; color: white; }
+      .share-copy { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+
+      .powered-by { text-align: center; margin-top: 1.5rem; }
+      .powered-by a { color: #4b0d7f; text-decoration: none; font-weight: 600; }
+      .powered-by a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
-    <div class="event-page">
-      <!-- Brand -->
-      <div class="brand-bar">
-        <div class="brand-logo">T4L</div>
-        <div class="brand-text"><strong>Transformation Leader</strong><br>Positive Impact | Sustainable Change</div>
+    <div class="participate-card" id="mainCard">
+      <!-- Loading State -->
+      <div id="loadingState" class="p-8 text-center">
+        <div class="spinner" style="margin: 0 auto; border-color: #e9d5ff; border-top-color: #4b0d7f;"></div>
+        <p class="text-gray-500 mt-4 text-sm">Loading event details...</p>
       </div>
 
-      <!-- Event Card -->
-      <div class="event-card" id="eventCard">
-        <div class="loading" id="loadingState">
-          <div class="spinner"></div>
-          <p style="margin-top: 1rem; color: #6b7280; font-size: 0.875rem;">Loading event...</p>
+      <!-- Event Info -->
+      <div id="eventState" style="display: none;">
+        <!-- Header Banner -->
+        <div class="bg-gradient-to-br from-purple-600 to-purple-800 text-white p-6 pb-8">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="bg-white/20 rounded-lg px-3 py-1 text-xs font-semibold backdrop-blur-sm">
+              <i class="bx bx-calendar-event mr-1"></i> Impact Event
+            </div>
+          </div>
+          <h1 class="text-xl md:text-2xl font-bold mb-2" id="eventTitle"></h1>
+          <p class="text-purple-200 text-sm" id="eventCreator"></p>
+        </div>
+
+        <!-- Content -->
+        <div class="p-6 space-y-5">
+          <!-- Badges -->
+          <div class="flex items-center gap-2 flex-wrap" id="eventBadges"></div>
+
+          <!-- Description -->
+          <p class="text-gray-600 text-sm leading-relaxed" id="eventDescription"></p>
+
+          <!-- Metrics -->
+          <div class="grid grid-cols-3 gap-3">
+            <div class="metric-box">
+              <p class="text-lg font-bold text-purple-700" id="eventImpact">0</p>
+              <p class="text-xs text-gray-500" id="eventUnit">people</p>
+            </div>
+            <div class="metric-box">
+              <p class="text-lg font-bold text-blue-700" id="eventParticipants">0</p>
+              <p class="text-xs text-gray-500">Participants</p>
+            </div>
+            <div class="metric-box">
+              <p class="text-lg font-bold text-green-700" id="eventDate">-</p>
+              <p class="text-xs text-gray-500">Date</p>
+            </div>
+          </div>
+
+          <!-- Time -->
+          <div class="bg-gray-50 rounded-lg p-3 flex items-center gap-3 text-sm text-gray-600">
+            <i class="bx bx-time text-lg text-purple-600"></i>
+            <span id="eventTime"></span>
+          </div>
+
+          <!-- Action Button -->
+          <div id="actionContainer">
+            <button class="participate-btn" id="participateBtn" onclick="confirmParticipation()">
+              <i class="bx bx-check-circle text-xl"></i>
+              <span>I Participated</span>
+            </button>
+            <p class="text-center text-xs text-gray-400 mt-3">Click to confirm your participation. No account required.</p>
+          </div>
         </div>
       </div>
 
-      <!-- Footer -->
-      <div class="page-footer">
-        <p>Powered by <a href="https://www.t4leader.com" target="_blank">Transformation Leader</a></p>
-        <p style="margin-top:0.25rem;">Social sharing features are promotional and invitational in nature and must not be used as evidence of ESG performance or verification.</p>
+      <!-- Success State -->
+      <div id="successState" style="display: none;">
+        <div class="success-container">
+          <div class="success-icon">
+            <i class="bx bx-check"></i>
+          </div>
+          <h2 class="text-xl font-bold text-gray-900 mb-2">You're In!</h2>
+          <p class="text-gray-600 text-sm mb-6">Your participation has been confirmed. Thank you for making a positive impact!</p>
+
+          <!-- Share Participation -->
+          <div class="bg-purple-50 border border-purple-100 rounded-xl p-5 mb-4">
+            <h3 class="font-semibold text-gray-800 mb-3 text-sm">Share that you participated</h3>
+            <div class="flex flex-wrap gap-2 justify-center">
+              <button onclick="shareParticipated()" class="share-btn share-linkedin"><i class="bx bxl-linkedin"></i> LinkedIn</button>
+              <button onclick="shareParticipatedX()" class="share-btn share-x"><i class="bx bxl-twitter"></i> X</button>
+              <button onclick="copyParticipatedText()" class="share-btn share-copy"><i class="bx bx-copy"></i> Copy</button>
+            </div>
+          </div>
+
+          <p class="text-xs text-gray-400 italic">Social sharing features are promotional and invitational in nature.</p>
+        </div>
+      </div>
+
+      <!-- Error State -->
+      <div id="errorState" style="display: none;">
+        <div class="error-container">
+          <div class="error-icon">
+            <i class="bx bx-error"></i>
+          </div>
+          <h2 class="text-xl font-bold text-gray-900 mb-2" id="errorTitle">Something went wrong</h2>
+          <p class="text-gray-600 text-sm mb-4" id="errorMessage"></p>
+          <a href="/" class="inline-flex items-center gap-2 text-purple-700 font-semibold text-sm hover:text-purple-800">
+            <i class="bx bx-home"></i> Go to Homepage
+          </a>
+        </div>
+      </div>
+
+      <!-- Already Participated State -->
+      <div id="alreadyState" style="display: none;">
+        <div class="success-container">
+          <div class="success-icon" style="background: #dbeafe;">
+            <i class="bx bx-check-double" style="color: #1e40af;"></i>
+          </div>
+          <h2 class="text-xl font-bold text-gray-900 mb-2">Already Confirmed</h2>
+          <p class="text-gray-600 text-sm mb-6">You've already confirmed your participation in this event. Thank you!</p>
+          <div class="flex flex-wrap gap-2 justify-center">
+            <button onclick="shareParticipated()" class="share-btn share-linkedin"><i class="bx bxl-linkedin"></i> Share on LinkedIn</button>
+            <button onclick="shareParticipatedX()" class="share-btn share-x"><i class="bx bxl-twitter"></i> Share on X</button>
+          </div>
+        </div>
       </div>
     </div>
 
+    <!-- Powered By -->
+    <div class="powered-by">
+      <p class="text-xs text-gray-400">Powered by <a href="https://www.t4leader.com" target="_blank">Transformation Leader</a></p>
+      <p class="text-xs text-gray-400 mt-1">Positive Impact | Sustainable Change</p>
+    </div>
+
     <script>
-    const slug = window.location.pathname.split('/').pop();
-    let eventData = null;
+    let currentEvent = null;
+    let deviceHash = null;
 
-    async function loadEvent() {
-      try {
-        const res = await fetch(`/api/impact/events/public/${slug}`);
-        if (!res.ok) throw new Error('Event not found');
-        const { event, participant_count } = await res.json();
-        eventData = event;
-        renderEvent(event, participant_count);
-      } catch (e) {
-        document.getElementById('eventCard').innerHTML = `
-          <div class="error-state">
-            <i class="bx bx-error-circle"></i>
-            <h2 style="font-size: 1.25rem; font-weight: 700; color: #111827; margin-bottom: 0.5rem;">Event Not Found</h2>
-            <p style="color: #6b7280; font-size: 0.9375rem;">This event may have been removed or the link is invalid.</p>
-          </div>`;
+    document.addEventListener('DOMContentLoaded', function() {
+      // Get event ID from URL
+      const params = new URLSearchParams(window.location.search);
+      const eventId = params.get('event');
+
+      if (!eventId) {
+        showError('No Event Found', 'This link does not contain a valid event ID.');
+        return;
       }
-    }
 
-    function renderEvent(event, participantCount) {
-      const esgIcons = { environmental: 'bx-leaf', social: 'bx-group', governance: 'bx-shield' };
-      const isClosed = event.status === 'closed';
-      
-      document.getElementById('eventCard').innerHTML = `
-        <div class="event-header">
-          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-            <span class="esg-badge esg-${event.esg_category}"><i class="bx ${esgIcons[event.esg_category] || 'bx-star'}"></i> ${event.esg_category}</span>
-            <span class="status-badge status-${event.status}">${isClosed ? 'Closed' : 'Open for Participation'}</span>
-          </div>
-          <h1 class="event-title">${event.title}</h1>
-          <div class="event-meta"><i class="bx bx-calendar"></i> ${new Date(event.event_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div>
-          <div class="event-meta"><i class="bx bx-time"></i> ${event.start_time?.substring(0,5)} - ${event.end_time?.substring(0,5)}</div>
-          ${event.creator_name ? `<div class="creator-info"><i class="bx bx-user-circle"></i> Hosted by <strong>${event.creator_name}</strong></div>` : ''}
-        </div>
-        <div class="event-body">
-          ${event.description ? `<p class="event-desc">${event.description}</p>` : ''}
-          <div class="divider"></div>
-          <div class="impact-stats">
-            <div class="impact-stat">
-              <div class="impact-stat-value">${event.total_impact_value?.toLocaleString()}</div>
-              <div class="impact-stat-label">${event.impact_unit}</div>
-            </div>
-            <div class="impact-stat">
-              <div class="impact-stat-value">${participantCount}</div>
-              <div class="impact-stat-label">Participants</div>
-            </div>
-            <div class="impact-stat">
-              <div class="impact-stat-value">Tier 2</div>
-              <div class="impact-stat-label">Verified</div>
-            </div>
-          </div>
-          ${!isClosed ? `
-            <input type="text" class="name-input" id="displayName" placeholder="Your name (optional)" maxlength="100">
-            <button class="participate-btn" id="participateBtn" onclick="participate()">
-              <i class="bx bx-check-circle" style="font-size:1.25rem"></i> I Participated
-            </button>
-            <p style="text-align: center; font-size: 0.75rem; color: #9ca3af; margin-top: 0.5rem;">One click. No sign-up required.</p>
-          ` : `
-            <button class="participate-btn closed" disabled>
-              <i class="bx bx-lock" style="font-size:1.25rem"></i> Event Closed
-            </button>
-            <p style="text-align: center; font-size: 0.75rem; color: #9ca3af; margin-top: 0.5rem;">This event is no longer accepting participants.</p>
-          `}
-        </div>
-      `;
-    }
+      // Generate device hash for anonymous participants
+      deviceHash = generateDeviceHash();
 
-    async function participate() {
-      const btn = document.getElementById('participateBtn');
-      const displayName = document.getElementById('displayName')?.value?.trim() || '';
-      
-      btn.disabled = true;
-      btn.innerHTML = '<div class="spinner" style="width:20px;height:20px;border-width:2px;"></div> Registering...';
+      // Load event
+      loadEvent(eventId);
+    });
 
-      // Generate anonymous hash for non-logged-in users
-      const anonHash = await generateAnonHash();
-
+    async function loadEvent(eventId) {
       try {
-        const res = await fetch(`/api/impact/events/${eventData.event_id}/participate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ display_name: displayName, anonymous_hash: anonHash })
-        });
-        const result = await res.json();
+        const res = await fetch(`/api/impact/events/${eventId}/public`);
+        const data = await res.json();
 
-        if (result.already_registered) {
-          btn.className = 'participate-btn success';
-          btn.innerHTML = '<i class="bx bx-check-circle" style="font-size:1.25rem"></i> Already Registered';
-          btn.disabled = true;
+        if (!res.ok || !data.event) {
+          showError('Event Not Found', 'This event may have been removed or the link is invalid.');
           return;
         }
 
-        if (!res.ok) throw new Error(result.error);
+        currentEvent = data.event;
 
-        // Show confirmation
-        showConfirmation();
-      } catch (e) {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bx bx-check-circle" style="font-size:1.25rem"></i> I Participated';
-        alert(e.message || 'Failed to register. Please try again.');
-      }
-    }
+        // Populate UI
+        document.getElementById('eventTitle').textContent = currentEvent.title;
+        document.getElementById('eventCreator').textContent = `Hosted by ${currentEvent.creator_name || 'Transformation Leader'}`;
+        document.getElementById('eventDescription').textContent = currentEvent.description;
+        document.getElementById('eventImpact').textContent = formatNumber(currentEvent.total_impact_value);
+        document.getElementById('eventUnit').textContent = currentEvent.impact_unit || 'people';
+        document.getElementById('eventParticipants').textContent = currentEvent.participant_count || 0;
 
-    function showConfirmation() {
-      const card = document.getElementById('eventCard');
-      card.innerHTML = `
-        <div class="confirmation">
-          <div class="confirmation-icon"><i class="bx bx-check"></i></div>
-          <h2 style="font-size: 1.5rem; font-weight: 800; color: #111827; margin-bottom: 0.5rem;">You're In!</h2>
-          <p style="color: #6b7280; font-size: 0.9375rem; margin-bottom: 0.5rem;">Your participation in <strong>"${eventData.title}"</strong> has been recorded.</p>
-          <p style="color: #9ca3af; font-size: 0.8125rem;">Impact will be distributed when the event closes.</p>
-          
-          <div class="share-after">
-            <p style="font-size: 0.8125rem; font-weight: 600; color: #374151;">Share that you participated</p>
-            <div class="share-btns">
-              <button onclick="shareParticipation('linkedin')" class="share-btn share-linkedin" title="Share on LinkedIn"><i class="bx bxl-linkedin"></i></button>
-              <button onclick="shareParticipation('x')" class="share-btn share-x" title="Share on X"><i class="bx bxl-twitter"></i></button>
-              <button onclick="shareParticipation('copy')" class="share-btn share-copy" title="Copy text"><i class="bx bx-copy"></i></button>
+        const eventDate = new Date(currentEvent.event_date);
+        document.getElementById('eventDate').textContent = eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        document.getElementById('eventTime').textContent = `${currentEvent.start_time?.slice(0,5)} - ${currentEvent.end_time?.slice(0,5)} on ${eventDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`;
+
+        // Badges
+        const catBadge = currentEvent.esg_category === 'environmental' ? 'badge-env' :
+                         currentEvent.esg_category === 'social' ? 'badge-social' : 'badge-gov';
+        const statusBadge = currentEvent.status === 'open' ? 'badge-open' : 'badge-closed';
+        document.getElementById('eventBadges').innerHTML = `
+          <span class="badge ${statusBadge}">${currentEvent.status}</span>
+          <span class="badge ${catBadge}">${currentEvent.esg_category}</span>
+        `;
+
+        // Update OG tags
+        document.title = `${currentEvent.title} | Transformation Leader`;
+
+        // Check if event is closed
+        if (currentEvent.status === 'closed') {
+          document.getElementById('actionContainer').innerHTML = `
+            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
+              <i class="bx bx-lock-alt text-2xl text-gray-400 mb-2"></i>
+              <p class="text-gray-600 font-semibold">This event is closed</p>
+              <p class="text-sm text-gray-500 mt-1">Participation is no longer available.</p>
             </div>
-          </div>
-        </div>`;
-    }
+          `;
+        }
 
-    function shareParticipation(platform) {
-      const text = `Proud to have participated in "${eventData.title}" with @TransformationLeader.\nImpact starts with showing up.\n\n#TransformationLeader #PositiveImpact`;
-      const url = window.location.href;
+        // Show event
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('eventState').style.display = 'block';
 
-      if (platform === 'linkedin') {
-        window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, '_blank');
-      } else if (platform === 'x') {
-        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
-      } else {
-        navigator.clipboard.writeText(text);
-        alert('Copied to clipboard!');
+      } catch (err) {
+        console.error('Error loading event:', err);
+        showError('Connection Error', 'Unable to load event details. Please try again.');
       }
     }
 
-    async function generateAnonHash() {
-      // Create a reproducible hash from browser fingerprint
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      ctx.textBaseline = 'top';
-      ctx.font = '14px Arial';
-      ctx.fillText('fingerprint', 2, 2);
-      const canvasData = canvas.toDataURL();
-      
-      const raw = navigator.userAgent + screen.width + screen.height + canvasData + new Date().toDateString();
-      const encoder = new TextEncoder();
-      const data = encoder.encode(raw);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 32);
+    async function confirmParticipation() {
+      if (!currentEvent) return;
+
+      const btn = document.getElementById('participateBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div><span>Confirming...</span>';
+
+      try {
+        const res = await fetch(`/api/impact/events/${currentEvent.event_id}/participate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            anonymous_hash: deviceHash,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (res.status === 409) {
+          // Already participated
+          document.getElementById('eventState').style.display = 'none';
+          document.getElementById('alreadyState').style.display = 'block';
+          return;
+        }
+
+        if (!res.ok) throw new Error(data.error || 'Failed to confirm participation');
+
+        // Success!
+        document.getElementById('eventState').style.display = 'none';
+        document.getElementById('successState').style.display = 'block';
+
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bx bx-check-circle text-xl"></i><span>I Participated</span>';
+        showToast(err.message, 'error');
+      }
     }
 
-    // Load on page ready
-    loadEvent();
+    // Share functions
+    function shareParticipated() {
+      const text = `Proud to have participated in "${currentEvent?.title || 'a community impact event'}" with @TransformationLeader.\nImpact starts with showing up.\n#TransformationLeader #PositiveImpact`;
+      window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`, '_blank');
+    }
+    function shareParticipatedX() {
+      const text = `Proud to have participated in "${currentEvent?.title || 'a community impact event'}" with @T4Leader.\n#PositiveImpact`;
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+    }
+    function copyParticipatedText() {
+      const text = `Proud to have participated in "${currentEvent?.title || 'a community impact event'}" with Transformation Leader. Impact starts with showing up. #TransformationLeader #PositiveImpact`;
+      navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard!', 'success'));
+    }
+
+    // Utility
+    function showError(title, message) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('errorTitle').textContent = title;
+      document.getElementById('errorMessage').textContent = message;
+      document.getElementById('errorState').style.display = 'block';
+    }
+
+    function generateDeviceHash() {
+      // Generate a unique hash based on browser fingerprint
+      const stored = localStorage.getItem('t4l_device_hash');
+      if (stored) return stored;
+
+      const raw = navigator.userAgent + navigator.language + screen.width + screen.height + new Date().getTimezoneOffset();
+      let hash = 0;
+      for (let i = 0; i < raw.length; i++) {
+        const char = raw.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      const deviceHash = 'dh_' + Math.abs(hash).toString(36) + '_' + Date.now().toString(36);
+      localStorage.setItem('t4l_device_hash', deviceHash);
+      return deviceHash;
+    }
+
+    function formatNumber(num) {
+      const n = parseFloat(num) || 0;
+      if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+      if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+      return Math.round(n);
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      const bg = type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#4b0d7f';
+      toast.style.cssText = `position:fixed;top:1rem;left:50%;transform:translateX(-50%);background:${bg};color:white;padding:0.75rem 1.5rem;border-radius:0.75rem;box-shadow:0 4px 12px rgba(0,0,0,0.15);font-size:0.875rem;font-weight:500;z-index:100;max-width:90vw;text-align:center;`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3500);
+    }
     </script>
 </body>
 </html>

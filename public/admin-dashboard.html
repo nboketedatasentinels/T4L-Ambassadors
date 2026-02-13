@@ -900,139 +900,181 @@
                 </div>
             </div>
         </div>
-
-        <!-- Panel: Impact Tracker (Platform-wide aggregated) -->
+        <!-- Panel: Impact Tracker (Aggregated Platform-Wide) -->
         <div id="panelImpact" class="tab-panel bg-white rounded-xl shadow-sm border overflow-hidden hidden">
             <div class="p-6">
+                <!-- Impact Tracker Header -->
                 <div class="flex items-center justify-between mb-6">
                     <div>
-                        <h2 class="text-xl font-bold text-gray-900">Platform Impact Tracker</h2>
-                        <p class="text-sm text-gray-500">Aggregated impact metrics across all users, ambassadors, and partners</p>
+                        <h2 class="text-xl font-bold text-gray-900">Aggregated Impact Tracker</h2>
+                        <p class="text-sm text-gray-500 mt-1">Real-time platform-wide impact across all users, ambassadors, partners, and events</p>
                     </div>
-                    <button onclick="loadImpactTracker()" class="px-4 py-2 rounded-lg text-sm font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 transition-colors" style="cursor:pointer;">
+                    <button onclick="loadImpactAggregates()" class="px-4 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-100 transition-colors flex items-center gap-2">
                         <i class="bx bx-refresh"></i> Refresh
                     </button>
                 </div>
 
-                <!-- Primary Metrics -->
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8" id="impactStatsGrid">
-                    <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 text-center">
-                        <div class="text-2xl font-extrabold text-purple-700" id="impLivesImpacted">--</div>
-                        <div class="text-xs font-semibold text-purple-600 mt-1">Lives Impacted</div>
+                <!-- Primary Metric: Lives Impacted -->
+                <div class="bg-gradient-to-r from-purple-600 to-purple-800 rounded-2xl p-6 mb-6 text-white">
+                    <div class="flex items-center gap-4">
+                        <div class="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                            <i class="bx bx-world text-3xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-purple-200 text-sm font-medium">Total Lives Impacted</p>
+                            <p class="text-4xl font-bold" id="impactTotalPeople">0</p>
+                            <p class="text-purple-200 text-xs mt-1">Aggregate sum across all logged activities and events</p>
+                        </div>
                     </div>
-                    <div class="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 text-center">
-                        <div class="text-2xl font-extrabold text-amber-700" id="impTotalHours">--</div>
-                        <div class="text-xs font-semibold text-amber-600 mt-1">Hours Contributed</div>
+                </div>
+
+                <!-- Mandatory Metrics Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center"><i class="bx bx-time-five text-blue-600 text-xl"></i></div>
+                            <div>
+                                <p class="text-xs text-gray-500">Total Hours</p>
+                                <p class="text-lg font-bold text-gray-900" id="impactTotalHours">0</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 text-center">
-                        <div class="text-2xl font-extrabold text-green-700" id="impUSDValue">--</div>
-                        <div class="text-xs font-semibold text-green-600 mt-1">USD Value</div>
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center"><i class="bx bx-dollar text-green-600 text-xl"></i></div>
+                            <div>
+                                <p class="text-xs text-gray-500">USD Value</p>
+                                <p class="text-lg font-bold text-gray-900" id="impactTotalUsd">$0</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 text-center">
-                        <div class="text-2xl font-extrabold text-blue-700" id="impTotalSCP">--</div>
-                        <div class="text-xs font-semibold text-blue-600 mt-1">Total SCP</div>
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center"><i class="bx bx-trophy text-amber-600 text-xl"></i></div>
+                            <div>
+                                <p class="text-xs text-gray-500">Total SCP</p>
+                                <p class="text-lg font-bold text-gray-900" id="impactTotalScp">0</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl p-4 text-center">
-                        <div class="text-2xl font-extrabold text-pink-700" id="impTotalEntries">--</div>
-                        <div class="text-xs font-semibold text-pink-600 mt-1">Impact Entries</div>
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center"><i class="bx bx-list-check text-purple-600 text-xl"></i></div>
+                            <div>
+                                <p class="text-xs text-gray-500">Impact Entries</p>
+                                <p class="text-lg font-bold text-gray-900" id="impactTotalEntries">0</p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-xl p-4 text-center">
-                        <div class="text-2xl font-extrabold text-cyan-700" id="impTotalEvents">--</div>
-                        <div class="text-xs font-semibold text-cyan-600 mt-1">Shared Events</div>
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center"><i class="bx bx-calendar-event text-pink-600 text-xl"></i></div>
+                            <div>
+                                <p class="text-xs text-gray-500">Shared Events</p>
+                                <p class="text-lg font-bold text-gray-900" id="impactTotalEvents">0</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Breakdowns -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                     <!-- By ESG Category -->
-                    <div class="border rounded-xl p-5">
-                        <h3 class="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider">By ESG Category</h3>
+                    <div class="border border-gray-200 rounded-xl p-5">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                            <i class="bx bx-leaf text-green-500"></i> By ESG Category
+                        </h3>
                         <div class="space-y-3">
-                            <div>
-                                <div class="flex items-center justify-between mb-1">
-                                    <span class="text-sm font-medium text-green-700 flex items-center gap-1"><i class="bx bx-leaf"></i> Environmental</span>
-                                    <span class="text-sm font-bold text-green-700" id="impEsgEnv">0</span>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                    <span class="text-sm text-gray-600">Environmental</span>
                                 </div>
-                                <div class="w-full bg-gray-100 rounded-full h-2"><div class="bg-green-500 h-2 rounded-full transition-all" id="impEsgEnvBar" style="width:0%"></div></div>
+                                <span class="text-sm font-semibold text-gray-900" id="impactCatEnv">0</span>
                             </div>
-                            <div>
-                                <div class="flex items-center justify-between mb-1">
-                                    <span class="text-sm font-medium text-blue-700 flex items-center gap-1"><i class="bx bx-group"></i> Social</span>
-                                    <span class="text-sm font-bold text-blue-700" id="impEsgSoc">0</span>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                                    <span class="text-sm text-gray-600">Social</span>
                                 </div>
-                                <div class="w-full bg-gray-100 rounded-full h-2"><div class="bg-blue-500 h-2 rounded-full transition-all" id="impEsgSocBar" style="width:0%"></div></div>
+                                <span class="text-sm font-semibold text-gray-900" id="impactCatSocial">0</span>
                             </div>
-                            <div>
-                                <div class="flex items-center justify-between mb-1">
-                                    <span class="text-sm font-medium text-amber-700 flex items-center gap-1"><i class="bx bx-shield"></i> Governance</span>
-                                    <span class="text-sm font-bold text-amber-700" id="impEsgGov">0</span>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 bg-amber-500 rounded-full"></div>
+                                    <span class="text-sm text-gray-600">Governance</span>
                                 </div>
-                                <div class="w-full bg-gray-100 rounded-full h-2"><div class="bg-amber-500 h-2 rounded-full transition-all" id="impEsgGovBar" style="width:0%"></div></div>
+                                <span class="text-sm font-semibold text-gray-900" id="impactCatGov">0</span>
                             </div>
                         </div>
                     </div>
 
                     <!-- By Verification Tier -->
-                    <div class="border rounded-xl p-5">
-                        <h3 class="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider">By Verification Tier</h3>
+                    <div class="border border-gray-200 rounded-xl p-5">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                            <i class="bx bx-check-shield text-purple-500"></i> By Verification Tier
+                        </h3>
                         <div class="space-y-3">
-                            <div class="flex items-center justify-between py-1.5 border-b border-gray-100">
-                                <span class="text-sm text-gray-600">Tier 1 <span class="text-xs text-gray-400">(Self-reported)</span></span>
-                                <span class="text-sm font-bold text-gray-800" id="impTier1">0</span>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-600">Tier 1 (Self-reported)</span>
+                                <span class="text-sm font-semibold text-gray-900" id="impactTier1">0</span>
                             </div>
-                            <div class="flex items-center justify-between py-1.5 border-b border-gray-100">
-                                <span class="text-sm text-gray-600">Tier 2 <span class="text-xs text-gray-400">(Partner Verified)</span></span>
-                                <span class="text-sm font-bold text-gray-800" id="impTier2">0</span>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-600">Tier 2 (Partner Verified)</span>
+                                <span class="text-sm font-semibold text-gray-900" id="impactTier2">0</span>
                             </div>
-                            <div class="flex items-center justify-between py-1.5 border-b border-gray-100">
-                                <span class="text-sm text-gray-600">Tier 3 <span class="text-xs text-gray-400">(Evidence)</span></span>
-                                <span class="text-sm font-bold text-gray-800" id="impTier3">0</span>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-600">Tier 3 (Evidence)</span>
+                                <span class="text-sm font-semibold text-gray-900" id="impactTier3">0</span>
                             </div>
-                            <div class="flex items-center justify-between py-1.5">
-                                <span class="text-sm text-gray-600">Tier 4 <span class="text-xs text-gray-400">(Third-party)</span></span>
-                                <span class="text-sm font-bold text-gray-800" id="impTier4">0</span>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-600">Tier 4 (Third-party)</span>
+                                <span class="text-sm font-semibold text-gray-900" id="impactTier4">0</span>
                             </div>
                         </div>
                     </div>
 
                     <!-- By Role -->
-                    <div class="border rounded-xl p-5">
-                        <h3 class="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider">By Role</h3>
+                    <div class="border border-gray-200 rounded-xl p-5">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                            <i class="bx bx-user-circle text-blue-500"></i> By Role
+                        </h3>
                         <div class="space-y-3">
-                            <div>
-                                <div class="flex items-center justify-between mb-1">
-                                    <span class="text-sm font-medium text-purple-700">Ambassadors</span>
-                                    <span class="text-sm font-bold text-purple-700" id="impRoleAmb">0</span>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 bg-purple-500 rounded-full"></div>
+                                    <span class="text-sm text-gray-600">Ambassadors</span>
                                 </div>
-                                <div class="w-full bg-gray-100 rounded-full h-2"><div class="bg-purple-500 h-2 rounded-full transition-all" id="impRoleAmbBar" style="width:0%"></div></div>
+                                <span class="text-sm font-semibold text-gray-900" id="impactRoleAmb">0</span>
                             </div>
-                            <div>
-                                <div class="flex items-center justify-between mb-1">
-                                    <span class="text-sm font-medium text-blue-700">Partners</span>
-                                    <span class="text-sm font-bold text-blue-700" id="impRolePart">0</span>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+                                    <span class="text-sm text-gray-600">Partners</span>
                                 </div>
-                                <div class="w-full bg-gray-100 rounded-full h-2"><div class="bg-blue-500 h-2 rounded-full transition-all" id="impRolePartBar" style="width:0%"></div></div>
+                                <span class="text-sm font-semibold text-gray-900" id="impactRolePartner">0</span>
                             </div>
-                            <div>
-                                <div class="flex items-center justify-between mb-1">
-                                    <span class="text-sm font-medium text-gray-700">Users</span>
-                                    <span class="text-sm font-bold text-gray-700" id="impRoleUser">0</span>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-3 h-3 bg-gray-500 rounded-full"></div>
+                                    <span class="text-sm text-gray-600">Admins</span>
                                 </div>
-                                <div class="w-full bg-gray-100 rounded-full h-2"><div class="bg-gray-500 h-2 rounded-full transition-all" id="impRoleUserBar" style="width:0%"></div></div>
+                                <span class="text-sm font-semibold text-gray-900" id="impactRoleAdmin">0</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Public Counter Preview -->
-                <div class="mt-6 border-t pt-6">
-                    <h3 class="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider">Public-Facing Statement Preview</h3>
-                    <div class="bg-gray-50 rounded-xl p-4 border-l-4 border-purple-500">
-                        <p class="text-gray-700 text-sm italic" id="impPublicStatement">
-                            "Our global community has collectively impacted over <strong>0</strong> people through education, ESG initiatives, and transformation work."
-                        </p>
+                <div class="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100 rounded-xl p-5">
+                    <div class="flex items-center gap-3 mb-3">
+                        <i class="bx bx-globe text-purple-600 text-xl"></i>
+                        <h3 class="text-sm font-semibold text-gray-700">Public-Facing Statement Preview</h3>
                     </div>
-                    <p class="text-xs text-gray-400 mt-2">This statement auto-updates based on platform metrics. It is read-only and shows no personal data.</p>
+                    <p class="text-gray-600 text-sm italic" id="impactPublicStatement">
+                        "Our global community has collectively impacted over <strong>0</strong> people through education, ESG initiatives, and transformation work."
+                    </p>
+                    <p class="text-xs text-gray-400 mt-3">This statement is auto-generated from aggregated data. No personal data is exposed.</p>
                 </div>
             </div>
         </div>
@@ -1475,7 +1517,7 @@
         };
 
         // DOM elements - each tab has its own table, pagination, empty state
-        const panelIds = { ambassadors: 'Ambassadors', partners: 'Partners', articles: 'Articles', history: 'History' };
+        const panelIds = { ambassadors: 'Ambassadors', partners: 'Partners', articles: 'Articles', history: 'History', impact: 'Impact' };
         const elements = {
             loadingState: document.getElementById('loadingState'),
             searchInput: document.getElementById('searchInput'),
@@ -1484,7 +1526,7 @@
             addNewBtn: document.getElementById('addNewBtn'),
             panels: {}
         };
-        ['ambassadors', 'partners', 'articles', 'history'].forEach(tab => {
+        ['ambassadors', 'partners', 'articles', 'history', 'impact'].forEach(tab => {
             const suffix = tab.charAt(0).toUpperCase() + tab.slice(1);
             elements.panels[tab] = {
                 panel: document.getElementById('panel' + suffix),
@@ -1888,13 +1930,10 @@ async function markAllNotificationsRead() {
         }
 
         function showPanelForTab(tabName) {
-            ['ambassadors', 'partners', 'articles', 'history'].forEach(t => {
+            ['ambassadors', 'partners', 'articles', 'history', 'impact'].forEach(t => {
                 const p = elements.panels[t];
                 if (p && p.panel) p.panel.classList.toggle('hidden', t !== tabName);
             });
-            // Handle impact panel separately (not in elements.panels)
-            const impactPanel = document.getElementById('panelImpact');
-            if (impactPanel) impactPanel.classList.toggle('hidden', tabName !== 'impact');
         }
 
         function showToast(message, isError = false) {
@@ -2480,6 +2519,65 @@ async function markAllNotificationsRead() {
             });
             if (els && els.emptyState) els.emptyState.classList.add('hidden');
             bindRowActions();
+        }
+
+        // ============================================
+        // IMPACT TRACKER - LOAD AGGREGATES
+        // ============================================
+        async function loadImpactAggregates() {
+            try {
+                const res = await fetch('/api/impact/admin-aggregates', { credentials: 'include' });
+                const data = await res.json();
+                if (!res.ok || !data.aggregates) {
+                    console.error('Failed to load impact aggregates');
+                    return;
+                }
+                const a = data.aggregates;
+
+                // Format numbers
+                function fmtNum(n) {
+                    n = parseFloat(n) || 0;
+                    if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+                    if (n >= 1000) return (n/1000).toFixed(1) + 'K';
+                    return Math.round(n).toLocaleString();
+                }
+
+                // Primary metric
+                document.getElementById('impactTotalPeople').textContent = fmtNum(a.total_people_impacted);
+
+                // Mandatory metrics
+                document.getElementById('impactTotalHours').textContent = fmtNum(a.total_hours_contributed);
+                document.getElementById('impactTotalUsd').textContent = '$' + fmtNum(a.total_usd_value);
+                document.getElementById('impactTotalScp').textContent = fmtNum(a.total_scp);
+                document.getElementById('impactTotalEntries').textContent = fmtNum(a.total_impact_entries);
+                document.getElementById('impactTotalEvents').textContent = fmtNum(a.total_shared_events);
+
+                // By Category
+                document.getElementById('impactCatEnv').textContent = fmtNum(a.by_category?.environmental);
+                document.getElementById('impactCatSocial').textContent = fmtNum(a.by_category?.social);
+                document.getElementById('impactCatGov').textContent = fmtNum(a.by_category?.governance);
+
+                // By Tier
+                document.getElementById('impactTier1').textContent = fmtNum(a.by_tier?.tier_1);
+                document.getElementById('impactTier2').textContent = fmtNum(a.by_tier?.tier_2);
+                document.getElementById('impactTier3').textContent = fmtNum(a.by_tier?.tier_3);
+                document.getElementById('impactTier4').textContent = fmtNum(a.by_tier?.tier_4);
+
+                // By Role
+                document.getElementById('impactRoleAmb').textContent = fmtNum(a.by_role?.ambassador);
+                document.getElementById('impactRolePartner').textContent = fmtNum(a.by_role?.partner);
+                document.getElementById('impactRoleAdmin').textContent = fmtNum(a.by_role?.admin);
+
+                // Public statement
+                const roundedPeople = Math.round(a.total_people_impacted || 0);
+                let displayNum = roundedPeople;
+                if (roundedPeople >= 1000) displayNum = Math.floor(roundedPeople / 1000) * 1000;
+                document.getElementById('impactPublicStatement').innerHTML =
+                    `"Our global community has collectively impacted over <strong>${displayNum.toLocaleString()}</strong> people through education, ESG initiatives, and transformation work."`;
+
+            } catch (err) {
+                console.error('Error loading impact aggregates:', err);
+            }
         }
 
         function renderHistoryList() {
@@ -5153,7 +5251,7 @@ async function markAllNotificationsRead() {
                 fetchList();
             });
             
-            ['ambassadors', 'partners', 'articles', 'history'].forEach(tab => {
+            ['ambassadors', 'partners', 'articles', 'history', 'impact'].forEach(tab => {
                 const els = elements.panels[tab];
                 if (!els) return;
                 if (els.prevPage) {
@@ -5246,11 +5344,6 @@ async function markAllNotificationsRead() {
                     }
                 }
                 if (statusFilter) statusFilter.style.display = 'none';
-            } else if (tabName === 'impact') {
-                if (articleStatusFilters) articleStatusFilters.style.display = 'none';
-                if (statusFilter) statusFilter.style.display = 'none';
-                // Hide search bar for impact tab
-                const searchBar = document.querySelector('.bg-white.rounded-xl.shadow-sm.border.p-4.mb-6');
             } else if (tabName === 'history') {
                 if (articleStatusFilters) {
                     articleStatusFilters.style.display = 'none';
@@ -5263,6 +5356,10 @@ async function markAllNotificationsRead() {
                         <option value="inactive">Inactive</option>
                     `;
                 }
+            } else if (tabName === 'impact') {
+                if (articleStatusFilters) articleStatusFilters.style.display = 'none';
+                if (statusFilter) statusFilter.style.display = 'none';
+                loadImpactAggregates();
             } else {
                 if (articleStatusFilters) {
                     articleStatusFilters.style.display = 'none';
@@ -5278,11 +5375,6 @@ async function markAllNotificationsRead() {
                 }
             }
             
-            // Load impact tracker data if impact tab selected
-            if (tabName === 'impact') {
-                if (typeof loadImpactTracker === 'function') loadImpactTracker();
-            }
-
             // Update tab button styles
             const tabs = {
                 ambassadors: document.getElementById('tabAmbassadors'),
@@ -5330,8 +5422,7 @@ async function markAllNotificationsRead() {
                 ambassadors: 'tabAmbassadors',
                 partners: 'tabPartners',
                 articles: 'tabArticles',
-                history: 'tabHistory',
-                impact: 'tabImpact'
+                history: 'tabHistory'
             };
             
             // Get all tab elements
@@ -5582,58 +5673,6 @@ async function markAllNotificationsRead() {
         window.clearSearch = clearSearch;
         window.selectSuggestion = selectSuggestion;
         window.clearRecentSearches = clearRecentSearches;
-        window.loadImpactTracker = loadImpactTracker;
-
-        // ============================================
-        // IMPACT TRACKER - Admin Aggregated Metrics
-        // ============================================
-        async function loadImpactTracker() {
-            try {
-                const res = await fetch('/api/admin/impact/aggregated', { credentials: 'include' });
-                if (!res.ok) throw new Error('Failed to load');
-                const m = await res.json();
-
-                // Primary metrics
-                document.getElementById('impLivesImpacted').textContent = (m.total_people_impacted || 0).toLocaleString();
-                document.getElementById('impTotalHours').textContent = Math.round(m.total_hours || 0).toLocaleString();
-                document.getElementById('impUSDValue').textContent = '$' + Math.round(m.total_usd_value || 0).toLocaleString();
-                document.getElementById('impTotalSCP').textContent = Math.round(m.total_scp || 0).toLocaleString();
-                document.getElementById('impTotalEntries').textContent = (m.total_entries || 0).toLocaleString();
-                document.getElementById('impTotalEvents').textContent = (m.total_events || 0).toLocaleString();
-
-                // ESG breakdown
-                const esgTotal = Math.max((m.by_esg?.environmental || 0) + (m.by_esg?.social || 0) + (m.by_esg?.governance || 0), 1);
-                document.getElementById('impEsgEnv').textContent = (m.by_esg?.environmental || 0).toLocaleString();
-                document.getElementById('impEsgSoc').textContent = (m.by_esg?.social || 0).toLocaleString();
-                document.getElementById('impEsgGov').textContent = (m.by_esg?.governance || 0).toLocaleString();
-                document.getElementById('impEsgEnvBar').style.width = ((m.by_esg?.environmental || 0) / esgTotal * 100) + '%';
-                document.getElementById('impEsgSocBar').style.width = ((m.by_esg?.social || 0) / esgTotal * 100) + '%';
-                document.getElementById('impEsgGovBar').style.width = ((m.by_esg?.governance || 0) / esgTotal * 100) + '%';
-
-                // Tier breakdown
-                document.getElementById('impTier1').textContent = (m.by_tier?.tier_1 || 0).toLocaleString();
-                document.getElementById('impTier2').textContent = (m.by_tier?.tier_2 || 0).toLocaleString();
-                document.getElementById('impTier3').textContent = (m.by_tier?.tier_3 || 0).toLocaleString();
-                document.getElementById('impTier4').textContent = (m.by_tier?.tier_4 || 0).toLocaleString();
-
-                // Role breakdown
-                const roleTotal = Math.max((m.by_role?.ambassador || 0) + (m.by_role?.partner || 0) + (m.by_role?.user || 0), 1);
-                document.getElementById('impRoleAmb').textContent = (m.by_role?.ambassador || 0).toLocaleString();
-                document.getElementById('impRolePart').textContent = (m.by_role?.partner || 0).toLocaleString();
-                document.getElementById('impRoleUser').textContent = (m.by_role?.user || 0).toLocaleString();
-                document.getElementById('impRoleAmbBar').style.width = ((m.by_role?.ambassador || 0) / roleTotal * 100) + '%';
-                document.getElementById('impRolePartBar').style.width = ((m.by_role?.partner || 0) / roleTotal * 100) + '%';
-                document.getElementById('impRoleUserBar').style.width = ((m.by_role?.user || 0) / roleTotal * 100) + '%';
-
-                // Public statement
-                const roundedPeople = m.total_people_impacted > 0 ? Math.round(m.total_people_impacted / 1000) * 1000 || m.total_people_impacted : 0;
-                document.getElementById('impPublicStatement').innerHTML = 
-                    `"Our global community has collectively impacted over <strong>${roundedPeople.toLocaleString()}</strong> people through education, ESG initiatives, and transformation work."`;
-
-            } catch (e) {
-                console.error('Error loading impact tracker:', e);
-            }
-        }
     </script>
 </body>
 </html>
