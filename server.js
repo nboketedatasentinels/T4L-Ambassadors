@@ -443,6 +443,50 @@ app.get("/about-me.html", requireAuth, requireRole("ambassador"), async (req, re
   }
 });
 
+// ============================================
+// IMPACT LOG - TEMPORARILY DISABLED (Coming Soon)
+// Intercept before static middleware so the HTML files don't get served
+// ============================================
+app.use(["/impactlog-ambassador.html", "/impactlog-partner.html", "/impactlog-user.html", "/Impactlog.html"], (req, res) => {
+  const dashboardUrl = "/ambassador-dashboard.html";
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Impact Log | Coming Soon</title>
+  <link rel="icon" type="image/png" href="/images/favicon.png" />
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+  <style>
+    body { background: linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 50%, #faf5ff 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: system-ui, -apple-system, sans-serif; margin: 0; }
+    .card { background: white; border-radius: 1.5rem; padding: 3rem 2.5rem; max-width: 480px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(75,13,127,0.1); }
+    .icon-circle { width: 80px; height: 80px; background: linear-gradient(135deg, #f5f3ff, #faf5ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; border: 2px solid #e9d5ff; }
+    .icon-circle i { font-size: 2rem; color: #7c3aed; }
+    h1 { font-size: 1.5rem; font-weight: 800; color: #1f2937; margin-bottom: 0.5rem; }
+    .badge { display: inline-block; background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; padding: 0.375rem 1rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }
+    p { color: #6b7280; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem; }
+    .btn { display: inline-flex; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, #4b0d7f, #6b21a8); color: white; padding: 0.75rem 1.75rem; border-radius: 0.75rem; font-weight: 600; font-size: 0.9rem; text-decoration: none; transition: all 0.2s; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(75,13,127,0.3); }
+    .bar { height: 4px; background: linear-gradient(90deg, #4b0d7f, #7c3aed, #f59e0b); border-radius: 2px; margin-bottom: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="bar"></div>
+    <div class="icon-circle">
+      <i class="bx bx-line-chart"></i>
+    </div>
+    <h1>Impact Log</h1>
+    <div class="badge">Coming Soon</div>
+    <p>We're building something powerful. The Impact Log will let you track, share, and export your positive impact — launching in <strong>1 month</strong>.</p>
+    <a href="${dashboardUrl}" class="btn">
+      <i class="bx bx-arrow-back"></i> Back to Dashboard
+    </a>
+  </div>
+</body>
+</html>`);
+});
+
 // Serve static assets
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -5267,53 +5311,7 @@ app.get("/journey.html", requireAuth, requireRole("ambassador"), (req, res) => {
   res.sendFile(path.join(__dirname, "public", "journey.html"));
 });
 
-// ============================================
-// IMPACT LOG - TEMPORARILY DISABLED (Coming Soon)
-// All impact log routes return a "coming soon" page
-// ============================================
-app.get(["/impactlog-ambassador.html", "/impactlog-partner.html", "/impactlog-user.html", "/Impactlog.html"], requireAuth, (req, res) => {
-  // Determine which dashboard to go back to
-  const role = req.auth?.role || "ambassador";
-  const dashboardUrl = role === "partner" ? "/partner-dashboard.html" : "/ambassador-dashboard.html";
-
-  res.send(`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Impact Log | Coming Soon</title>
-  <link rel="icon" type="image/png" href="/images/favicon.png" />
-  <link rel="stylesheet" href="/css/styles.css" />
-  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
-  <style>
-    body { background: linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 50%, #faf5ff 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: system-ui, -apple-system, sans-serif; }
-    .card { background: white; border-radius: 1.5rem; padding: 3rem 2.5rem; max-width: 480px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(75,13,127,0.1); }
-    .icon-circle { width: 80px; height: 80px; background: linear-gradient(135deg, #f5f3ff, #faf5ff); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; border: 2px solid #e9d5ff; }
-    .icon-circle i { font-size: 2rem; color: #7c3aed; }
-    h1 { font-size: 1.5rem; font-weight: 800; color: #1f2937; margin-bottom: 0.5rem; }
-    .badge { display: inline-block; background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; padding: 0.375rem 1rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }
-    p { color: #6b7280; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem; }
-    .btn { display: inline-flex; align-items: center; gap: 0.5rem; background: linear-gradient(135deg, #4b0d7f, #6b21a8); color: white; padding: 0.75rem 1.75rem; border-radius: 0.75rem; font-weight: 600; font-size: 0.9rem; text-decoration: none; transition: all 0.2s; }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(75,13,127,0.3); }
-    .bar { height: 4px; background: linear-gradient(90deg, #4b0d7f, #7c3aed, #f59e0b); border-radius: 2px; margin-bottom: 2rem; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="bar"></div>
-    <div class="icon-circle">
-      <i class="bx bx-line-chart"></i>
-    </div>
-    <h1>Impact Log</h1>
-    <div class="badge">Coming Soon</div>
-    <p>We're building something powerful. The Impact Log will let you track, share, and export your positive impact — launching in <strong>1 month</strong>.</p>
-    <a href="${dashboardUrl}" class="btn">
-      <i class="bx bx-arrow-back"></i> Back to Dashboard
-    </a>
-  </div>
-</body>
-</html>`);
-});
+// (Impact log routes removed - handled by pre-static middleware above)
 
 // ============================================
 // PUBLIC EVENT PARTICIPATION PAGE (no auth required)
