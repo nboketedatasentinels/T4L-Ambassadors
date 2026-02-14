@@ -1069,7 +1069,7 @@ CREATE INDEX IF NOT EXISTS idx_event_participants_user_id ON event_participants(
 CREATE TABLE IF NOT EXISTS impact_entries (
     entry_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    user_role VARCHAR(20) NOT NULL CHECK (user_role IN ('ambassador', 'partner', 'admin')),
+    user_role VARCHAR(20) NOT NULL CHECK (user_role IN ('user', 'ambassador', 'partner', 'admin')),
     entry_type VARCHAR(20) NOT NULL DEFAULT 'individual' CHECK (entry_type IN ('individual', 'event_master', 'event_derived')),
     event_id UUID DEFAULT NULL REFERENCES impact_events(event_id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,

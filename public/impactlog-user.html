@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Impact Log | Transformation Leader</title>
+    <link rel="icon" type="image/png" href="/images/favicon.png" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+    <style>
+      :root {
+        --primary: #4b0d7f;
+        --primary-light: #7c3aed;
+        --primary-bg: #f5f3ff;
+        --amber: #f59e0b;
+        --success: #10b981;
+        --danger: #ef4444;
+      }
+      body { background: linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 50%, #faf5ff 100%); min-height: 100vh; }
+
+      /* Stat Cards */
+      .impact-stat-card {
+        background: white; border-radius: 1rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        border: 1px solid #f3f4f6; transition: all 0.3s ease;
+      }
+      .impact-stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(75,13,127,0.1); }
+
+      /* Cards */
+      .entry-card { background: white; border-radius: 0.75rem; padding: 1.25rem; border: 1px solid #f3f4f6; transition: all 0.2s; }
+      .entry-card:hover { border-color: #e9d5ff; }
+
+      /* Badges */
+      .badge { padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+      .badge-env { background: #d1fae5; color: #065f46; }
+      .badge-social { background: #dbeafe; color: #1e40af; }
+      .badge-gov { background: #fef3c7; color: #92400e; }
+
+      /* Modal */
+      .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; display: none; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
+      .modal-overlay.active { display: flex; }
+      .modal-content { background: white; border-radius: 1.5rem; width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px rgba(0,0,0,0.15); animation: slideUp 0.3s ease; }
+      @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+      /* Form */
+      .form-label { display: block; font-size: 0.875rem; font-weight: 600; color: #374151; margin-bottom: 0.375rem; }
+      .form-input, .form-select, .form-textarea {
+        width: 100%; padding: 0.625rem 0.875rem; border: 1.5px solid #d1d5db; border-radius: 0.625rem;
+        font-size: 0.875rem; transition: all 0.2s; outline: none; box-sizing: border-box;
+      }
+      .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(75,13,127,0.1); }
+
+      /* Buttons */
+      .btn-primary { background: linear-gradient(135deg, #4b0d7f, #6b21a8); color: white; padding: 0.625rem 1.5rem; border-radius: 0.625rem; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; }
+      .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(75,13,127,0.3); }
+      .btn-secondary { background: white; color: #4b0d7f; padding: 0.625rem 1.5rem; border-radius: 0.625rem; font-weight: 600; border: 2px solid #e9d5ff; cursor: pointer; transition: all 0.2s; }
+      .btn-secondary:hover { background: #f5f3ff; border-color: #4b0d7f; }
+
+      /* Share */
+      .share-btn { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; }
+      .share-btn:hover { transform: translateY(-1px); }
+      .share-linkedin { background: #0077b5; color: white; }
+      .share-x { background: #000; color: white; }
+      .share-copy { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+
+      /* Empty state */
+      .empty-state { text-align: center; padding: 3rem 1rem; }
+      .empty-icon { width: 80px; height: 80px; background: #f5f3ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; }
+
+      /* Loader */
+      .spinner { width: 20px; height: 20px; border: 2.5px solid #e9d5ff; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.6s linear infinite; display: inline-block; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+      }
+
+      /* Orientation banner */
+      .orientation-banner {
+        background: linear-gradient(135deg, #fef3c7, #fef9c3);
+        border: 1px solid #fde68a;
+        border-radius: 1rem;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+    </style>
+</head>
+<body class="font-sans">
+    <script src="/js/notifications.js"></script>
+
+    <!-- Simple top bar for regular users -->
+    <header class="bg-white shadow-sm border-b border-gray-100">
+      <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="bg-[#4b0d7f] text-white px-3 py-2 rounded-xl font-semibold text-sm">T4L</div>
+          <span class="text-lg font-bold text-gray-900">Transformation Leader</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-sm text-gray-500" id="userGreeting"></span>
+          <div id="logoutBtn" class="flex items-center gap-1 cursor-pointer text-sm text-gray-500 hover:text-red-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50">
+            <i class="bx bx-log-out text-lg"></i>
+            <span class="hidden md:inline">Logout</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-6xl mx-auto p-4 md:p-6 lg:p-8">
+      <!-- Header -->
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+        <div>
+          <h1 class="text-2xl md:text-3xl font-bold text-gray-900">My Impact Log</h1>
+          <p class="text-gray-500 text-sm mt-1">Track and share your positive impact contributions</p>
+        </div>
+        <div class="flex gap-3">
+          <button onclick="openModal('createEntryModal')" class="btn-primary text-sm flex items-center gap-2">
+            <i class="bx bx-plus-circle"></i> Log Impact
+          </button>
+        </div>
+      </div>
+
+      <!-- Orientation Banner -->
+      <div class="orientation-banner">
+        <i class="bx bx-info-circle text-amber-600 text-2xl flex-shrink-0"></i>
+        <div>
+          <p class="text-sm font-semibold text-amber-900">How It Works</p>
+          <p class="text-xs text-amber-700 mt-0.5">Log your individual impact activities here. Your entries are verified as <strong>Tier 1 (Self-Reported)</strong> by default. If you've been invited to a Shared Impact Event, use the participation link to confirm attendance.</p>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="stats-grid grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="impact-stat-card">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <i class="bx bx-group text-purple-600 text-xl"></i>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500 font-medium">People Impacted</p>
+              <p class="text-xl font-bold text-gray-900" id="statPeople">0</p>
+            </div>
+          </div>
+        </div>
+        <div class="impact-stat-card">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <i class="bx bx-time-five text-blue-600 text-xl"></i>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500 font-medium">Hours Contributed</p>
+              <p class="text-xl font-bold text-gray-900" id="statHours">0</p>
+            </div>
+          </div>
+        </div>
+        <div class="impact-stat-card">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <i class="bx bx-dollar text-green-600 text-xl"></i>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500 font-medium">USD Value</p>
+              <p class="text-xl font-bold text-gray-900" id="statUsd">$0</p>
+            </div>
+          </div>
+        </div>
+        <div class="impact-stat-card">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+              <i class="bx bx-trophy text-amber-600 text-xl"></i>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500 font-medium">SCP Earned</p>
+              <p class="text-xl font-bold text-gray-900" id="statScp">0</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="mb-6 flex gap-3 flex-wrap">
+        <button onclick="openShareMyImpact()" class="btn-secondary text-sm flex items-center gap-2">
+          <i class="bx bx-share-alt"></i> Share My Impact
+        </button>
+        <button onclick="exportImpactReport()" class="btn-secondary text-sm flex items-center gap-2">
+          <i class="bx bx-download"></i> Export Impact Report
+        </button>
+      </div>
+
+      <!-- Impact Entries -->
+      <h2 class="text-lg font-bold text-gray-800 mb-4">My Impact Entries</h2>
+      <div id="entriesLoading" class="text-center py-8"><div class="spinner"></div><p class="text-gray-500 mt-2 text-sm">Loading entries...</p></div>
+      <div id="entriesList" class="space-y-3" style="display:none;"></div>
+      <div id="entriesEmpty" class="empty-state" style="display:none;">
+        <div class="empty-icon"><i class="bx bx-line-chart text-3xl text-purple-400"></i></div>
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">No Impact Entries Yet</h3>
+        <p class="text-gray-500 text-sm mb-4">Log your first impact activity to start tracking your contribution.</p>
+        <button onclick="openModal('createEntryModal')" class="btn-primary text-sm">Log Your First Impact</button>
+      </div>
+    </main>
+
+    <!-- ===== CREATE INDIVIDUAL IMPACT ENTRY MODAL ===== -->
+    <div id="createEntryModal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="p-6 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">Log Impact Entry</h2>
+            <p class="text-sm text-gray-500 mt-1">Record an individual impact activity</p>
+          </div>
+          <button onclick="closeModal('createEntryModal')" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">
+            <i class="bx bx-x text-xl text-gray-500"></i>
+          </button>
+        </div>
+        <form id="createEntryForm" class="p-6 space-y-4">
+          <div>
+            <label class="form-label">Title *</label>
+            <input type="text" name="title" class="form-input" placeholder="e.g. Community mentoring session" required>
+          </div>
+          <div>
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-textarea" rows="3" placeholder="What did you do?"></textarea>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="form-label">ESG Category *</label>
+              <select name="esg_category" class="form-select" required>
+                <option value="">Select category</option>
+                <option value="environmental">Environmental</option>
+                <option value="social">Social</option>
+                <option value="governance">Governance</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Activity Date</label>
+              <input type="date" name="activity_date" class="form-input">
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="form-label">People Impacted</label>
+              <input type="number" name="people_impacted" class="form-input" placeholder="0" min="0" step="any">
+            </div>
+            <div>
+              <label class="form-label">Hours Contributed</label>
+              <input type="number" name="hours_contributed" class="form-input" placeholder="0" min="0" step="any">
+            </div>
+            <div>
+              <label class="form-label">USD Value</label>
+              <input type="number" name="usd_value" class="form-input" placeholder="0" min="0" step="any">
+            </div>
+          </div>
+          <div>
+            <label class="form-label">Evidence Link</label>
+            <input type="url" name="evidence_link" class="form-input" placeholder="https://... (optional)">
+          </div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button type="button" onclick="closeModal('createEntryModal')" class="btn-secondary text-sm">Cancel</button>
+            <button type="submit" class="btn-primary text-sm flex items-center gap-2" id="createEntryBtn">
+              <span>Log Impact</span>
+              <div class="spinner hidden" id="createEntrySpinner"></div>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ===== SHARE MY IMPACT MODAL ===== -->
+    <div id="shareMyImpactModal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="p-6 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">Share My Impact</h2>
+            <p class="text-sm text-gray-500 mt-1">Share your aggregated impact snapshot</p>
+          </div>
+          <button onclick="closeModal('shareMyImpactModal')" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">
+            <i class="bx bx-x text-xl text-gray-500"></i>
+          </button>
+        </div>
+        <div class="p-6" id="shareMyImpactContent"></div>
+      </div>
+    </div>
+
+    <!-- Frontend auth guard -->
+    <script src="/signin.js"></script>
+    <script>
+    // ============================================
+    // IMPACT LOG - USER FRONTEND (Journey A: Individual)
+    // ============================================
+    let myStats = {};
+    let myEntries = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      requireAuth('/signin');
+
+      // Logout
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+          fetch('/api/logout', { method: 'POST', credentials: 'include' })
+            .then(() => { window.location.href = '/signin.html'; })
+            .catch(err => console.error('Logout error:', err));
+        });
+      }
+
+      // Greeting
+      fetch('/api/me', { credentials: 'include' })
+        .then(r => r.json())
+        .then(data => {
+          if (data.user) {
+            const name = data.user.first_name || data.user.name || 'there';
+            document.getElementById('userGreeting').textContent = `Hi, ${name}`;
+          }
+        })
+        .catch(() => {});
+
+      // Form
+      document.getElementById('createEntryForm').addEventListener('submit', handleCreateEntry);
+
+      // Load data
+      loadStats();
+      loadEntries();
+    });
+
+    // ---- Modal Helpers ----
+    function openModal(id) {
+      document.getElementById(id).classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    // ---- Load Stats ----
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/impact/my-stats', { credentials: 'include' });
+        const data = await res.json();
+        if (data.stats) {
+          myStats = data.stats;
+          document.getElementById('statPeople').textContent = formatNumber(myStats.total_people_impacted);
+          document.getElementById('statHours').textContent = formatNumber(myStats.total_hours);
+          document.getElementById('statUsd').textContent = '$' + formatNumber(myStats.total_usd_value);
+          document.getElementById('statScp').textContent = formatNumber(myStats.total_scp);
+        }
+      } catch (err) {
+        console.error('Failed to load stats:', err);
+      }
+    }
+
+    // ---- Load Entries ----
+    async function loadEntries() {
+      try {
+        const res = await fetch('/api/impact/entries', { credentials: 'include' });
+        const data = await res.json();
+        myEntries = data.entries || [];
+
+        document.getElementById('entriesLoading').style.display = 'none';
+
+        if (myEntries.length === 0) {
+          document.getElementById('entriesEmpty').style.display = 'block';
+          return;
+        }
+
+        document.getElementById('entriesList').style.display = 'block';
+        renderEntries(myEntries);
+      } catch (err) {
+        console.error('Failed to load entries:', err);
+        document.getElementById('entriesLoading').innerHTML = '<p class="text-red-500 text-sm">Failed to load entries</p>';
+      }
+    }
+
+    // ---- Render Entries ----
+    function renderEntries(entries) {
+      const container = document.getElementById('entriesList');
+      container.innerHTML = entries.map(entry => {
+        const catBadge = entry.esg_category === 'environmental' ? 'badge-env' :
+                         entry.esg_category === 'social' ? 'badge-social' : 'badge-gov';
+        const typeLbl = entry.entry_type === 'event_master' ? 'Event Creator' :
+                        entry.entry_type === 'event_derived' ? 'Event Participant' : 'Individual';
+        const actDate = new Date(entry.activity_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+        return `
+          <div class="entry-card">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                  <span class="badge ${catBadge}">${entry.esg_category}</span>
+                  <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">${typeLbl}</span>
+                  <span class="text-xs text-gray-400">${actDate}</span>
+                </div>
+                <h4 class="font-semibold text-gray-800 text-sm">${escapeHtml(entry.title)}</h4>
+                ${entry.description ? `<p class="text-xs text-gray-500 mt-1 line-clamp-1">${escapeHtml(entry.description)}</p>` : ''}
+              </div>
+              <div class="text-right flex-shrink-0">
+                <p class="text-sm font-bold text-purple-700">${formatNumber(entry.people_impacted)} ${escapeHtml(entry.impact_unit || 'people')}</p>
+                <p class="text-xs text-gray-400">SCP: ${formatNumber(entry.scp_earned)}</p>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ---- Create Entry ----
+    async function handleCreateEntry(e) {
+      e.preventDefault();
+      const form = e.target;
+      const btn = document.getElementById('createEntryBtn');
+      const spinner = document.getElementById('createEntrySpinner');
+
+      const formData = new FormData(form);
+      const body = Object.fromEntries(formData.entries());
+
+      btn.disabled = true;
+      spinner.classList.remove('hidden');
+
+      try {
+        const res = await fetch('/api/impact/entries', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(body),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to create entry');
+
+        closeModal('createEntryModal');
+        form.reset();
+        showToast('Impact entry logged successfully!', 'success');
+
+        loadStats();
+        loadEntries();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+      }
+    }
+
+    // ---- Share Functions ----
+    function openShareMyImpact() {
+      const content = document.getElementById('shareMyImpactContent');
+      const people = Math.round(myStats.total_people_impacted || 0);
+      const hours = Math.round(myStats.total_hours || 0);
+      const events = (myStats.events_created || 0) + (myStats.events_participated || 0);
+
+      content.innerHTML = `
+        <div class="space-y-5">
+          <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 text-center border border-purple-100">
+            <img src="/images/favicon.png" alt="T4L" class="w-10 h-10 mx-auto mb-3 rounded-lg" onerror="this.style.display='none'">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">My Impact with Transformation Leader</h3>
+            <div class="grid grid-cols-3 gap-4 mb-4">
+              <div>
+                <p class="text-2xl font-bold text-purple-700">${people > 0 ? people + '+' : '0'}</p>
+                <p class="text-xs text-gray-500">People Reached</p>
+              </div>
+              <div>
+                <p class="text-2xl font-bold text-blue-700">${hours}</p>
+                <p class="text-xs text-gray-500">Hours</p>
+              </div>
+              <div>
+                <p class="text-2xl font-bold text-green-700">${events}</p>
+                <p class="text-xs text-gray-500">Events</p>
+              </div>
+            </div>
+            <p class="text-xs text-gray-400">Positive Impact | Sustainable Change</p>
+          </div>
+          <div class="flex flex-wrap gap-2 justify-center">
+            <button onclick="shareToLinkedIn()" class="share-btn share-linkedin"><i class="bx bxl-linkedin"></i> LinkedIn</button>
+            <button onclick="shareToX()" class="share-btn share-x"><i class="bx bxl-twitter"></i> X / Twitter</button>
+            <button onclick="copyShareText()" class="share-btn share-copy"><i class="bx bx-copy"></i> Copy Text</button>
+          </div>
+          <p class="text-xs text-gray-400 text-center italic">Social sharing features are promotional and invitational in nature and must not be used as evidence of ESG performance or verification.</p>
+        </div>
+      `;
+      openModal('shareMyImpactModal');
+    }
+
+    function shareToLinkedIn() {
+      const people = Math.round(myStats.total_people_impacted || 0);
+      const text = `This year, I've contributed to community initiatives reaching ${people > 0 ? people + '+ people' : 'multiple communities'} through the Transformation Leader ecosystem.\nCollective action matters.\n#TransformationLeader #PositiveImpact`;
+      const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.origin)}&text=${encodeURIComponent(text)}`;
+      window.open(linkedInUrl, '_blank', 'width=600,height=500');
+    }
+
+    function shareToX() {
+      const people = Math.round(myStats.total_people_impacted || 0);
+      const text = `This year, I've contributed to community initiatives reaching ${people > 0 ? people + '+ people' : 'multiple communities'} through @T4Leader.\n#PositiveImpact`;
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'width=600,height=400');
+    }
+
+    function copyShareText() {
+      const people = Math.round(myStats.total_people_impacted || 0);
+      const text = `This year, I've contributed to community initiatives reaching ${people > 0 ? people + '+ people' : 'multiple communities'} through the Transformation Leader ecosystem. Collective action matters. #TransformationLeader #PositiveImpact`;
+      navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard!', 'success'));
+    }
+
+    // ---- Export Impact Report ----
+    function exportImpactReport() {
+      if (!myStats || !myStats.category_breakdown) {
+        showToast('Loading stats... please try again in a moment.', 'error');
+        loadStats();
+        return;
+      }
+
+      const s = myStats;
+      const cat = s.category_breakdown || { environmental: {people:0,hours:0,usd:0}, social: {people:0,hours:0,usd:0}, governance: {people:0,hours:0,usd:0} };
+      const ver = s.verification_breakdown || { tier_1: 0, tier_2: 0, tier_3: 0, tier_4: 0 };
+      const totalEntries = s.total_entries || 0;
+      const t1Pct = totalEntries > 0 ? ((ver.tier_1 / totalEntries) * 100).toFixed(1) : '0.0';
+      const t2Pct = totalEntries > 0 ? ((ver.tier_2 / totalEntries) * 100).toFixed(1) : '0.0';
+      const t3Pct = totalEntries > 0 ? ((ver.tier_3 / totalEntries) * 100).toFixed(1) : '0.0';
+      const t4Pct = totalEntries > 0 ? ((ver.tier_4 / totalEntries) * 100).toFixed(1) : '0.0';
+      const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+      const fmtNum = (n) => { const v = parseFloat(n) || 0; return v.toLocaleString('en-US', { maximumFractionDigits: 0 }); };
+      const fmtUsd = (n) => { const v = parseFloat(n) || 0; return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Personal Impact Report | Transformation Leader</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #fff; color: #1a1a2e; padding: 48px; max-width: 900px; margin: 0 auto; }
+    .header-bar { height: 4px; background: linear-gradient(90deg, #4b0d7f, #7c3aed, #f59e0b); border-radius: 2px; margin-bottom: 32px; }
+    h1 { font-size: 32px; font-weight: 800; color: #4b0d7f; margin-bottom: 4px; }
+    .subtitle { color: #6b7280; font-size: 14px; margin-bottom: 4px; }
+    .period { color: #374151; font-size: 14px; font-weight: 600; margin-bottom: 32px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 40px; }
+    .kpi-card { border: 2px solid #e9d5ff; border-radius: 12px; padding: 24px; text-align: center; }
+    .kpi-value { font-size: 40px; font-weight: 800; color: #4b0d7f; }
+    .kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #6b7280; margin-top: 4px; }
+    h2 { font-size: 22px; font-weight: 700; color: #4b0d7f; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+    th { background: #4b0d7f; color: #fff; padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    th:first-child { border-radius: 8px 0 0 0; } th:last-child { border-radius: 0 8px 0 0; }
+    td { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; font-size: 14px; color: #374151; }
+    tr:last-child td { border-bottom: none; }
+    .disclosure { margin-top: 40px; padding-top: 24px; border-top: 2px solid #e9d5ff; }
+    .disclosure h2 { font-size: 20px; margin-bottom: 12px; }
+    .disclosure p { font-size: 13px; color: #6b7280; line-height: 1.7; margin-bottom: 8px; }
+    .footer { margin-top: 40px; text-align: center; color: #9ca3af; font-size: 12px; }
+    .footer .logo-text { font-weight: 700; color: #4b0d7f; }
+    @media print { body { padding: 24px; } .no-print { display: none !important; } }
+    .print-actions { position: fixed; top: 16px; right: 16px; display: flex; gap: 8px; }
+    .print-actions button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; }
+    .btn-print { background: #4b0d7f; color: #fff; } .btn-print:hover { background: #6b21a8; }
+    .btn-close { background: #f3f4f6; color: #374151; } .btn-close:hover { background: #e5e7eb; }
+  </style>
+</head>
+<body>
+  <div class="print-actions no-print">
+    <button class="btn-print" onclick="window.print()">&#128438; Print / Save PDF</button>
+    <button class="btn-close" onclick="window.close()">Close</button>
+  </div>
+  <div class="header-bar"></div>
+  <h1>Personal Impact Report</h1>
+  <p class="subtitle">Positive Impact | Sustainable Change</p>
+  <p class="period">Reporting Period: All time to Present &mdash; Generated ${today}</p>
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-value">${fmtNum(s.total_people_impacted)}</div><div class="kpi-label">People Impacted</div></div>
+    <div class="kpi-card"><div class="kpi-value">${fmtNum(s.total_hours)}</div><div class="kpi-label">Hours Contributed</div></div>
+    <div class="kpi-card"><div class="kpi-value">${fmtUsd(s.total_usd_value)}</div><div class="kpi-label">Social Value Created</div></div>
+  </div>
+  <h2>ESG Breakdown</h2>
+  <table><thead><tr><th>Category</th><th>People</th><th>Hours</th><th>USD Value</th></tr></thead><tbody>
+    <tr><td>Environmental</td><td>${fmtNum(cat.environmental?.people)}</td><td>${fmtNum(cat.environmental?.hours)}</td><td>${fmtUsd(cat.environmental?.usd)}</td></tr>
+    <tr><td>Social</td><td>${fmtNum(cat.social?.people)}</td><td>${fmtNum(cat.social?.hours)}</td><td>${fmtUsd(cat.social?.usd)}</td></tr>
+    <tr><td>Governance</td><td>${fmtNum(cat.governance?.people)}</td><td>${fmtNum(cat.governance?.hours)}</td><td>${fmtUsd(cat.governance?.usd)}</td></tr>
+  </tbody></table>
+  <h2>Verification Transparency</h2>
+  <table><thead><tr><th>Tier</th><th>% of Entries</th></tr></thead><tbody>
+    <tr><td>Tier 1 &ndash; Self-Reported</td><td>${t1Pct}%</td></tr>
+    <tr><td>Tier 2 &ndash; Partner Verified</td><td>${t2Pct}%</td></tr>
+    <tr><td>Tier 3 &ndash; Externally Audited</td><td>${t3Pct}%</td></tr>
+    <tr><td>Tier 4 &ndash; Certified</td><td>${t4Pct}%</td></tr>
+  </tbody></table>
+  <div class="disclosure">
+    <h2>Methodology &amp; Disclosure</h2>
+    <p>Impact entries may be self-reported (Tier 1) or supported by partner validation and/or evidence (Tier 2+). USD social value figures are estimated by the reporting user and are not independently audited. "People Impacted" reflects the cumulative reach of activities logged by this individual through the Transformation Leader platform.</p>
+    <p>This report is generated for personal reference and transparent impact tracking. It is not an audited ESG performance document.</p>
+  </div>
+  <div class="footer">
+    <p><span class="logo-text">Transformation Leader</span> &mdash; Positive Impact | Sustainable Change</p>
+    <p style="margin-top:4px;">Report generated on ${today}</p>
+  </div>
+</body></html>`;
+
+      const reportWindow = window.open('', '_blank');
+      reportWindow.document.write(html);
+      reportWindow.document.close();
+    }
+
+    // ---- Utility Functions ----
+    function formatNumber(num) {
+      const n = parseFloat(num) || 0;
+      if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+      if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+      return Math.round(n * 100) / 100;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      const bgColor = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-purple-600';
+      toast.className = `fixed top-4 right-4 z-[100] ${bgColor} text-white px-5 py-3 rounded-xl shadow-lg text-sm font-medium max-w-sm`;
+      toast.style.animation = 'slideUp 0.3s ease';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3500);
+    }
+    </script>
+</body>
+</html>
