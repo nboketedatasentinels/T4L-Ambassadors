@@ -245,7 +245,7 @@ class SubscriptionManager {
                 <div class="flex items-start gap-3">
                   <i class="fas fa-star text-[#4b0d7f] text-xl mt-0.5"></i>
                   <div>
-                    <h4 class="font-bold text-gray-900 mb-2">Upgrade to Paid for Full Access:</h4>
+                    <h4 class="font-bold text-gray-900 mb-2">Upgrade to Top Voice for Full Access:</h4>
                     <ul class="text-sm text-gray-700 space-y-1.5">
                       <li class="flex items-center gap-2"><i class="fas fa-rocket text-[#4b0d7f] text-xs"></i> Journey Progress Tracking</li>
                       <li class="flex items-center gap-2"><i class="fas fa-file-alt text-[#4b0d7f] text-xs"></i> Article Publishing</li>
@@ -305,10 +305,10 @@ class SubscriptionManager {
     const subject = 'Subscription Upgrade Request';
     const body = `Hello T4L Team,
 
-I am interested in upgrading my subscription from Free to Paid to access all features.
+I am interested in upgrading my subscription from Free to Top Voice to access all features.
 
 Current Subscription: Free
-Requested Subscription: Paid
+Requested Subscription: Top Voice
 
 Please let me know the next steps to proceed with the upgrade.
 
@@ -349,7 +349,7 @@ Thank you,
           : 'bg-purple-100 text-[#4b0d7f]'
       }" ${this.hasFullAccess ? 'style="background: linear-gradient(to right, #4b0d7f, #a36737);"' : ''}>
         <i class="fas ${this.hasFullAccess ? 'fa-crown' : 'fa-user'}"></i>
-        ${this.hasFullAccess ? 'Paid' : 'Free Subscription'}
+        ${this.hasFullAccess ? 'Top Voice' : 'Free Subscription'}
       </div>
     `;
     
