@@ -11405,7 +11405,7 @@ app.post(
 );
 
 // ============================================
-// PARTNER: Delete a post
+// PARTNER: Delete a post (cascades to applications & notifications)
 // ============================================
 app.delete(
   "/api/posts/:id",
@@ -11413,10 +11413,25 @@ app.delete(
   requireRole("partner"),
   async (req, res) => {
     try {
-      const partnerId = req.auth.userId;
+      const userId = req.auth.userId;
       const postId = req.params.id;
 
-      log("🗑️ Deleting post:", postId, "for partner:", partnerId);
+      log("🗑️ Deleting post:", postId, "for user_id:", userId);
+
+      // ✅ FIX: First get the partner_id from the partners table using user_id
+      const { data: partner, error: partnerError } = await supabase
+        .from("partners")
+        .select("partner_id")
+        .eq("user_id", userId)
+        .single();
+
+      if (partnerError || !partner) {
+        console.error("❌ Partner not found for user_id:", userId);
+        return res.status(404).json({ error: "Partner not found" });
+      }
+
+      const partnerId = partner.partner_id;
+      log("✅ Found partner_id:", partnerId);
 
       // Verify the post belongs to this partner
       const { data: post, error: fetchError } = await supabase
@@ -11432,7 +11447,44 @@ app.delete(
         });
       }
 
-      // Delete the post
+      // ✅ Step 1: Get all application IDs linked to this post (for notification cleanup)
+      const { data: relatedApps } = await supabase
+        .from("applications")
+        .select("application_id")
+        .eq("post_id", postId);
+
+      const appIds = (relatedApps || []).map(a => a.application_id);
+      log("📋 Found", appIds.length, "related applications for post:", postId);
+
+      // ✅ Step 2: Delete notifications linked to those applications
+      if (appIds.length > 0) {
+        const { error: notifDeleteError } = await supabase
+          .from("notifications")
+          .delete()
+          .in("application_id", appIds);
+
+        if (notifDeleteError) {
+          console.error("⚠️ Error deleting related notifications:", notifDeleteError);
+        } else {
+          log("✅ Related notifications deleted for post:", postId);
+        }
+      }
+
+      // ✅ Step 3: Delete all applications linked to this post
+      if (appIds.length > 0) {
+        const { error: appsDeleteError } = await supabase
+          .from("applications")
+          .delete()
+          .eq("post_id", postId);
+
+        if (appsDeleteError) {
+          console.error("⚠️ Error deleting related applications:", appsDeleteError);
+        } else {
+          log("✅ Related applications deleted for post:", postId);
+        }
+      }
+
+      // ✅ Step 4: Delete the post itself
       const { error: deleteError } = await supabase
         .from("posts")
         .delete()
