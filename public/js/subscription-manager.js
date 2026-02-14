@@ -14,6 +14,24 @@ class SubscriptionManager {
 
   async checkSubscription() {
     try {
+      // First check if the current user is an ambassador — skip for partners/admins/users
+      try {
+        const meResp = await fetch('/api/me', { credentials: 'include' });
+        if (meResp.ok) {
+          const meData = await meResp.json();
+          const role = meData.role || meData.user_type || '';
+          if (role !== 'ambassador') {
+            console.log('✅ Subscription manager skipped for role:', role);
+            this.subscriptionType = 'paid';
+            this.hasFullAccess = true;
+            this.skippedForRole = true;
+            return { subscription_type: 'paid', has_full_access: true };
+          }
+        }
+      } catch (e) {
+        // If auth check fails, continue with subscription check
+      }
+
       const response = await fetch('/api/ambassador/subscription', {
         credentials: 'include'
       });
@@ -310,6 +328,12 @@ Thank you,
     this.showSidebarSkeleton();
     await this.checkSubscription();
     this.hideSidebarSkeletonShowNav();
+
+    // If user is not an ambassador (partner, admin, etc.), don't restrict or badge
+    if (this.skippedForRole) {
+      return;
+    }
+
     this.restrictNavigation();
     this.addSubscriptionBadge();
   }
