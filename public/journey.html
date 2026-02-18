@@ -2978,7 +2978,7 @@ What quote guides your approach to leadership or change?
           // Open the profile audit recommendations popup
           openProfileAuditRecommendationsPopup();
         } else if (action === 'popup:impact_coming_soon') {
-          alert('Impact Log is coming soon — available in 1 month!');
+          alert('Impact Log will be available next month');
         } else if (action === 'email' || action.startsWith('email:')) {
           let subject, body;
 
@@ -4163,8 +4163,13 @@ Best,
               <i className="bx bx-check-square text-2xl text-[#4b0d7f] group-hover:scale-110 transition-all duration-200"></i>
               <span className="text-[10px] mt-1.5 font-medium text-[#4b0d7f] transition-colors duration-200">Task</span>
             </a>
-            {/* Impact Log (separate page) */}
-            <a href="#" onclick="alert('Impact Log is coming soon — available in 1 month!'); return false;" className="flex flex-col items-center py-2 px-3 rounded-lg" style="opacity:0.45; cursor:not-allowed;">
+            {/* Impact Log (temporarily locked) */}
+            <a
+              href="#"
+              onClick={() => { alert('Impact Log is coming soon — available in 1 month!'); return false; }}
+              className="flex flex-col items-center py-2 px-3 rounded-lg"
+              style={{ opacity: 0.45, cursor: 'not-allowed' }}
+            >
               <i className="bx bx-line-chart text-2xl text-gray-400"></i>
               <span className="text-[10px] mt-1.5 font-medium text-gray-400">Impact Log</span>
             </a>
