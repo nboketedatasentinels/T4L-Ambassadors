@@ -58,11 +58,11 @@ async function signIn(email, access_code, password, rememberMe = false) {
   }
 }
 
-// Add event listener when DOM is loaded
+// Add event listener when DOM is loaded (only runs on pages that have signinForm)
 document.addEventListener('DOMContentLoaded', function() {
   const form = document.getElementById('signinForm');
   
-  if (form) {  // ✅ Check if form exists
+  if (form) {
     form.addEventListener('submit', async function(e) {
       e.preventDefault();
       
@@ -74,30 +74,11 @@ document.addEventListener('DOMContentLoaded', function() {
       try {
         await signIn(email, access_code, password, rememberMe);
       } catch (error) {
-        // Error already handled in signIn function
         console.error('Form submission error:', error);
       }
     });
   }
 });
-
-// Add event listener when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-  const form = document.getElementById('signinForm');
-  
-  form.addEventListener('submit', async function(e) {
-    e.preventDefault();  // Prevent default form submission
-    
-    const email = document.getElementById('email').value;
-    const access_code = document.getElementById('access_code').value;
-    const password = document.getElementById('password').value;
-    const rememberMe = document.getElementById('rememberMe').checked;
-    
-    await signIn(email, access_code, password, rememberMe);
-  });
-}
-
-);
 
 /**
  * Sign out user

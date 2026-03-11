@@ -7,6 +7,56 @@ const multer = require("multer");
 const JOURNEY_MONTHS = require("./journey-db.js");
 const app = express();
 const { v4: uuidv4 } = require("uuid");
+const cors = require("cors");
+const PDFDocument = require("pdfkit");
+const ExcelJS = require("exceljs");
+const { Resend } = require("resend");
+const firebaseAdmin = require("firebase-admin");
+const impactSync = require("./services/impact-sync");
+
+// ============================================
+// FIREBASE ADMIN SDK INITIALIZATION
+// Bridges Supabase users with Firebase Auth so both
+// T4L-Ambassadors and Tier share the same UID.
+// ============================================
+let firebaseInitialized = false;
+try {
+  const fbProjectId = process.env.FIREBASE_PROJECT_ID;
+  const fbClientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const fbPrivateKey = process.env.FIREBASE_PRIVATE_KEY
+    ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n")
+    : undefined;
+
+  if (fbProjectId && fbClientEmail && fbPrivateKey) {
+    firebaseAdmin.initializeApp({
+      credential: firebaseAdmin.credential.cert({
+        projectId: fbProjectId,
+        clientEmail: fbClientEmail,
+        privateKey: fbPrivateKey,
+      }),
+    });
+    firebaseInitialized = true;
+    console.log("✅ Firebase Admin SDK initialized (cross-platform identity enabled)");
+  } else {
+    console.warn(
+      "⚠️ Firebase Admin SDK NOT initialized: missing FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, or FIREBASE_PRIVATE_KEY. Cross-platform identity features will be disabled."
+    );
+  }
+} catch (err) {
+  console.error("❌ Firebase Admin SDK initialization failed:", err.message);
+}
+
+app.use(cors({
+  origin: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  maxAge: 3600,
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+  exposedHeaders: ["Content-Range", "X-Total-Count"]
+}));
+
 
 // ========== EMAIL SERVICE (NODEMAILER) ==========
 const nodemailer = require("nodemailer");
@@ -14,8 +64,11 @@ const nodemailer = require("nodemailer");
 // Gmail SMTP Configuration (from environment variables)
 const SMTP_CONFIG = {
   host: process.env.SMTP_HOST || "smtp.gmail.com",
-  port: parseInt(process.env.SMTP_PORT) || 587,
-  secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
+  port: parseInt(process.env.SMTP_PORT, 10) || 465,
+  // Allow overriding TLS mode via env; default true for 465-style SSL
+  secure: process.env.SMTP_SECURE
+    ? process.env.SMTP_SECURE === "true"
+    : true,
   auth: {
     user: process.env.SMTP_USER || process.env.EMAIL_USER,
     pass: process.env.SMTP_PASS || process.env.EMAIL_PASSWORD || "", // Gmail App Password
@@ -29,47 +82,42 @@ const log = (...args) => { if (isDev) _consoleLog(...args); };
 
 class EmailService {
   constructor() {
-    // Initialize Nodemailer with hardcoded Gmail credentials
     this.nodemailerTransporter = null;
     this.etherealAccount = null;
 
-    // Check if Ethereal should be used for testing
-    if (process.env.USE_ETHEREAL === "true") {
-      log("🔄 Ethereal mode enabled - will initialize on startup");
-      // Ethereal will be initialized asynchronously after EmailService is created
+    // When RESEND_API_KEY is present, use Resend for all emails — skip SMTP/Ethereal entirely
+    this.resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+    if (this.resend) {
+      console.log("✅ Resend email client initialized — SMTP/Ethereal disabled");
+      return; // do not touch nodemailer at all
+    }
+
+    // No Resend key — fall back to SMTP or Ethereal
+    const hasSmtpCreds = SMTP_CONFIG.auth.user && SMTP_CONFIG.auth.pass && SMTP_CONFIG.auth.pass.trim().length > 0;
+
+    if (process.env.USE_ETHEREAL === "true" || !hasSmtpCreds) {
+      if (!hasSmtpCreds) log("⚠️  No SMTP credentials found — auto-enabling Ethereal test emails");
+      else log("🔄 Ethereal mode enabled - will initialize on startup");
+      this.initializeEthereal();
     } else {
-      // Use Gmail SMTP (hardcoded credentials)
       try {
-        // Remove spaces from password if present (Gmail shows them with spaces)
         const smtpPass = SMTP_CONFIG.auth.pass.replace(/\s+/g, "");
 
         this.nodemailerTransporter = nodemailer.createTransport({
           host: SMTP_CONFIG.host,
           port: SMTP_CONFIG.port,
           secure: SMTP_CONFIG.secure,
-          auth: {
-            user: SMTP_CONFIG.auth.user,
-            pass: smtpPass,
-          },
+          auth: { user: SMTP_CONFIG.auth.user, pass: smtpPass },
         });
 
-        // Verify connection
-        this.nodemailerTransporter.verify((error, success) => {
+        this.nodemailerTransporter.verify((error) => {
           if (error) {
-            console.error(
-              "❌ SMTP connection verification failed:",
-              error.message
-            );
-            console.error("   Please check:");
-            console.error(
-              "   1. App password is correct (16 characters, no spaces)"
-            );
-            console.error("   2. 2-Step Verification is enabled on Gmail");
-            console.error("   3. App password hasn't been revoked");
+            console.error("❌ SMTP connection verification failed:", error.message);
+            console.error("   Falling back to Ethereal test email service...");
+            this.nodemailerTransporter = null;
+            this.initializeEthereal();
           } else {
             log("✅ Nodemailer email service initialized (Gmail SMTP)");
-            log(`   Connected to: ${SMTP_CONFIG.host}:${SMTP_CONFIG.port}`);
-            log(`   From: ${SMTP_CONFIG.auth.user}`);
           }
         });
       } catch (error) {
@@ -104,92 +152,69 @@ class EmailService {
     }
   }
 
-  // Send ambassador welcome email using Nodemailer
-  async sendAmbassadorWelcome(ambassadorData) {
-    if (!this.nodemailerTransporter) {
-      log("⚠️  Nodemailer not available - skipping email");
-      return { success: false, error: "Email service not configured" };
+  // Internal helper — send via Resend if available, else nodemailer
+  async _sendMail({ to, subject, html, replyTo }) {
+    if (this.resend) {
+      const payload = {
+        from: "Transformation Leader <onboarding@resend.dev>",
+        to: Array.isArray(to) ? to : [to],
+        reply_to: replyTo || undefined,
+        subject,
+        html,
+      };
+      console.log("[resend] Sending email to:", payload.to, "| subject:", subject);
+      const { data, error } = await this.resend.emails.send(payload);
+      console.log("[resend] Response — data:", JSON.stringify(data), "| error:", JSON.stringify(error));
+      if (error) throw new Error(`Resend error: ${error.message || JSON.stringify(error)}`);
+      return { method: "resend", messageId: data?.id };
     }
 
+    if (!this.nodemailerTransporter) {
+      throw new Error("No email transport available (set RESEND_API_KEY)");
+    }
+
+    const info = await this.nodemailerTransporter.sendMail({
+      from: `"Transformation Leader" <${this.etherealAccount?.user || SMTP_FROM}>`,
+      to,
+      replyTo: replyTo || undefined,
+      subject,
+      html,
+    });
+
+    if (this.etherealAccount) {
+      return { method: "ethereal", messageId: info.messageId, previewUrl: nodemailer.getTestMessageUrl(info) };
+    }
+    return { method: "nodemailer", messageId: info.messageId };
+  }
+
+  // Send ambassador welcome email
+  async sendAmbassadorWelcome(ambassadorData) {
     try {
-      const mailOptions = {
-        from: this.etherealAccount?.user || SMTP_FROM,
+      const result = await this._sendMail({
         to: ambassadorData.email,
         subject: `🎉 Welcome ${ambassadorData.name} to T4LA Ambassador Program!`,
         html: this.createAmbassadorEmailBody(ambassadorData),
-      };
-
-      const info = await this.nodemailerTransporter.sendMail(mailOptions);
-
-      // If using Ethereal, get the preview URL
-      if (this.etherealAccount) {
-        const previewUrl = nodemailer.getTestMessageUrl(info);
-        log("✅ Ambassador email sent via Ethereal to", ambassadorData.email);
-        return {
-          success: true,
-          method: "ethereal",
-          messageId: info.messageId,
-          previewUrl: previewUrl,
-          etherealAccount: {
-            user: this.etherealAccount.user,
-            pass: this.etherealAccount.pass,
-          },
-        };
-      } else {
-        log("✅ Ambassador email sent via Nodemailer to", ambassadorData.email);
-        return {
-          success: true,
-          method: "nodemailer",
-          messageId: info.messageId,
-        };
-      }
+      });
+      log(`✅ Ambassador welcome email sent via ${result.method} to`, ambassadorData.email);
+      return { success: true, ...result };
     } catch (error) {
-      console.error(`❌ Nodemailer failed:`, error.message);
+      console.error("❌ Ambassador welcome email failed:", error.message);
       return { success: false, error: error.message };
     }
   }
 
-  // Send partner welcome email using Nodemailer
+  // Send partner welcome email
   async sendPartnerWelcome(partnerData) {
-    if (!this.nodemailerTransporter) {
-      log("⚠️  Nodemailer not available - skipping email");
-      return { success: false, error: "Email service not configured" };
-    }
-
     try {
-      const mailOptions = {
-        from: this.etherealAccount?.user || SMTP_FROM,
+      const result = await this._sendMail({
         to: partnerData.email,
         subject: `🤝 Welcome ${partnerData.name} to T4LA Partner Network!`,
         html: this.createPartnerEmailBody(partnerData),
-      };
-
-      const info = await this.nodemailerTransporter.sendMail(mailOptions);
-
-      // If using Ethereal, get the preview URL
-      if (this.etherealAccount) {
-        const previewUrl = nodemailer.getTestMessageUrl(info);
-        log("✅ Partner email sent via Ethereal to", partnerData.email);
-        return {
-          success: true,
-          method: "ethereal",
-          messageId: info.messageId,
-          previewUrl: previewUrl,
-          etherealAccount: {
-            user: this.etherealAccount.user,
-            pass: this.etherealAccount.pass,
-          },
-        };
-      } else {
-        log("✅ Partner email sent via Nodemailer to", partnerData.email);
-        return {
-          success: true,
-          method: "nodemailer",
-          messageId: info.messageId,
-        };
-      }
+      });
+      log(`✅ Partner welcome email sent via ${result.method} to`, partnerData.email);
+      return { success: true, ...result };
     } catch (error) {
-      console.error(`❌ Nodemailer failed:`, error.message);
+      console.error("❌ Partner welcome email failed:", error.message);
       return { success: false, error: error.message };
     }
   }
@@ -308,6 +333,259 @@ class EmailService {
       </html>
     `;
   }
+
+  async sendEsgAuditorEmail(data) {
+    // data: { verifier_name, verifier_email, verifier_role,
+    //         partner_name, partner_email,
+    //         entry_title, description, esg_category, activity_label,
+    //         people_impacted, hours_contributed, usd_value, evidence_link,
+    //         submitted_at, review_url }
+
+    const fmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    const fmtUsd = (n) => "$" + Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const categoryLabel = { environmental: "Environmental", social: "Social", governance: "Governance" }[data.esg_category] || (data.esg_category || "ESG");
+    const submittedAt = data.submitted_at ? new Date(data.submitted_at).toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" }) : new Date().toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" });
+
+    const subject = `External Audit Requested: "${data.entry_title || "ESG Impact Entry"}" | Transformation Leader`;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; background: #f1f5f9; color: #111827; }
+    .wrapper { max-width: 620px; margin: 32px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+    .header { background: linear-gradient(135deg, #27062e 0%, #4b0d7f 60%, #7c3aed 100%); padding: 28px 32px; color: #ffffff; }
+    .header-eyebrow { display: inline-block; background: rgba(255,255,255,0.15); color: #e9d5ff; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 4px 12px; border-radius: 999px; margin-bottom: 12px; }
+    .header h1 { font-size: 20px; font-weight: 700; line-height: 1.3; color: #ffffff; }
+    .header p { font-size: 13px; color: #c4b5fd; margin-top: 6px; }
+    .body { padding: 28px 32px; }
+    .greeting { font-size: 15px; color: #374151; margin-bottom: 14px; }
+    .intro { font-size: 14px; color: #4b5563; line-height: 1.7; margin-bottom: 24px; }
+    .section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #6b7280; margin-bottom: 10px; border-bottom: 1px solid #f3f4f6; padding-bottom: 6px; }
+    .card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 18px; margin-bottom: 20px; }
+    .field + .field { margin-top: 12px; }
+    .field-label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.06em; }
+    .field-value { font-size: 14px; color: #111827; margin-top: 3px; line-height: 1.5; }
+    .field-value a { color: #4b0d7f; text-decoration: none; word-break: break-all; }
+    .field-value a:hover { text-decoration: underline; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+    .metric-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; text-align: center; }
+    .metric-value { font-size: 20px; font-weight: 700; color: #4b0d7f; }
+    .metric-label { font-size: 11px; color: #6b7280; margin-top: 3px; }
+    .tier-note { background: #faf5ff; border: 1px solid #e9d5ff; border-left: 4px solid #7c3aed; border-radius: 8px; padding: 14px 16px; margin-bottom: 24px; font-size: 13px; color: #4b5563; line-height: 1.6; }
+    .tier-note strong { color: #4b0d7f; }
+    .cta-wrapper { text-align: center; margin: 24px 0 8px; }
+    .cta-btn { display: inline-block; background: linear-gradient(135deg, #4b0d7f, #7c3aed); color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; padding: 13px 32px; border-radius: 999px; letter-spacing: 0.01em; }
+    .cta-sub { font-size: 12px; color: #9ca3af; text-align: center; margin-top: 10px; }
+    .divider { border: none; border-top: 1px solid #f3f4f6; margin: 24px 0; }
+    .footer { background: #f8fafc; padding: 20px 32px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6; }
+    .footer a { color: #6b7280; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <div class="header-eyebrow">Independent Verification Request</div>
+      <h1>ESG Impact Audit: "${data.entry_title || "Impact Entry"}"</h1>
+      <p>Submitted by ${data.partner_name || "a Transformation Leader partner"} · ${submittedAt}</p>
+    </div>
+
+    <div class="body">
+      <p class="greeting">Hello ${data.verifier_name || "there"},</p>
+      <p class="intro">
+        <strong>${data.partner_name || "A Transformation Leader partner"}</strong> has logged an ESG impact activity on the
+        Transformation Leader platform and listed you as the <strong>independent external auditor</strong> for Tier 3 verification.
+        Please review the details below and confirm whether the reported impact is accurate and supported by evidence.
+      </p>
+
+      <div class="section-label">Activity Details</div>
+      <div class="card">
+        <div class="field">
+          <div class="field-label">Title</div>
+          <div class="field-value">${data.entry_title || "—"}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Description</div>
+          <div class="field-value">${data.description || "—"}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">ESG Category</div>
+          <div class="field-value">${categoryLabel}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Activity Type</div>
+          <div class="field-value">${data.activity_label || "—"}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Activity Date</div>
+          <div class="field-value">${data.activity_date || "—"}</div>
+        </div>
+        ${data.evidence_link ? `
+        <div class="field">
+          <div class="field-label">Evidence</div>
+          <div class="field-value"><a href="${data.evidence_link}" target="_blank" rel="noopener noreferrer">${data.evidence_link}</a></div>
+        </div>` : ""}
+      </div>
+
+      <div class="section-label">Impact Metrics</div>
+      <div class="metrics-grid">
+        <div class="metric-box">
+          <div class="metric-value">${fmt(data.people_impacted)}</div>
+          <div class="metric-label">People Impacted</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-value">${fmt(data.hours_contributed)}</div>
+          <div class="metric-label">Hours Contributed</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-value">${fmtUsd(data.usd_value)}</div>
+          <div class="metric-label">Est. USD Value</div>
+        </div>
+      </div>
+
+      <div class="section-label">Submitted by</div>
+      <div class="card">
+        <div class="field">
+          <div class="field-label">Name / Organisation</div>
+          <div class="field-value">${data.partner_name || "—"}</div>
+        </div>
+        ${data.partner_email ? `<div class="field">
+          <div class="field-label">Email</div>
+          <div class="field-value">${data.partner_email}</div>
+        </div>` : ""}
+        <div class="field">
+          <div class="field-label">Date &amp; Time Submitted</div>
+          <div class="field-value">${submittedAt}</div>
+        </div>
+      </div>
+
+      <div class="section-label">Your Role</div>
+      <div class="card">
+        <div class="field">
+          <div class="field-label">Your Name</div>
+          <div class="field-value">${data.verifier_name || "—"}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Your Email</div>
+          <div class="field-value">${data.verifier_email}</div>
+        </div>
+        ${data.verifier_role ? `<div class="field">
+          <div class="field-label">Your Role</div>
+          <div class="field-value">${data.verifier_role}</div>
+        </div>` : ""}
+      </div>
+
+      <div class="tier-note">
+        <strong>About Tier 3 Verification:</strong> This submission is requesting independent audit status on the Transformation Leader platform.
+        Tier 3 (Externally Audited) entries carry a <strong>2× impact multiplier</strong> and represent the highest standard of self-reported
+        ESG impact. Your confirmation as an independent auditor provides credibility to this claim.
+      </div>
+
+      <div class="cta-wrapper">
+        <a href="${data.review_url}" class="cta-btn" target="_blank" rel="noopener noreferrer">Review &amp; Verify This Entry</a>
+      </div>
+      <p class="cta-sub">If you were not expecting this request, you can safely ignore this email.</p>
+
+      <hr class="divider">
+      <p style="font-size:12px; color:#9ca3af; line-height:1.6;">
+        This email was sent on behalf of ${data.partner_name || "a Transformation Leader partner"}.
+        It does not grant access to any part of the platform beyond the verification link above.
+      </p>
+    </div>
+
+    <div class="footer">
+      <p>© ${new Date().getFullYear()} <a href="https://www.t4leader.com">Transformation Leader</a> | T4L Platform</p>
+      <p style="margin-top:6px;">This link is unique to you and should not be forwarded.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const toAddress = data.verifier_name
+      ? `${data.verifier_name} <${data.verifier_email}>`
+      : data.verifier_email;
+
+    const result = await this._sendMail({
+      to: toAddress,
+      subject,
+      html,
+      replyTo: data.partner_email || undefined,
+    });
+
+    console.log(`✅ ESG auditor email sent via ${result.method} to`, data.verifier_email, result.messageId ? `| id: ${result.messageId}` : "");
+    if (result.previewUrl) console.log("📧 Ethereal preview URL:", result.previewUrl);
+    return { success: true, ...result };
+  }
+
+  async sendBusinessVerificationRequestEmail(data) {
+    // data: { verifier_name, verifier_email, partner_name, entry_title, usd_value, outcome_statement, review_url }
+    const subject = `Please verify Business Outcome impact entry from ${data.partner_name || "T4L Partner"}`;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #111827; background: #f9fafb; }
+          .header { background: linear-gradient(135deg, #4b0d7f 0%, #7c3aed 100%); color: white; padding: 24px 28px; }
+          .content { padding: 24px 28px; background: white; }
+          .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #eef2ff; color: #4f46e5; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 12px; }
+          .button { display: inline-block; padding: 10px 20px; background: #16a34a; color: white; text-decoration: none; border-radius: 999px; font-weight: 600; font-size: 14px; }
+          .meta { font-size: 13px; color: #6b7280; margin-top: 4px; }
+          .footer { font-size: 12px; color: #9ca3af; padding: 16px 28px 24px; text-align: center; }
+          .label { font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.06em; }
+          .value { font-size: 14px; color: #111827; margin-top: 4px; }
+          .card { border-radius: 12px; border: 1px solid #e5e7eb; padding: 16px 18px; background: #f9fafb; margin-top: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="badge">Business Outcome Verification</div>
+          <h1 style="margin: 0; font-size: 20px;">Approval requested from ${data.partner_name || "a Transformation Leader partner"}</h1>
+          <p style="margin: 6px 0 0; font-size: 13px; color: #e5e7eb;">A Business Outcome entry needs your review and confirmation.</p>
+        </div>
+        <div class="content">
+          <p style="font-size: 14px; margin-bottom: 12px;">Hello ${data.verifier_name || "there"},</p>
+          <p style="font-size: 14px; margin-bottom: 14px;">
+            A Business Outcome has been logged in the Transformation Leader partner platform and listed you as the manager / finance contact
+            to verify the impact. Please review the summary below and confirm whether the USD amount is accurate.
+          </p>
+          <div class="card">
+            <div>
+              <div class="label">Title</div>
+              <div class="value">${data.entry_title || "Business outcome"}</div>
+            </div>
+            <div style="margin-top: 10px;">
+              <div class="label">Outcome</div>
+              <div class="value">${data.outcome_statement || "N/A"}</div>
+            </div>
+            <div style="margin-top: 10px;">
+              <div class="label">USD saved / created</div>
+              <div class="value">$${Number(data.usd_value || 0).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            </div>
+          </div>
+          <p class="meta" style="margin-top: 14px;">You will be able to confirm or decline this figure and optionally leave a short comment.</p>
+          <div style="margin: 20px 0 8px; text-align: center;">
+            <a href="${data.review_url}" class="button" target="_blank" rel="noopener noreferrer">Review &amp; verify entry</a>
+          </div>
+          <p class="meta" style="text-align: center;">If you did not expect this email you can safely ignore it.</p>
+        </div>
+        <div class="footer">
+          <p>© ${new Date().getFullYear()} Transformation Leader | T4L Platform</p>
+          <p>This link is unique to you and should not be forwarded. It does not provide access to any other part of the platform.</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const result = await this._sendMail({ to: data.verifier_email, subject, html });
+    log(`✅ Business verification email sent via ${result.method} to`, data.verifier_email);
+    if (result.previewUrl) log("📧 Ethereal preview URL:", result.previewUrl);
+    return { success: true, ...result };
+  }
 }
 
 // Initialize the email service
@@ -352,6 +630,9 @@ app.get("/api/test-email", async (req, res) => {
 const {
   supabase,
   getUserByEmail,
+  getUserByEmailAndPhone,
+  getUserByPhone,
+  getUserByFirebaseUid,
   getUserById,
   createUser,
   updateUser,
@@ -396,6 +677,7 @@ const {
 // ------------------------
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.json({ limit: '10mb' }));
+
 
 // Disable cache and optional request logging (dev only to avoid log spam in production)
 app.use((req, res, next) => {
@@ -3918,6 +4200,23 @@ app.post("/signin", async (req, res) => {
         .json({ error: "Your account is not active. Please contact support." });
     }
 
+    // Auto-link Firebase UID if not already linked (enables cross-platform sync)
+    if (firebaseInitialized && !user.firebase_uid) {
+      try {
+        const fbUser = await firebaseAdmin.auth().getUserByEmail(emailLower);
+        await supabase
+          .from("users")
+          .update({ firebase_uid: fbUser.uid, updated_at: new Date().toISOString() })
+          .eq("user_id", user.user_id);
+        user.firebase_uid = fbUser.uid;
+        log(`🔗 Auto-linked Firebase UID ${fbUser.uid} for ambassador ${emailLower}`);
+      } catch (fbErr) {
+        if (fbErr.code !== "auth/user-not-found") {
+          console.error("⚠️ Firebase UID lookup failed:", fbErr.message);
+        }
+      }
+    }
+
     // Create session using user_id from normalized data
     const sessionId = await createSessionEnhanced(
       res,
@@ -4023,6 +4322,23 @@ app.post("/partner-signin", async (req, res) => {
     }
 
     log("✅ All checks passed - creating session");
+
+    // Auto-link Firebase UID if not already linked (enables cross-platform sync)
+    if (firebaseInitialized && !user.firebase_uid) {
+      try {
+        const fbUser = await firebaseAdmin.auth().getUserByEmail(emailLower);
+        await supabase
+          .from("users")
+          .update({ firebase_uid: fbUser.uid, updated_at: new Date().toISOString() })
+          .eq("user_id", user.user_id);
+        user.firebase_uid = fbUser.uid;
+        log(`🔗 Auto-linked Firebase UID ${fbUser.uid} for partner ${emailLower}`);
+      } catch (fbErr) {
+        if (fbErr.code !== "auth/user-not-found") {
+          console.error("⚠️ Firebase UID lookup failed:", fbErr.message);
+        }
+      }
+    }
 
     // ✅ CORRECT - using user_id
     const sessionId = await createSessionEnhanced(
@@ -5276,6 +5592,723 @@ app.get("/event-participate.html", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "event-participate.html"));
 });
 
+// Public business outcome verification review page (manager/finance)
+app.get("/business-verification.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "business-verification.html"));
+});
+
+// Partner Impact PDF-style report page (HTML, print to PDF)
+app.get(
+  "/partner-impact-report.html",
+  requireAuth,
+  requireRole("partner"),
+  (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "partner-impact-report.html"));
+  }
+);
+
+// Share card page — public so shared links work in WhatsApp, other browsers, other devices
+app.get("/share-card.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "share-card.html"));
+});
+
+// --- GET /api/public/impact-entry/:id - Public read for share card (no auth) ---
+app.get("/api/public/impact-entry/:id", async (req, res) => {
+  try {
+    const entryId = req.params.id;
+    const { data: entry, error } = await supabase
+      .from("impact_entries")
+      .select("*")
+      .eq("entry_id", entryId)
+      .single();
+
+    if (error || !entry) {
+      return res.status(404).json({ error: "Impact entry not found" });
+    }
+
+    let creatorDisplay = null;
+    const role = (entry.user_role || "").toLowerCase();
+    if (role === "partner") {
+      const { data: partner } = await supabase
+        .from("partners")
+        .select("organization_name")
+        .eq("user_id", entry.user_id)
+        .maybeSingle();
+      if (partner?.organization_name) creatorDisplay = partner.organization_name;
+    } else {
+      const { data: ambassador } = await supabase
+        .from("ambassadors")
+        .select("first_name, last_name")
+        .eq("user_id", entry.user_id)
+        .maybeSingle();
+      if (ambassador) {
+        const name = [ambassador.first_name, ambassador.last_name].filter(Boolean).join(" ").trim();
+        if (name) creatorDisplay = name;
+      }
+    }
+    const out = { ...entry, creator_display: creatorDisplay || undefined };
+    return res.json({ entry: out });
+  } catch (err) {
+    console.error("❌ Error fetching public impact entry:", err);
+    return res.status(500).json({ error: "Failed to fetch impact entry", details: err.message });
+  }
+});
+
+// ============================
+// IMPACT LOG ADMIN API (Admin only)
+// ============================
+
+// Admin HTML page
+app.get(
+  "/admin-impact.html",
+  requireAuth,
+  requireRole("admin"),
+  (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "admin-impact.html"));
+  }
+);
+
+// List ESG rate configuration
+app.get(
+  "/admin/api/impact/rates",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const { data, error } = await supabase
+        .from("rate_configuration")
+        .select("*")
+        .order("esg_category", { ascending: true })
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return res.json({ rates: data || [] });
+    } catch (error) {
+      console.error("❌ Error loading rate configuration (admin):", error);
+      return res
+        .status(500)
+        .json({ error: "Failed to load rate configuration", details: error.message });
+    }
+  }
+);
+
+// Update a single ESG rate row
+app.put(
+  "/admin/api/impact/rates/:id",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const rateId = req.params.id;
+      const { unit_rate_usd, volunteer_hour_rate, rate_source, is_active } = req.body || {};
+
+      const updates = {
+        updated_at: new Date().toISOString(),
+      };
+      if (unit_rate_usd !== undefined) updates.unit_rate_usd = unit_rate_usd;
+      if (volunteer_hour_rate !== undefined)
+        updates.volunteer_hour_rate = volunteer_hour_rate;
+      if (rate_source !== undefined) updates.rate_source = rate_source;
+      if (is_active !== undefined) updates.is_active = !!is_active;
+
+      const { data, error } = await supabase
+        .from("rate_configuration")
+        .update(updates)
+        .eq("rate_id", rateId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return res.json({ success: true, rate: data });
+    } catch (error) {
+      console.error("❌ Error updating rate configuration (admin):", error);
+      return res
+        .status(500)
+        .json({ error: "Failed to update rate", details: error.message });
+    }
+  }
+);
+
+// List recent upload batches
+app.get(
+  "/admin/api/impact/uploads",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const { data, error } = await supabase
+        .from("upload_batches")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return res.json({ batches: data || [] });
+    } catch (error) {
+      console.error("❌ Error loading upload batches (admin):", error);
+      return res
+        .status(500)
+        .json({ error: "Failed to load upload batches", details: error.message });
+    }
+  }
+);
+
+// ============================================
+// PARTNER IMPACT LOG BULK UPLOAD (CSV)
+// ============================================
+
+// --- GET /api/partner/impact/bulk-template - Download CSV template ---
+app.get(
+  "/api/partner/impact/bulk-template",
+  requireAuth,
+  requireRole("partner"),
+  async (req, res) => {
+    try {
+      const columns = [
+        "impact_type", // esg | business_outcome
+        "date", // YYYY-MM-DD
+        "activity_title",
+        "description",
+        "esg_category",
+        "esg_activity_type",
+        "people_impacted",
+        "hours_contributed",
+        "waste_primary",
+        "waste_secondary",
+        "improvement_method",
+        "usd_saved",
+        "outcome_statement",
+        "evidence_url",
+        "usd_value", // optional override
+        "verification_tier", // optional
+      ];
+
+      const csv = columns.join(",");
+
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="t4l-impactlog-template.csv"'
+      );
+      return res.send(csv);
+    } catch (error) {
+      console.error("❌ Error generating bulk upload template:", error);
+      return res
+        .status(500)
+        .json({ error: "Failed to generate template", details: error.message });
+    }
+  }
+);
+
+// --- POST /api/partner/impact/bulk-upload - Validate & import CSV ---
+app.post(
+  "/api/partner/impact/bulk-upload",
+  requireAuth,
+  requireRole("partner"),
+  async (req, res) => {
+    try {
+      const userId = req.auth.userId;
+      const userRole = req.auth.role;
+      const { csv } = req.body || {};
+      if (!csv || typeof csv !== "string") {
+        return res.status(400).json({ error: "csv field (string) is required" });
+      }
+
+      const lines = csv
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0 && !l.startsWith("#"));
+
+      if (lines.length < 2) {
+        return res
+          .status(400)
+          .json({ error: "CSV must include a header row and at least one data row" });
+      }
+
+      const headerCols = lines[0].split(",").map((h) => h.trim());
+      const requiredCols = [
+        "impact_type",
+        "date",
+        "activity_title",
+        "description",
+        "esg_category",
+        "esg_activity_type",
+        "people_impacted",
+        "hours_contributed",
+        "waste_primary",
+        "improvement_method",
+        "usd_saved",
+        "outcome_statement",
+        "evidence_url",
+      ];
+      const missingCols = requiredCols.filter(
+        (c) => !headerCols.includes(c)
+      );
+      if (missingCols.length > 0) {
+        return res.status(400).json({
+          error:
+            "CSV header is missing required columns: " + missingCols.join(", "),
+        });
+      }
+
+      const colIndex = {};
+      headerCols.forEach((name, idx) => {
+        colIndex[name] = idx;
+      });
+
+      // Preload ESG rate configuration into memory for USD calcs
+      const { data: rates, error: ratesError } = await supabase
+        .from("rate_configuration")
+        .select("*")
+        .eq("is_active", true);
+      if (ratesError) throw ratesError;
+
+      const rateMap = {};
+      (rates || []).forEach((r) => {
+        const key = `${r.esg_category || ""}::${(r.activity_label || "").toLowerCase()}`;
+        rateMap[key] = r;
+      });
+
+      const entriesToInsert = [];
+      const errors = [];
+      let rowNumber = 1; // header is row 1
+
+      for (let i = 1; i < lines.length; i++) {
+        rowNumber = i + 1;
+        const rawLine = lines[i];
+        if (!rawLine) continue;
+
+        const cells = rawLine.split(","); // simple parser; template avoids embedded commas
+        const get = (name) => {
+          const idx = colIndex[name];
+          if (idx === undefined) return "";
+          return (cells[idx] || "").trim();
+        };
+
+        const impactType = get("impact_type").toLowerCase();
+        const dateStr = get("date");
+        const activityTitle = get("activity_title");
+        const description = get("description");
+        const esgCategory = get("esg_category");
+        const esgActivityType = get("esg_activity_type");
+        const peopleStr = get("people_impacted");
+        const hoursStr = get("hours_contributed");
+        const wastePrimary = get("waste_primary");
+        const wasteSecondary = get("waste_secondary");
+        const improvementMethod = get("improvement_method");
+        const usdSavedStr = get("usd_saved");
+        const outcomeStatement = get("outcome_statement");
+        const evidenceUrl = get("evidence_url");
+
+        // Basic required checks
+        if (!impactType || !["esg", "business_outcome"].includes(impactType)) {
+          errors.push({
+            row: rowNumber,
+            message: 'impact_type must be "esg" or "business_outcome"',
+          });
+          continue;
+        }
+
+        if (!dateStr || isNaN(Date.parse(dateStr))) {
+          errors.push({
+            row: rowNumber,
+            message: "date is required and must be a valid YYYY-MM-DD date",
+          });
+          continue;
+        }
+
+        const activityDate = new Date(dateStr);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (activityDate > today) {
+          errors.push({
+            row: rowNumber,
+            message: "date must not be in the future",
+          });
+          continue;
+        }
+
+        if (!activityTitle) {
+          errors.push({
+            row: rowNumber,
+            message: "activity_title is required",
+          });
+          continue;
+        }
+        if (!description) {
+          errors.push({
+            row: rowNumber,
+            message: "description is required",
+          });
+          continue;
+        }
+
+        if (impactType === "esg") {
+          if (!esgCategory || !["environmental", "social", "governance"].includes(esgCategory)) {
+            errors.push({
+              row: rowNumber,
+              message:
+                'esg_category must be one of "environmental", "social", or "governance" for ESG entries',
+            });
+            continue;
+          }
+          if (!esgActivityType) {
+            errors.push({
+              row: rowNumber,
+              message: "esg_activity_type is required for ESG entries",
+            });
+            continue;
+          }
+          const people = parseFloat(peopleStr);
+          const hours = parseFloat(hoursStr);
+          if (!people || people <= 0 || isNaN(people)) {
+            errors.push({
+              row: rowNumber,
+              message:
+                "people_impacted must be a positive number for ESG entries",
+            });
+            continue;
+          }
+          if (hours < 0 || isNaN(hours)) {
+            errors.push({
+              row: rowNumber,
+              message:
+                "hours_contributed must be 0 or greater for ESG entries",
+            });
+            continue;
+          }
+
+          const rateKey = `${esgCategory}::${esgActivityType.toLowerCase()}`;
+          const rate = rateMap[rateKey];
+          if (!rate) {
+            errors.push({
+              row: rowNumber,
+              message:
+                "esg_activity_type does not match any configured ESG rate for the given esg_category",
+            });
+            continue;
+          }
+          const unitRate = parseFloat(rate.unit_rate_usd) || 0;
+          const volHourRate = parseFloat(rate.volunteer_hour_rate) || 33.49;
+          const impactUsd = people * unitRate;
+          const hoursUsd = hours * volHourRate;
+          const usdValue = impactUsd + hoursUsd;
+
+          entriesToInsert.push({
+            entry_id: uuidv4(),
+            user_id: userId,
+            user_role: userRole,
+            entry_type: "individual",
+            impact_type: "esg",
+            activity_date: dateStr,
+            title: activityTitle.slice(0, 100),
+            description: description.slice(0, 500),
+            esg_category: esgCategory,
+            people_impacted: people,
+            hours_contributed: hours,
+            usd_value: usdValue,
+            usd_value_source: "auto",
+            impact_unit: rate.impact_unit || rate.unit_label || "people",
+            verification_level: "tier_1",
+            verification_multiplier: 1.0,
+            evidence_link: evidenceUrl || null,
+            scp_earned: 0,
+            points_earned: 0,
+            points_eligible: false,
+            unit_rate_applied: unitRate,
+            vol_hour_rate_applied: volHourRate,
+            waste_primary: null,
+            waste_secondary: null,
+            improvement_method: null,
+            outcome_statement: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        } else if (impactType === "business_outcome") {
+          if (
+            !wastePrimary ||
+            !["DEF", "OVR", "WAI", "NUT", "TRA", "INV", "MOT", "EXP"].includes(
+              wastePrimary
+            )
+          ) {
+            errors.push({
+              row: rowNumber,
+              message:
+                "waste_primary must be a valid 8 Wastes code (DEF, OVR, WAI, NUT, TRA, INV, MOT, EXP)",
+            });
+            continue;
+          }
+          if (!improvementMethod) {
+            errors.push({
+              row: rowNumber,
+              message:
+                "improvement_method is required for Business Outcome entries",
+            });
+            continue;
+          }
+          const usdSaved = parseFloat(usdSavedStr);
+          if (!usdSaved || usdSaved <= 0 || isNaN(usdSaved)) {
+            errors.push({
+              row: rowNumber,
+              message:
+                "usd_saved must be a positive number for Business Outcome entries",
+            });
+            continue;
+          }
+          if (!outcomeStatement) {
+            errors.push({
+              row: rowNumber,
+              message:
+                "outcome_statement is required for Business Outcome entries",
+            });
+            continue;
+          }
+
+          entriesToInsert.push({
+            entry_id: uuidv4(),
+            user_id: userId,
+            user_role: userRole,
+            entry_type: "individual",
+            impact_type: "business_outcome",
+            activity_date: dateStr,
+            title: activityTitle.slice(0, 100),
+            description: description.slice(0, 500),
+            esg_category: null,
+            people_impacted: 0,
+            hours_contributed: 0,
+            usd_value: usdSaved,
+            usd_value_source: "user_entered",
+            impact_unit: "USD saved/created",
+            verification_level: "tier_1",
+            verification_multiplier: 1.0,
+            evidence_link: evidenceUrl || null,
+            scp_earned: 0,
+            points_earned: 0,
+            points_eligible: false,
+            unit_rate_applied: null,
+            vol_hour_rate_applied: null,
+            waste_primary: wastePrimary,
+            waste_secondary: wasteSecondary || null,
+            improvement_method: improvementMethod,
+            outcome_statement: outcomeStatement.slice(0, 150),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        }
+      }
+
+      let importedCount = 0;
+      if (entriesToInsert.length > 0) {
+        // Create upload batch for traceability
+        const { data: batchData, error: batchError } = await supabase
+          .from("upload_batches")
+          .insert([
+            {
+              uploaded_by: userId,
+              uploaded_by_role: userRole,
+              partner_id: null,
+              original_filename: "pasted_csv",
+              source: "partner_portal",
+              status: "completed",
+              total_rows: entriesToInsert.length,
+              success_rows: entriesToInsert.length,
+              error_rows: errors.length,
+              started_at: new Date().toISOString(),
+              completed_at: new Date().toISOString(),
+            },
+          ])
+          .select()
+          .single();
+
+        if (batchError) {
+          console.error("❌ Failed to create upload batch:", batchError);
+        }
+
+        const batchId = batchData ? batchData.batch_id : null;
+        const entriesWithBatch = entriesToInsert.map((e) => ({
+          ...e,
+          upload_batch_id: batchId,
+        }));
+
+        const { error: insertError } = await supabase
+          .from("impact_entries")
+          .insert(entriesWithBatch);
+
+        if (insertError) {
+          console.error("❌ Failed to insert bulk impact entries:", insertError);
+        } else {
+          importedCount = entriesToInsert.length;
+        }
+      }
+
+      return res.json({
+        success: true,
+        imported_count: importedCount,
+        errors,
+      });
+    } catch (error) {
+      console.error("❌ Error processing bulk upload:", error);
+      return res
+        .status(500)
+        .json({ error: "Failed to process bulk upload", details: error.message });
+    }
+  }
+);
+
+// --- GET /api/partner/impact/export - CSV export with filters for current partner user ---
+app.get(
+  "/api/partner/impact/export",
+  requireAuth,
+  requireRole("partner"),
+  async (req, res) => {
+    try {
+      const userId = req.auth.userId;
+
+      const {
+        from,
+        to,
+        impact_type = "all",
+        esg_category,
+        waste_primary,
+        verification_tier,
+        entry_type = "all",
+      } = req.query || {};
+
+      let query = supabase
+        .from("impact_entries")
+        .select(
+          [
+            "entry_id",
+            "impact_type",
+            "title",
+            "description",
+            "activity_date",
+            "esg_category",
+            "user_role",
+            "entry_type",
+            "event_id",
+            "people_impacted",
+            "hours_contributed",
+            "usd_value",
+            "usd_value_source",
+            "impact_unit",
+            "waste_primary",
+            "waste_secondary",
+            "improvement_method",
+            "outcome_statement",
+            "verification_level",
+            "verifier_name",
+            "verifier_role",
+            "verifier_comment",
+            "verified_at",
+            "evidence_link",
+            "sasb_topic",
+            "upload_batch_id",
+            "created_at",
+          ].join(",")
+        )
+        .eq("user_id", userId)
+        .order("activity_date", { ascending: true });
+
+      if (from) query = query.gte("activity_date", from);
+      if (to) query = query.lte("activity_date", to);
+      if (impact_type !== "all") query = query.eq("impact_type", impact_type);
+      if (esg_category) query = query.eq("esg_category", esg_category);
+      if (waste_primary) query = query.eq("waste_primary", waste_primary);
+      if (verification_tier)
+        query = query.eq("verification_level", verification_tier);
+      if (entry_type !== "all") query = query.eq("entry_type", entry_type);
+
+      const { data: entries, error } = await query;
+      if (error) throw error;
+
+      const rows = entries || [];
+
+      const columns = [
+        "entry_id",
+        "impact_type",
+        "activity_title",
+        "description",
+        "activity_date",
+        "esg_category",
+        "waste_primary",
+        "waste_secondary",
+        "improvement_method",
+        "impact_value",
+        "impact_unit",
+        "hours_contributed",
+        "usd_value",
+        "usd_value_source",
+        "verification_tier",
+        "verifier_name",
+        "verifier_role",
+        "verifier_comment",
+        "verified_at",
+        "evidence_url",
+        "entry_type",
+        "event_id",
+        "user_role",
+        "sasb_topic",
+        "upload_batch_id",
+        "created_at",
+      ];
+
+      const header = columns.join(",");
+
+      const csvLines = rows.map((e) => {
+        const record = {
+          entry_id: e.entry_id || "",
+          impact_type: e.impact_type || "",
+          activity_title: e.title || "",
+          description: e.description || "",
+          activity_date: e.activity_date || "",
+          esg_category: e.esg_category || "",
+          waste_primary: e.waste_primary || "",
+          waste_secondary: e.waste_secondary || "",
+          improvement_method: e.improvement_method || "",
+          impact_value: e.people_impacted != null ? String(e.people_impacted) : "",
+          impact_unit: e.impact_unit || "",
+          hours_contributed:
+            e.hours_contributed != null ? String(e.hours_contributed) : "",
+          usd_value: e.usd_value != null ? String(e.usd_value) : "",
+          usd_value_source: e.usd_value_source || "",
+          verification_tier: e.verification_level || "",
+          verifier_name: e.verifier_name || "",
+          verifier_role: e.verifier_role || "",
+          verifier_comment: e.verifier_comment || "",
+          verified_at: e.verified_at || "",
+          evidence_url: e.evidence_link || "",
+          entry_type: e.entry_type || "",
+          event_id: e.event_id || "",
+          user_role: e.user_role || "",
+          sasb_topic: e.sasb_topic || "",
+          upload_batch_id: e.upload_batch_id || "",
+          created_at: e.created_at || "",
+        };
+
+        return columns
+          .map((col) => {
+            const v = String(record[col] || "");
+            return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+          })
+          .join(",");
+      });
+
+      const csv = [header, ...csvLines].join("\n");
+
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="t4l-impactlog-export.csv"'
+      );
+      return res.send(csv);
+    } catch (error) {
+      console.error("❌ Error generating CSV export:", error);
+      return res
+        .status(500)
+        .json({ error: "Failed to generate export", details: error.message });
+    }
+  }
+);
+
 // ============================================
 // IMPACT LOG & SHARED IMPACT EVENTS API
 // ============================================
@@ -5405,13 +6438,18 @@ app.post("/api/impact/events", requireAuth, async (req, res) => {
       title, description, esg_category, total_impact_value,
       impact_unit, event_date, start_time, end_time,
       expected_participants, evidence_link, external_verifier_email,
-      hours_contributed, usd_value
+      hours_contributed, usd_value,
+      activity_key: bodyActivityKey,
+      estimated_hours_per_participant: bodyEstimatedHours,
+      location: bodyLocation,
+      registration_deadline: bodyRegistrationDeadline,
+      registration_link: bodyRegistrationLink,
     } = req.body;
 
-    // Validation
-    if (!title || !description || !esg_category || !event_date || !start_time || !end_time) {
+    // Validation: title, description, esg_category, event_date required. start_time/end_time optional (defaults used).
+    if (!title || !esg_category || !event_date) {
       return res.status(400).json({
-        error: "Required fields: title, description, esg_category, event_date, start_time, end_time",
+        error: "Required fields: title, esg_category, event_date",
       });
     }
 
@@ -5423,40 +6461,69 @@ app.post("/api/impact/events", requireAuth, async (req, res) => {
     const baseUrl = `${req.protocol}://${req.get("host")}`;
     const participationLink = `${baseUrl}/event-participate.html?event=${eventId}`;
 
+    const slug = eventId.substring(0, 8) + '-' + title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 10);
+
+    const estimatedHours = bodyEstimatedHours != null && bodyEstimatedHours !== "" ? parseFloat(bodyEstimatedHours) : null;
+    const totalImpactRaw =
+      total_impact_value != null && total_impact_value !== ""
+        ? parseFloat(total_impact_value)
+        : (estimatedHours || 0);
+    const totalImpact = Number.isFinite(totalImpactRaw) ? Math.round(totalImpactRaw) : 0;
+    const unit = (impact_unit || (estimatedHours != null ? "hours" : "people")).trim();
+
     const eventData = {
       event_id: eventId,
       created_by: userId,
       creator_role: userRole,
       title: title.trim(),
-      description: description.trim(),
+      description: (description || "").trim(),
       esg_category,
-      total_impact_value: parseFloat(total_impact_value) || 0,
-      impact_unit: (impact_unit || "people").trim(),
+      total_impact_value: totalImpact,
+      impact_unit: unit,
       event_date,
-      start_time,
-      end_time,
-      expected_participants: expected_participants ? parseInt(expected_participants) : null,
+      start_time: start_time || "09:00",
+      end_time: end_time || "17:00",
+      expected_participants: expected_participants != null && expected_participants !== "" ? parseInt(expected_participants) : null,
       evidence_link: evidence_link || null,
       external_verifier_email: external_verifier_email || null,
       status: "open",
+      public_slug: slug,
       verification_level: "tier_2",
       verification_multiplier: 1.5,
-      hours_contributed: parseFloat(hours_contributed) || 0,
-      usd_value: parseFloat(usd_value) || 0,
+      hours_contributed: parseFloat(hours_contributed) || (estimatedHours || 0),
+      usd_value: 0,
       participation_link: participationLink,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    const { data: newEvent, error } = await supabase
-      .from("impact_events")
-      .insert([eventData])
-      .select()
-      .single();
+    if (bodyActivityKey) eventData.activity_key = bodyActivityKey;
+    if (estimatedHours != null && !isNaN(estimatedHours)) eventData.estimated_hours_per_participant = estimatedHours;
+    if (bodyLocation != null && String(bodyLocation).trim()) eventData.location = String(bodyLocation).trim();
+    if (bodyRegistrationDeadline) eventData.registration_deadline = bodyRegistrationDeadline;
+    if (bodyRegistrationLink && String(bodyRegistrationLink).trim()) eventData.registration_link = String(bodyRegistrationLink).trim();
 
-    if (error) throw error;
+    let newEvent, evtError;
+    const EVT_MAX_RETRIES = 8;
+    for (let attempt = 0; attempt <= EVT_MAX_RETRIES; attempt++) {
+      ({ data: newEvent, error: evtError } = await supabase
+        .from("impact_events")
+        .insert([eventData])
+        .select()
+        .single());
 
-    // Create master impact entry for the creator
+      if (evtError && evtError.code === "PGRST204") {
+        const match = evtError.message.match(/Could not find the '(\w+)' column/);
+        if (match) {
+          console.warn(`⚠️ Column '${match[1]}' missing in impact_events, removing and retrying...`);
+          delete eventData[match[1]];
+          continue;
+        }
+      }
+      break;
+    }
+    if (evtError) throw evtError;
+
     const masterEntry = {
       entry_id: uuidv4(),
       user_id: userId,
@@ -5473,16 +6540,42 @@ app.post("/api/impact/events", requireAuth, async (req, res) => {
       verification_level: "tier_2",
       verification_multiplier: 1.5,
       scp_earned: (parseFloat(total_impact_value) || 0) * 1.5,
-      points_earned: 0, // Creators don't earn points
+      points_earned: 0,
       points_eligible: false,
       activity_date: event_date,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    await supabase.from("impact_entries").insert([masterEntry]);
+    for (let attempt = 0; attempt <= EVT_MAX_RETRIES; attempt++) {
+      const { error: mErr } = await supabase.from("impact_entries").insert([masterEntry]);
+      if (mErr && mErr.code === "PGRST204") {
+        const match = mErr.message.match(/Could not find the '(\w+)' column/);
+        if (match) {
+          console.warn(`⚠️ Column '${match[1]}' missing in impact_entries (event master), removing and retrying...`);
+          delete masterEntry[match[1]];
+          continue;
+        }
+      }
+      if (mErr) console.warn("⚠️ Master entry insert warning:", mErr.message);
+      break;
+    }
 
     log("✅ Impact event created:", eventId);
+
+    // Auto-sync event to Firestore (non-blocking)
+    if (firebaseInitialized && newEvent) {
+      (async () => {
+        try {
+          const creator = await getUserById(userId, userRole);
+          if (creator?.firebase_uid) {
+            await impactSync.pushEventToFirestore(newEvent, creator.firebase_uid);
+          }
+        } catch (err) {
+          console.error("⚠️ Event sync failed:", err.message);
+        }
+      })();
+    }
 
     return res.json({
       success: true,
@@ -5707,7 +6800,7 @@ app.get("/api/impact/events/:id/public", async (req, res) => {
 
     const { data: event, error } = await supabase
       .from("impact_events")
-      .select("event_id, title, description, esg_category, total_impact_value, impact_unit, event_date, start_time, end_time, status, created_by, creator_role")
+      .select("event_id, title, description, esg_category, total_impact_value, impact_unit, event_date, start_time, end_time, status, created_by, creator_role, registration_link")
       .eq("event_id", eventId)
       .single();
 
@@ -5756,7 +6849,13 @@ app.get("/api/impact/events/:id/public", async (req, res) => {
 app.post("/api/impact/events/:id/participate", async (req, res) => {
   try {
     const eventId = req.params.id;
-    const { display_name, anonymous_hash } = req.body;
+    const { display_name, anonymous_hash, sourceUserId, sourcePlatform } = req.body;
+    // These are let so the server-side profile lookup can populate them for T4L session users
+    let scannerName     = req.body.name     || null;
+    let scannerEmail    = req.body.email    || null;
+    let scannerPhone    = req.body.phone    || null;
+    let scannerCompany  = req.body.company  || null;
+    let scannerRole     = req.body.role     || null;
 
     // Check event exists and is open
     const { data: event } = await supabase
@@ -5770,11 +6869,11 @@ app.post("/api/impact/events/:id/participate", async (req, res) => {
       return res.status(400).json({ error: "This event is closed. Participation is no longer available." });
     }
 
-    // Check if user is logged in
+    // Check if user is logged in via T4L session cookie
     let userId = null;
+    let sessionRole = null;
     let participantType = "anonymous";
 
-    // Try to get session
     const cookies = {};
     const cookieHeader = req.headers.cookie || "";
     cookieHeader.split(";").forEach(c => {
@@ -5791,11 +6890,59 @@ app.post("/api/impact/events/:id/participate", async (req, res) => {
 
       if (sess && new Date(sess.expires_at) > new Date()) {
         userId = sess.user_id;
+        sessionRole = sess.role;       // role is stored directly on the session row
         participantType = "user";
       }
     }
 
-    // Check for duplicates
+    // If no T4L session, check for cross-platform sourceUserId (e.g. Firebase UID)
+    if (!userId && sourceUserId && sourcePlatform) {
+      participantType = "user";
+    }
+
+    // Auto-populate scanner details from T4L profile when user is authenticated via session
+    // (ambassadors and partners don't send their details explicitly from the client)
+    if (userId && !scannerName && !scannerEmail) {
+      try {
+        console.log(`[participate] T4L session user ${userId} role=${sessionRole} — looking up profile`);
+        const role = sessionRole || "ambassador";
+        if (role === "ambassador") {
+          const { data: amb, error: ambErr } = await supabase
+            .from("ambassadors")
+            .select("first_name, last_name, email, phone_number, country")
+            .eq("user_id", userId)
+            .single();
+          console.log(`[participate] ambassador lookup →`, amb ? `found: ${amb.first_name} ${amb.last_name}` : `not found`, ambErr ? `error: ${ambErr.message}` : "");
+          if (amb) {
+            scannerName    = `${amb.first_name || ""} ${amb.last_name || ""}`.trim() || null;
+            scannerEmail   = amb.email || null;
+            scannerPhone   = amb.phone_number || null;
+            scannerRole    = "Ambassador";
+            scannerCompany = amb.country ? `Ambassador · ${amb.country}` : "Ambassador";
+          }
+        } else if (role === "partner") {
+          const { data: partner, error: partnerErr } = await supabase
+            .from("partners")
+            .select("organization_name, contact_person, phone_number, location")
+            .eq("user_id", userId)
+            .single();
+          console.log(`[participate] partner lookup →`, partner ? `found: ${partner.organization_name}` : `not found`, partnerErr ? `error: ${partnerErr.message}` : "");
+          if (partner) {
+            scannerName    = partner.contact_person || null;
+            scannerPhone   = partner.phone_number || null;
+            scannerRole    = "Partner";
+            scannerCompany = partner.organization_name || null;
+          }
+          const { data: usr } = await supabase.from("users").select("email").eq("user_id", userId).single();
+          if (usr) scannerEmail = usr.email || null;
+        }
+        console.log(`[participate] resolved scanner fields:`, { scannerName, scannerEmail, scannerPhone, scannerRole, scannerCompany });
+      } catch (profileErr) {
+        console.error("❌ Could not auto-populate scanner profile:", profileErr.message);
+      }
+    }
+
+    // Dedup: T4L user
     if (userId) {
       const { data: existing } = await supabase
         .from("event_participants")
@@ -5807,7 +6954,25 @@ app.post("/api/impact/events/:id/participate", async (req, res) => {
       if (existing) {
         return res.status(409).json({ error: "You have already confirmed participation in this event." });
       }
-    } else if (anonymous_hash) {
+    }
+
+    // Dedup: cross-platform user by source_user_id
+    if (!userId && sourceUserId && sourcePlatform) {
+      const { data: existing } = await supabase
+        .from("event_participants")
+        .select("participant_id")
+        .eq("event_id", eventId)
+        .eq("source_user_id", sourceUserId)
+        .eq("source_platform", sourcePlatform)
+        .single();
+
+      if (existing) {
+        return res.status(409).json({ error: "You have already confirmed participation in this event." });
+      }
+    }
+
+    // Dedup: anonymous by hash
+    if (!userId && !sourceUserId && anonymous_hash) {
       const { data: existing } = await supabase
         .from("event_participants")
         .select("participant_id")
@@ -5820,8 +6985,13 @@ app.post("/api/impact/events/:id/participate", async (req, res) => {
       }
     }
 
-    // Generate anonymous hash if not provided
-    const anonHash = anonymous_hash || (!userId ? crypto.randomBytes(16).toString("hex") : null);
+    const anonHash = anonymous_hash || (!userId && !sourceUserId ? crypto.randomBytes(16).toString("hex") : null);
+
+    // Resolve display_name: prefer explicit name, then scanner name, then fallback
+    const resolvedDisplayName =
+      display_name ||
+      scannerName ||
+      (userId ? null : "Anonymous Participant");
 
     const participantData = {
       participant_id: uuidv4(),
@@ -5829,7 +6999,15 @@ app.post("/api/impact/events/:id/participate", async (req, res) => {
       user_id: userId,
       participant_type: participantType,
       anonymous_hash: anonHash,
-      display_name: display_name || (userId ? null : "Anonymous Participant"),
+      display_name: resolvedDisplayName,
+      // Scanner detail fields
+      scanner_name: scannerName || null,
+      scanner_email: scannerEmail || null,
+      scanner_phone: scannerPhone || null,
+      scanner_company: scannerCompany || null,
+      scanner_role: scannerRole || null,
+      source_platform: sourcePlatform || "t4l_ambassadors",
+      source_user_id: sourceUserId || null,
       created_at: new Date().toISOString(),
     };
 
@@ -5840,7 +7018,7 @@ app.post("/api/impact/events/:id/participate", async (req, res) => {
       .single();
 
     if (error) {
-      if (error.code === "23505") { // Unique constraint violation
+      if (error.code === "23505") {
         return res.status(409).json({ error: "You have already participated in this event." });
       }
       throw error;
@@ -5859,7 +7037,152 @@ app.post("/api/impact/events/:id/participate", async (req, res) => {
   }
 });
 
+// --- GET /api/impact/events/:id/attendance - Full attendance list (event creator only) ---
+app.get("/api/impact/events/:id/attendance", requireAuth, async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const userId = req.auth.userId;
+
+    const { data: event } = await supabase
+      .from("impact_events")
+      .select("event_id, title, created_by, event_date, status")
+      .eq("event_id", eventId)
+      .single();
+
+    if (!event) return res.status(404).json({ error: "Event not found" });
+    if (event.created_by !== userId && req.auth.role !== "admin") {
+      return res.status(403).json({ error: "Only the event creator can view attendance." });
+    }
+
+    const { data: participants } = await supabase
+      .from("event_participants")
+      .select("participant_id, display_name, scanner_name, scanner_email, scanner_phone, scanner_company, scanner_role, source_platform, participant_type, created_at")
+      .eq("event_id", eventId)
+      .order("created_at", { ascending: true });
+
+    return res.json({
+      event_title: event.title,
+      event_date: event.event_date,
+      status: event.status,
+      total: (participants || []).length,
+      participants: participants || [],
+    });
+  } catch (error) {
+    console.error("❌ Error fetching attendance:", error);
+    return res.status(500).json({ error: "Failed to fetch attendance", details: error.message });
+  }
+});
+
+// --- GET /api/impact/events/:id/attendance/export - Download attendance as Excel ---
+app.get("/api/impact/events/:id/attendance/export", requireAuth, async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const userId = req.auth.userId;
+
+    const { data: event } = await supabase
+      .from("impact_events")
+      .select("event_id, title, created_by, event_date, status, esg_category")
+      .eq("event_id", eventId)
+      .single();
+
+    if (!event) return res.status(404).json({ error: "Event not found" });
+    if (event.created_by !== userId && req.auth.role !== "admin") {
+      return res.status(403).json({ error: "Only the event creator can export attendance." });
+    }
+
+    const { data: participants } = await supabase
+      .from("event_participants")
+      .select("display_name, scanner_name, scanner_email, scanner_phone, scanner_company, scanner_role, source_platform, participant_type, created_at")
+      .eq("event_id", eventId)
+      .order("created_at", { ascending: true });
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "T4L Ambassador Platform";
+    workbook.created = new Date();
+
+    const sheet = workbook.addWorksheet("Attendance");
+
+    // Event info header rows
+    sheet.addRow(["Event Title", event.title]);
+    sheet.addRow(["Event Date", event.event_date]);
+    sheet.addRow(["ESG Category", event.esg_category]);
+    sheet.addRow(["Status", event.status]);
+    sheet.addRow(["Total Attendees", (participants || []).length]);
+    sheet.addRow([]);
+
+    // Column headers
+    const headerRow = sheet.addRow([
+      "#",
+      "Name",
+      "Email",
+      "Phone",
+      "Company / Organisation",
+      "Role",
+      "Platform",
+      "Scanned At",
+    ]);
+    headerRow.font = { bold: true };
+    headerRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF4B0D7F" },
+    };
+    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+
+    sheet.columns = [
+      { key: "num", width: 5 },
+      { key: "name", width: 28 },
+      { key: "email", width: 30 },
+      { key: "phone", width: 18 },
+      { key: "company", width: 28 },
+      { key: "role", width: 20 },
+      { key: "platform", width: 22 },
+      { key: "scanned_at", width: 22 },
+    ];
+
+    (participants || []).forEach((p, i) => {
+      const name = p.scanner_name || p.display_name || "Anonymous";
+      const platform = p.source_platform === "transformation_tier"
+        ? "Transformation Tier"
+        : p.source_platform === "t4l_ambassadors"
+        ? "T4L Ambassadors"
+        : p.source_platform || "T4L Ambassadors";
+
+      sheet.addRow([
+        i + 1,
+        name,
+        p.scanner_email || "",
+        p.scanner_phone || "",
+        p.scanner_company || "",
+        p.scanner_role || "",
+        platform,
+        new Date(p.created_at).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }),
+      ]);
+    });
+
+    // Auto-fit rows style
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 6) {
+        row.alignment = { vertical: "middle", wrapText: false };
+      }
+    });
+
+    const safeTitle = (event.title || "event").replace(/[^a-z0-9]/gi, "_").slice(0, 40);
+    const filename = `attendance_${safeTitle}_${event.event_date || "unknown"}.xlsx`;
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error("❌ Error exporting attendance:", error);
+    return res.status(500).json({ error: "Failed to export attendance", details: error.message });
+  }
+});
+
 // --- GET /api/impact/entries - Get impact entries for current user ---
+// Automatically pulls new entries from Tier (Firestore) before returning results
 app.get("/api/impact/entries", requireAuth, async (req, res) => {
   try {
     const userId = req.auth.userId;
@@ -5868,6 +7191,38 @@ app.get("/api/impact/entries", requireAuth, async (req, res) => {
     const offset = parseInt(req.query.offset) || 0;
     const esg_category = req.query.esg_category || null;
     const entry_type = req.query.entry_type || null;
+
+    // Full bidirectional sync on page load (push native → Firestore, pull Tier → Supabase)
+    if (firebaseInitialized && offset === 0 && userRole !== "admin") {
+      try {
+        const { data: userRow } = await supabase.from("users").select("email, firebase_uid").eq("user_id", userId).single();
+        let fbUid = userRow?.firebase_uid;
+        console.log(`🔄 [Sync] user=${userRow?.email}, role=${userRole}, firebase_uid=${fbUid || "NONE"}`);
+
+        if (!fbUid && userRow?.email) {
+          try {
+            const fbUser = await firebaseAdmin.auth().getUserByEmail(userRow.email);
+            fbUid = fbUser.uid;
+            await supabase
+              .from("users")
+              .update({ firebase_uid: fbUid, updated_at: new Date().toISOString() })
+              .eq("user_id", userId);
+            console.log(`🔗 Auto-linked Firebase UID ${fbUid} for ${userRow.email}`);
+          } catch (fbErr) {
+            console.log(`⚠️ [Sync] No Firebase account for ${userRow?.email}: ${fbErr.message}`);
+          }
+        }
+
+        if (fbUid) {
+          const syncResult = await impactSync.fullSync(supabase, userId, fbUid, userRole);
+          console.log(`🔄 [Sync] result:`, JSON.stringify(syncResult));
+        } else {
+          console.log(`⚠️ [Sync] Skipping - no Firebase UID for ${userRow?.email}`);
+        }
+      } catch (syncErr) {
+        console.error("⚠️ Auto-sync failed (non-blocking):", syncErr.message);
+      }
+    }
 
     let query = supabase
       .from("impact_entries")
@@ -5906,8 +7261,14 @@ app.post("/api/impact/entries", requireAuth, async (req, res) => {
     const {
       title, description, esg_category,
       people_impacted, hours_contributed, usd_value,
-      impact_unit, activity_date, evidence_link
-    } = req.body;
+      impact_unit, activity_date, evidence_link,
+      // Optional ESG verification
+      send_for_verification,
+      verifier_name,
+      verifier_email,
+      verifier_role,
+      tier, // 'tier_2' or 'tier_3' when using internal verification tools
+    } = req.body || {};
 
     if (!title || !esg_category) {
       return res.status(400).json({ error: "Title and ESG category are required" });
@@ -5946,17 +7307,23 @@ app.post("/api/impact/entries", requireAuth, async (req, res) => {
       }
     }
 
+    const entryId = uuidv4();
+
     const entryData = {
-      entry_id: uuidv4(),
+      entry_id: entryId,
       user_id: userId,
       user_role: userRole,
       entry_type: "individual",
+      impact_type: "esg",
+      impact_type: "esg",
       title: title.trim(),
       description: (description || "").trim(),
       esg_category,
       people_impacted: impactValue,
       hours_contributed: parseFloat(hours_contributed) || 0,
       usd_value: parseFloat(usd_value) || 0,
+      usd_value_source: "auto",
+      usd_value_source: "auto",
       impact_unit: (impact_unit || "people").trim(),
       verification_level: verificationLevel,
       verification_multiplier: verificationMultiplier,
@@ -5977,14 +7344,177 @@ app.post("/api/impact/entries", requireAuth, async (req, res) => {
 
     if (error) throw error;
 
+    // Optional ESG verification upgrade (internal or email)
+    if (tier && ["tier_2", "tier_3"].includes(tier)) {
+      // Direct internal upgrade (e.g. admin/partner using a tool)
+      const nowIso = new Date().toISOString();
+      await supabase
+        .from("impact_entries")
+        .update({
+          verification_level: tier,
+          verifier_name: verifier_name || null,
+          verifier_role: verifier_role || null,
+          verifier_comment: null,
+          verified_at: nowIso,
+        })
+        .eq("entry_id", entryId);
+    } else if (send_for_verification && verifier_email) {
+      // Email-based ESG verification flow, reusing business_verification_tokens table
+      const token = uuidv4();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      const { error: tokenError } = await supabase.from("business_verification_tokens").insert([
+        {
+          token,
+          entry_id: entryId,
+          verifier_name: verifier_name || null,
+          verifier_email,
+          verifier_role: verifier_role || null,
+          status: "pending",
+          expires_at: expiresAt.toISOString(),
+        },
+      ]);
+      if (tokenError) {
+        console.error("❌ Failed to create ESG verification token:", tokenError);
+      } else {
+        const baseUrl = `${req.protocol}://${req.get("host")}`;
+        const reviewUrl = `${baseUrl}/business-verification.html?token=${encodeURIComponent(token)}`;
+        try {
+          await emailService.sendBusinessVerificationRequestEmail({
+            verifier_name,
+            verifier_email,
+            verifier_role,
+            partner_name: null,
+            entry_title: entry.title,
+            usd_value: entry.usd_value,
+            outcome_statement: entry.description,
+            review_url: reviewUrl,
+          });
+        } catch (emailError) {
+          console.error("❌ Failed to send ESG verification email:", emailError);
+        }
+      }
+    }
+
+    // Auto-sync to Firestore (non-blocking)
+    if (firebaseInitialized && entry) {
+      impactSync.syncEntryBackground(supabase, entry, getUserById).catch(() => {});
+    }
+
     return res.json({
       success: true,
       entry,
-      message: "Impact entry logged successfully",
+      message:
+        (send_for_verification && verifier_email) || tier
+          ? "Impact entry logged with verification action"
+          : "Impact entry logged successfully",
     });
   } catch (error) {
     console.error("❌ Error creating impact entry:", error);
     return res.status(500).json({ error: "Failed to create impact entry", details: error.message });
+  }
+});
+
+// --- GET /api/impact/entries/:id - Get a single impact entry for current user ---
+app.get("/api/impact/entries/:id", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const entryId = req.params.id;
+
+    const { data: entry, error } = await supabase
+      .from("impact_entries")
+      .select("*")
+      .eq("entry_id", entryId)
+      .eq("user_id", userId)
+      .single();
+
+    if (error || !entry) {
+      return res.status(404).json({ error: "Impact entry not found" });
+    }
+
+    // Resolve creator display name for share card (organization or person name)
+    let creatorDisplay = null;
+    const role = (entry.user_role || "").toLowerCase();
+    if (role === "partner") {
+      const { data: partner } = await supabase
+        .from("partners")
+        .select("organization_name")
+        .eq("user_id", entry.user_id)
+        .maybeSingle();
+      if (partner?.organization_name) creatorDisplay = partner.organization_name;
+    } else {
+      const { data: ambassador } = await supabase
+        .from("ambassadors")
+        .select("first_name, last_name")
+        .eq("user_id", entry.user_id)
+        .maybeSingle();
+      if (ambassador) {
+        const name = [ambassador.first_name, ambassador.last_name].filter(Boolean).join(" ").trim();
+        if (name) creatorDisplay = name;
+      }
+    }
+    const out = { ...entry, creator_display: creatorDisplay || undefined };
+
+    return res.json({ entry: out });
+  } catch (error) {
+    console.error("❌ Error fetching impact entry:", error);
+    return res
+      .status(500)
+      .json({ error: "Failed to fetch impact entry", details: error.message });
+  }
+});
+
+// --- POST /api/impact/entries/:id/mark-tier3 - Mark an entry as externally audited (Tier 3) ---
+app.post("/api/impact/entries/:id/mark-tier3", requireAuth, requireRole("partner"), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const entryId = req.params.id;
+    const { auditor_name, auditor_org, auditor_notes } = req.body || {};
+
+    if (!auditor_name) {
+      return res.status(400).json({ error: "auditor_name is required" });
+    }
+
+    const { data: entry, error: entryError } = await supabase
+      .from("impact_entries")
+      .select("entry_id, user_id")
+      .eq("entry_id", entryId)
+      .single();
+
+    if (entryError || !entry) {
+      return res.status(404).json({ error: "Impact entry not found" });
+    }
+
+    if (entry.user_id !== userId) {
+      return res.status(403).json({ error: "Not authorized to modify this entry" });
+    }
+
+    const nowIso = new Date().toISOString();
+
+    const { error: updateError } = await supabase
+      .from("impact_entries")
+      .update({
+        verification_level: "tier_3",
+        verifier_name: auditor_name,
+        verifier_role: auditor_org || null,
+        verifier_comment: auditor_notes || null,
+        verified_at: nowIso,
+        updated_at: nowIso,
+      })
+      .eq("entry_id", entryId);
+
+    if (updateError) throw updateError;
+
+    return res.json({
+      success: true,
+      message: "Entry marked as Externally Audited (Tier 3)",
+    });
+  } catch (error) {
+    console.error("❌ Error marking entry as Tier 3:", error);
+    return res
+      .status(500)
+      .json({ error: "Failed to mark entry as Tier 3", details: error.message });
   }
 });
 
@@ -5995,15 +7525,18 @@ app.get("/api/impact/my-stats", requireAuth, async (req, res) => {
 
     const { data: entries } = await supabase
       .from("impact_entries")
-      .select("people_impacted, hours_contributed, usd_value, scp_earned, points_earned, esg_category, entry_type, verification_level")
+      .select("people_impacted, hours_contributed, usd_value, scp_earned, points_earned, esg_category, entry_type, verification_level, impact_type, activity_date")
       .eq("user_id", userId);
 
     const stats = {
       total_people_impacted: 0,
       total_hours: 0,
+      esg_hours_this_year: 0,
       total_usd_value: 0,
       total_scp: 0,
       total_points: 0,
+      esg_usd_value: 0,
+      business_usd_value: 0,
       total_entries: (entries || []).length,
       events_participated: 0,
       events_created: 0,
@@ -6014,23 +7547,43 @@ app.get("/api/impact/my-stats", requireAuth, async (req, res) => {
         social: { people: 0, hours: 0, usd: 0 },
         governance: { people: 0, hours: 0, usd: 0 },
       },
-      verification_breakdown: { tier_1: 0, tier_2: 0, tier_3: 0, tier_4: 0 },
+      verification_breakdown: { tier_1: 0, tier_2: 0, tier_3: 0 },
     };
 
+    const now = new Date();
+    const currentYear = now.getFullYear();
+
     (entries || []).forEach(e => {
-      stats.total_people_impacted += parseFloat(e.people_impacted) || 0;
-      stats.total_hours += parseFloat(e.hours_contributed) || 0;
-      stats.total_usd_value += parseFloat(e.usd_value) || 0;
+      const people = parseFloat(e.people_impacted) || 0;
+      const hours = parseFloat(e.hours_contributed) || 0;
+      const usd = parseFloat(e.usd_value) || 0;
+      stats.total_people_impacted += people;
+      stats.total_hours += hours;
+      stats.total_usd_value += usd;
       stats.total_scp += parseFloat(e.scp_earned) || 0;
       stats.total_points += parseInt(e.points_earned) || 0;
+
+      if (e.impact_type === "business_outcome") {
+        stats.business_usd_value += usd;
+      } else {
+        // Default or missing impact_type is treated as ESG for backwards compatibility
+        stats.esg_usd_value += usd;
+        // Track ESG hours toward 25h/year target (current calendar year only)
+        if (e.activity_date) {
+          const d = new Date(e.activity_date);
+          if (!isNaN(d) && d.getFullYear() === currentYear) {
+            stats.esg_hours_this_year += hours;
+          }
+        }
+      }
       if (e.esg_category && stats.by_category[e.esg_category] !== undefined) {
-        stats.by_category[e.esg_category] += parseFloat(e.people_impacted) || 0;
+        stats.by_category[e.esg_category] += people;
       }
       // Category-level hours & USD
       if (e.esg_category && stats.category_breakdown[e.esg_category]) {
-        stats.category_breakdown[e.esg_category].people += parseFloat(e.people_impacted) || 0;
-        stats.category_breakdown[e.esg_category].hours += parseFloat(e.hours_contributed) || 0;
-        stats.category_breakdown[e.esg_category].usd += parseFloat(e.usd_value) || 0;
+        stats.category_breakdown[e.esg_category].people += people;
+        stats.category_breakdown[e.esg_category].hours += hours;
+        stats.category_breakdown[e.esg_category].usd += usd;
       }
       // Verification tier counts
       if (e.verification_level && stats.verification_breakdown[e.verification_level] !== undefined) {
@@ -6044,6 +7597,1460 @@ app.get("/api/impact/my-stats", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("❌ Error fetching impact stats:", error);
     return res.status(500).json({ error: "Failed to fetch impact stats" });
+  }
+});
+
+// ============================================
+// IMPACT RATES (ESG TAXONOMY - for Create Event & Partner flows)
+// ============================================
+
+// --- GET /api/impact/rates - list active ESG rate configs for activity type dropdown (ambassador/partner/admin) ---
+app.get("/api/impact/rates", requireAuth, async (req, res) => {
+  try {
+    const { esg_category } = req.query;
+    const role = req.auth.role;
+    if (!["ambassador", "partner", "admin"].includes(role)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    let query = supabase
+      .from("rate_configuration")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+
+    if (esg_category) {
+      query = query.eq("esg_category", esg_category);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return res.json({ rates: data || [] });
+  } catch (error) {
+    console.error("❌ Error fetching impact rates:", error);
+    return res.status(500).json({ error: "Failed to fetch rates", details: error.message });
+  }
+});
+
+// ============================================
+// PARTNER IMPACT LOG (ESG RATE-BASED FLOWS)
+// ============================================
+
+// --- GET /api/partner/impact/rates - list active ESG rate configs (optionally filtered) ---
+app.get("/api/partner/impact/rates", requireAuth, requireRole("partner"), async (req, res) => {
+  try {
+    const { esg_category } = req.query;
+
+    let query = supabase
+      .from("rate_configuration")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+
+    if (esg_category) {
+      query = query.eq("esg_category", esg_category);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return res.json({ rates: data || [] });
+  } catch (error) {
+    console.error("❌ Error fetching rate configuration:", error);
+    return res.status(500).json({ error: "Failed to fetch rate configuration", details: error.message });
+  }
+});
+
+// --- GET /api/partner/impact/rates/:activityKey - single rate by key ---
+app.get("/api/partner/impact/rates/:activityKey", requireAuth, requireRole("partner"), async (req, res) => {
+  try {
+    const activityKey = req.params.activityKey;
+
+    const { data, error } = await supabase
+      .from("rate_configuration")
+      .select("*")
+      .eq("activity_key", activityKey)
+      .eq("is_active", true)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ error: "Rate configuration not found for activity_key", activity_key: activityKey });
+    }
+
+    return res.json({ rate: data });
+  } catch (error) {
+    console.error("❌ Error fetching rate by key:", error);
+    return res.status(500).json({ error: "Failed to fetch rate", details: error.message });
+  }
+});
+
+// --- POST /api/partner/impact/esg-entry - create ESG impact entry for a partner using a rate config ---
+app.post("/api/partner/impact/esg-entry", requireAuth, requireRole("partner"), async (req, res) => {
+  try {
+    console.log("[esg-entry] req.body =", JSON.stringify(req.body, null, 2));
+    const userId = req.auth.userId;
+    const userRole = req.auth.role; // should be 'partner'
+
+    const {
+      activity_key,
+      esg_category,
+      people_impacted,
+      hours_contributed,
+      title,
+      description,
+      activity_date,
+      impact_unit_override,
+      evidence_link,
+      share_externally,
+      // Optional ESG verification
+      send_for_verification,
+      verifier_name,
+      verifier_email,
+      verifier_role,
+    } = req.body || {};
+
+    if (!activity_key || !esg_category) {
+      return res.status(400).json({ error: "activity_key and esg_category are required" });
+    }
+
+    const impactPeople = parseFloat(people_impacted);
+    const hours = parseFloat(hours_contributed);
+
+    if (!impactPeople || impactPeople <= 0) {
+      return res.status(400).json({ error: "people_impacted must be a positive number" });
+    }
+
+    // Look up rate configuration for this activity
+    const { data: rate, error: rateError } = await supabase
+      .from("rate_configuration")
+      .select("*")
+      .eq("activity_key", activity_key)
+      .eq("esg_category", esg_category)
+      .eq("is_active", true)
+      .single();
+
+    if (rateError || !rate) {
+      return res.status(404).json({
+        error: "No active rate configuration found for activity_key and esg_category",
+        activity_key,
+        esg_category,
+      });
+    }
+
+    // Benchmark rates for USD social value
+    const unitRate = parseFloat(rate.unit_rate_usd) || 0;             // $ per impact unit
+    const volHourRate = parseFloat(rate.volunteer_hour_rate) || 33.49; // $ per volunteer hour
+
+    // Core ESG metrics (people & hours)
+    const peopleImpacted = isNaN(impactPeople) ? 0 : impactPeople;
+    const hoursContributed = isNaN(hours) ? 0 : hours;
+
+    // USD Social Value = (Impact Value × Unit Rate) + (Hours × $33.49)
+    const impactUsd = peopleImpacted * unitRate;
+    const hoursUsd = hoursContributed * volHourRate;
+    const usdValue = impactUsd + hoursUsd;
+
+    // SCP & points can be simple functions of people impacted for now
+    const scpEarned = peopleImpacted; // 1 point per person (example baseline)
+    const pointsEarned = Math.round(peopleImpacted); // gamification points
+
+    const verificationLevel = "tier_1";          // ESG individual entries default Tier 1
+    const verificationMultiplier = 1.0;
+
+    const todayIso = new Date().toISOString();
+    const activityDateStr = activity_date || todayIso.split("T")[0];
+
+    const entryId = uuidv4();
+
+    const entryData = {
+      entry_id: entryId,
+      user_id: userId,
+      user_role: userRole,
+      entry_type: "individual",
+      title: (title || rate.activity_label || "Impact entry").trim(),
+      description: (description || rate.description || "").trim(),
+      esg_category,
+      people_impacted: peopleImpacted,
+      hours_contributed: hoursContributed,
+      usd_value: usdValue,
+      impact_unit: (impact_unit_override || rate.unit_label || "units").trim(),
+      verification_level: verificationLevel,
+      verification_multiplier: verificationMultiplier,
+      scp_earned: scpEarned,
+      points_earned: pointsEarned,
+      points_eligible: pointsEarned > 0,
+      activity_date: activityDateStr,
+      share_externally: !!share_externally,
+      created_at: todayIso,
+      updated_at: todayIso,
+      impact_type: "esg",
+      usd_value_source: "auto",
+      unit_rate_applied: unitRate,
+      vol_hour_rate_applied: volHourRate,
+      evidence_link: evidence_link || null,
+    };
+
+    let entry, error;
+    const MAX_RETRIES = 8;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      ({ data: entry, error } = await supabase
+        .from("impact_entries")
+        .insert([entryData])
+        .select()
+        .single());
+
+      if (error && error.code === "PGRST204") {
+        const match = error.message.match(/Could not find the '(\w+)' column/);
+        if (match) {
+          console.warn(`⚠️ Column '${match[1]}' missing in impact_entries, removing and retrying...`);
+          delete entryData[match[1]];
+          continue;
+        }
+      }
+      break;
+    }
+
+    if (error) throw error;
+
+    // Diagnostic log — always visible regardless of NODE_ENV
+    console.log("[esg-entry] Entry saved. send_for_verification =", send_for_verification, "| verifier_email =", verifier_email || "(none)");
+
+    // Respond immediately — the entry is saved. Email is sent in the background.
+    const emailPending = !!(send_for_verification && verifier_email);
+    console.log("[esg-entry] emailPending =", emailPending);
+
+    const responseMessage = emailPending
+      ? `Impact entry logged! Sending verification email to ${verifier_email}…`
+      : "Impact entry logged successfully!";
+
+    res.json({
+      success: true,
+      entry,
+      meta: {
+        derived_from_people_and_hours: { people_impacted: peopleImpacted, hours_contributed: hoursContributed },
+        rate_activity_key: activity_key,
+      },
+      message: responseMessage,
+    });
+
+    // --- Background email (non-blocking) ---
+    if (emailPending) {
+      setImmediate(async () => {
+        console.log("[esg-email] Background email task started for:", verifier_email);
+        try {
+          // Look up partner profile and email in parallel
+          const [profileResult, userResult] = await Promise.all([
+            supabase.from("partners").select("organization_name, contact_person").eq("user_id", userId).single(),
+            supabase.from("users").select("email").eq("user_id", userId).single(),
+          ]);
+          const partnerName = profileResult.data?.organization_name || profileResult.data?.contact_person || "T4L Partner";
+          const partnerEmail = userResult.data?.email || null;
+          console.log("[esg-email] Partner resolved:", partnerName, "| email:", partnerEmail);
+
+          // Try to create a verification token (optional — email sends even if this fails)
+          let reviewUrl = null;
+          try {
+            const token = uuidv4();
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + 30);
+            const { error: tokenError } = await supabase.from("business_verification_tokens").insert([{
+              token,
+              entry_id: entryId,
+              verifier_name: verifier_name || null,
+              verifier_email,
+              verifier_role: verifier_role || null,
+              status: "pending",
+              expires_at: expiresAt.toISOString(),
+            }]);
+            if (tokenError) {
+              console.warn("[esg-email] ⚠️ Token insert failed (email will still send):", tokenError.message || JSON.stringify(tokenError));
+            } else {
+              const baseUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
+              reviewUrl = `${baseUrl}/business-verification.html?token=${encodeURIComponent(token)}`;
+              console.log("[esg-email] Token created. Review URL:", reviewUrl);
+            }
+          } catch (tokenErr) {
+            console.warn("[esg-email] ⚠️ Token creation threw (email will still send):", tokenErr.message);
+          }
+
+          console.log("[esg-email] Calling sendEsgAuditorEmail...");
+          const emailResult = await emailService.sendEsgAuditorEmail({
+            verifier_name:     verifier_name || null,
+            verifier_email,
+            verifier_role:     verifier_role || null,
+            partner_name:      partnerName,
+            partner_email:     partnerEmail,
+            entry_title:       entry.title,
+            description:       entry.description,
+            esg_category:      esg_category,
+            activity_label:    rate.activity_label || activity_key,
+            activity_date:     activityDateStr,
+            people_impacted:   peopleImpacted,
+            hours_contributed: hoursContributed,
+            usd_value:         entry.usd_value,
+            evidence_link:     evidence_link || null,
+            submitted_at:      todayIso,
+            review_url:        reviewUrl || "#",
+          });
+          console.log("✅ [esg-email] Email sent via", emailResult?.method, "to", verifier_email);
+          if (emailResult?.previewUrl) {
+            console.log("📧 [esg-email] Ethereal preview URL:", emailResult.previewUrl);
+          }
+        } catch (bgErr) {
+          console.error("❌ [esg-email] Background email task failed:", bgErr?.message || bgErr);
+          if (bgErr?.stack) console.error(bgErr.stack);
+        }
+      });
+    }
+  } catch (error) {
+    console.error("❌ Error creating partner ESG impact entry:", error);
+    return res.status(500).json({ error: "Failed to create ESG impact entry", details: error.message });
+  }
+});
+
+// --- POST /api/partner/impact/business-entry - create Business Outcome entry for a partner ---
+app.post("/api/partner/impact/business-entry", requireAuth, requireRole("partner"), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const userRole = req.auth.role; // 'partner'
+
+    const {
+      title,
+      description,
+      waste_primary,
+      waste_secondary,
+      improvement_method,
+      usd_saved,
+      outcome_statement,
+      activity_date,
+      evidence_link,
+      send_for_verification,
+      verifier_name,
+      verifier_email,
+      verifier_role,
+    } = req.body || {};
+
+    if (!waste_primary || !improvement_method || !usd_saved || !outcome_statement) {
+      return res.status(400).json({
+        error: "waste_primary, improvement_method, usd_saved, and outcome_statement are required",
+      });
+    }
+
+    const usdValue = parseFloat(usd_saved);
+    if (!usdValue || usdValue <= 0) {
+      return res.status(400).json({ error: "usd_saved must be a positive number" });
+    }
+
+    const todayIso = new Date().toISOString();
+    const activityDateStr = activity_date || todayIso.split("T")[0];
+
+    const entryId = uuidv4();
+
+    const entryData = {
+      entry_id: entryId,
+      user_id: userId,
+      user_role: userRole,
+      entry_type: "individual",
+      impact_type: "business_outcome",
+      title: (title || "Business outcome").trim(),
+      description: (description || "").trim(),
+      esg_category: "governance",
+      people_impacted: 0,
+      hours_contributed: 0,
+      usd_value: usdValue,
+      usd_value_source: "user_entered",
+      impact_unit: "USD saved/created",
+      verification_level: "tier_1",
+      verification_multiplier: 1.0,
+      evidence_link: evidence_link || null,
+      scp_earned: 0,
+      points_earned: 0,
+      points_eligible: false,
+      activity_date: activityDateStr,
+      share_externally: false,
+      waste_primary: waste_primary,
+      waste_secondary: waste_secondary || null,
+      improvement_method: improvement_method,
+      outcome_statement: outcome_statement,
+      created_at: todayIso,
+      updated_at: todayIso,
+    };
+
+    let entry, error;
+    const BIZ_MAX_RETRIES = 8;
+    for (let attempt = 0; attempt <= BIZ_MAX_RETRIES; attempt++) {
+      ({ data: entry, error } = await supabase
+        .from("impact_entries")
+        .insert([entryData])
+        .select()
+        .single());
+
+      if (error && error.code === "PGRST204") {
+        const match = error.message.match(/Could not find the '(\w+)' column/);
+        if (match) {
+          console.warn(`⚠️ Column '${match[1]}' missing in impact_entries (business), removing and retrying...`);
+          delete entryData[match[1]];
+          continue;
+        }
+      }
+      break;
+    }
+
+    if (error) throw error;
+
+    let emailResult = null;
+    if (send_for_verification && verifier_email) {
+      const token = uuidv4();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 14);
+
+      const { error: tokenError } = await supabase.from("business_verification_tokens").insert([
+        {
+          token,
+          entry_id: entryId,
+          verifier_name: verifier_name || null,
+          verifier_email,
+          verifier_role: verifier_role || null,
+          status: "pending",
+          expires_at: expiresAt.toISOString(),
+        },
+      ]);
+      if (tokenError) {
+        console.error("❌ Failed to create business verification token:", tokenError);
+        emailResult = { sent: false, reason: "Token creation failed: " + tokenError.message };
+      } else {
+        const baseUrl = `${req.protocol}://${req.get("host")}`;
+        const reviewUrl = `${baseUrl}/business-verification.html?token=${encodeURIComponent(token)}`;
+        try {
+          emailResult = await emailService.sendBusinessVerificationRequestEmail({
+            verifier_name,
+            verifier_email,
+            verifier_role,
+            partner_name: null,
+            entry_title: entry.title,
+            usd_value: entry.usd_value,
+            outcome_statement: entry.outcome_statement,
+            review_url: reviewUrl,
+          });
+          emailResult.sent = true;
+          log("📧 Verification email result:", JSON.stringify(emailResult));
+        } catch (emailError) {
+          console.error("❌ Failed to send business verification email:", emailError);
+          emailResult = { sent: false, reason: emailError.message };
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      entry,
+      email: emailResult,
+      message: send_for_verification && verifier_email
+        ? (emailResult?.sent ? "Business Outcome logged and verification email sent to " + verifier_email : "Business Outcome logged but email failed: " + (emailResult?.reason || "unknown"))
+        : "Business Outcome entry logged successfully",
+    });
+  } catch (error) {
+    console.error("❌ Error creating Business Outcome entry:", error);
+    return res
+      .status(500)
+      .json({ error: "Failed to create Business Outcome entry", details: error.message });
+  }
+});
+
+// --- GET /api/impact/business-verification - fetch verification state (public, token-based) ---
+app.get("/api/impact/business-verification", async (req, res) => {
+  try {
+    const token = req.query.token;
+    if (!token) {
+      return res.status(400).json({ error: "Missing verification token" });
+    }
+
+    const { data: ver, error: verError } = await supabase
+      .from("business_verification_tokens")
+      .select("*")
+      .eq("token", token)
+      .single();
+
+    if (verError || !ver) {
+      return res.status(404).json({ error: "Verification link is invalid or has expired" });
+    }
+
+    // Check expiry
+    if (ver.expires_at && new Date(ver.expires_at) < new Date()) {
+      return res.status(410).json({ error: "Verification link has expired" });
+    }
+
+    const { data: entry, error: entryError } = await supabase
+      .from("impact_entries")
+      .select("entry_id, title, description, usd_value, activity_date, waste_primary, waste_secondary, improvement_method, outcome_statement, verification_level")
+      .eq("entry_id", ver.entry_id)
+      .single();
+
+    if (entryError || !entry) {
+      return res.status(404).json({ error: "Associated impact entry not found" });
+    }
+
+    return res.json({
+      verification: ver,
+      entry,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching business verification state:", error);
+    return res
+      .status(500)
+      .json({ error: "Failed to load verification state", details: error.message });
+  }
+});
+
+// --- POST /api/impact/business-verification - confirm/reject (public, token-based) ---
+app.post("/api/impact/business-verification", async (req, res) => {
+  try {
+    const { token, decision, verifier_name, verifier_role, verifier_comment } = req.body || {};
+    if (!token || !decision) {
+      return res.status(400).json({ error: "token and decision are required" });
+    }
+    if (!["confirmed", "rejected"].includes(decision)) {
+      return res.status(400).json({ error: "Invalid decision" });
+    }
+
+    const { data: ver, error: verError } = await supabase
+      .from("business_verification_tokens")
+      .select("*")
+      .eq("token", token)
+      .single();
+
+    if (verError || !ver) {
+      return res.status(404).json({ error: "Verification link is invalid or has expired" });
+    }
+
+    if (ver.status !== "pending") {
+      return res.status(400).json({ error: "This verification request is no longer pending" });
+    }
+
+    if (ver.expires_at && new Date(ver.expires_at) < new Date()) {
+      // Mark as expired
+      await supabase
+        .from("business_verification_tokens")
+        .update({ status: "expired" })
+        .eq("token_id", ver.token_id);
+      return res.status(410).json({ error: "Verification link has expired" });
+    }
+
+    const nowIso = new Date().toISOString();
+
+    // Update verification token
+    const { error: updateVerError } = await supabase
+      .from("business_verification_tokens")
+      .update({
+        status: decision,
+        verifier_name: verifier_name || ver.verifier_name,
+        verifier_role: verifier_role || ver.verifier_role,
+        verifier_comment: verifier_comment || null,
+        verified_at: nowIso,
+      })
+      .eq("token_id", ver.token_id);
+
+    if (updateVerError) {
+      console.error("❌ Failed to update verification token:", updateVerError);
+    }
+
+    if (decision === "confirmed") {
+      // Upgrade impact entry to Tier 2 with verifier info (works for both Business Outcome and ESG entries)
+      const { error: updateEntryError } = await supabase
+        .from("impact_entries")
+        .update({
+          verification_level: "tier_2",
+          verifier_name: verifier_name || ver.verifier_name,
+          verifier_role: verifier_role || ver.verifier_role,
+          verifier_comment: verifier_comment || null,
+          verified_at: nowIso,
+        })
+        .eq("entry_id", ver.entry_id);
+
+      if (updateEntryError) {
+        console.error("❌ Failed to upgrade impact entry to Tier 2:", updateEntryError);
+      }
+    }
+
+    return res.json({
+      success: true,
+      status: decision,
+      message:
+        decision === "confirmed"
+          ? "Thank you. This Business Outcome has been marked as manager/finance verified."
+          : "Thank you. This Business Outcome has been recorded as not verified.",
+    });
+  } catch (error) {
+    console.error("❌ Error updating business verification decision:", error);
+    return res
+      .status(500)
+      .json({ error: "Failed to update verification decision", details: error.message });
+  }
+});
+
+// --- GET /api/partner/impact/entries - partner-only view with basic aggregates ---
+// Automatically pulls new entries from Tier (Firestore) before returning results
+app.get("/api/partner/impact/entries", requireAuth, requireRole("partner"), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const { esg_category, from, to } = req.query;
+
+    // Full bidirectional sync (push native → Firestore, pull Tier → Supabase)
+    if (firebaseInitialized) {
+      try {
+        const { data: userRow } = await supabase.from("users").select("email, firebase_uid").eq("user_id", userId).single();
+        let fbUid = userRow?.firebase_uid;
+        console.log(`🔄 [Partner Sync] user=${userRow?.email}, firebase_uid=${fbUid || "NONE"}`);
+
+        if (!fbUid && userRow?.email) {
+          try {
+            const fbUser = await firebaseAdmin.auth().getUserByEmail(userRow.email);
+            fbUid = fbUser.uid;
+            await supabase
+              .from("users")
+              .update({ firebase_uid: fbUid, updated_at: new Date().toISOString() })
+              .eq("user_id", userId);
+            console.log(`🔗 Auto-linked Firebase UID ${fbUid} for partner ${userRow.email}`);
+          } catch (fbErr) {
+            console.log(`⚠️ [Partner Sync] No Firebase account for ${userRow?.email}: ${fbErr.message}`);
+          }
+        }
+
+        if (fbUid) {
+          const syncResult = await impactSync.fullSync(supabase, userId, fbUid, "partner");
+          console.log(`🔄 [Partner Sync] result:`, JSON.stringify(syncResult));
+        } else {
+          console.log(`⚠️ [Partner Sync] Skipping - no Firebase UID for ${userRow?.email}`);
+        }
+      } catch (syncErr) {
+        console.error("⚠️ Partner auto-sync failed (non-blocking):", syncErr.message);
+      }
+    }
+
+    let query = supabase
+      .from("impact_entries")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("user_role", "partner")
+      .eq("entry_type", "individual")
+      .order("created_at", { ascending: false });
+
+    if (esg_category) {
+      query = query.eq("esg_category", esg_category);
+    }
+    if (from) {
+      query = query.gte("activity_date", from);
+    }
+    if (to) {
+      query = query.lte("activity_date", to);
+    }
+
+    const { data: entries, error } = await query;
+    if (error) throw error;
+
+    const list = entries || [];
+
+    // Compute simple aggregates for the dashboard header
+    const aggregates = list.reduce(
+      (acc, e) => {
+        acc.total_people_impacted += parseFloat(e.people_impacted) || 0;
+        acc.total_hours_contributed += parseFloat(e.hours_contributed) || 0;
+        acc.total_usd_value += parseFloat(e.usd_value) || 0;
+        acc.total_scp += parseFloat(e.scp_earned) || 0;
+        return acc;
+      },
+      {
+        total_people_impacted: 0,
+        total_hours_contributed: 0,
+        total_usd_value: 0,
+        total_scp: 0,
+      }
+    );
+
+    return res.json({
+      entries: list,
+      count: list.length,
+      aggregates,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching partner impact entries:", error);
+    return res.status(500).json({ error: "Failed to fetch partner impact entries", details: error.message });
+  }
+});
+
+// --- GET /api/partner/impact/export-pdf - Generate Impact Report PDF (React-style) ---
+const getWasteLabel = (code) => {
+  const map = { DEF: "Defects", OVR: "Overproduction", WAI: "Waiting", NUT: "Non-utilised Talent", TRA: "Transportation", INV: "Inventory", MOT: "Motion", EXP: "Extra Processing" };
+  return map[code] || code;
+};
+
+function formatPdfDate(d) {
+  if (!d) return "";
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return "";
+  const months = "January February March April May June July August September October November December".split(" ");
+  return months[date.getMonth()] + " " + date.getFullYear();
+}
+function formatPdfDateFull(d) {
+  if (!d) return "";
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return "";
+  const months = "January February March April May June July August September October November December".split(" ");
+  return months[date.getMonth()] + " " + date.getDate() + ", " + date.getFullYear();
+}
+
+app.get("/api/partner/impact/export-pdf", requireAuth, requireRole("partner"), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    let { from, to } = req.query || {};
+    const now = new Date();
+    if (!to) to = now.toISOString().slice(0, 10);
+    if (!from) {
+      const start = new Date(now.getFullYear(), 0, 1);
+      from = start.toISOString().slice(0, 10);
+    }
+
+    let query = supabase
+      .from("impact_entries")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("user_role", "partner")
+      .order("activity_date", { ascending: false });
+    query = query.gte("activity_date", from).lte("activity_date", to);
+    const { data: entries, error } = await query;
+    if (error) throw error;
+    const list = entries || [];
+    if (!list.length) {
+      return res.status(400).json({ error: "No entries to include in report for the selected date range." });
+    }
+
+    const { data: userRow } = await supabase.from("users").select("email").eq("user_id", userId).single();
+    const orgName = userRow?.email || "Partner";
+
+    const esgEntries = list.filter((e) => (e.impact_type || "esg") === "esg");
+    const businessEntries = list.filter((e) => e.impact_type === "business_outcome");
+    const totalPeople = esgEntries.reduce((s, e) => s + (parseFloat(e.people_impacted) || 0), 0);
+    const totalHours = list.reduce((s, e) => s + (parseFloat(e.hours_contributed) || 0), 0);
+    const totalEsgValue = esgEntries.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+    const totalBusinessValue = businessEntries.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+    const totalCombined = totalEsgValue + totalBusinessValue;
+
+    const tier1 = list.filter((e) => (e.verification_level || "tier_1") === "tier_1").length;
+    const tier2 = list.filter((e) => e.verification_level === "tier_2").length;
+    const tier3 = list.filter((e) => e.verification_level === "tier_3").length;
+    const totalT = list.length || 1;
+
+    const environmental = esgEntries.filter((e) => e.esg_category === "environmental");
+    const social = esgEntries.filter((e) => e.esg_category === "social");
+    const governance = esgEntries.filter((e) => e.esg_category === "governance");
+
+    const wasteBreakdown = {};
+    businessEntries.forEach((e) => {
+      const w = e.waste_primary || e.business_activity || "Unknown";
+      wasteBreakdown[w] = (wasteBreakdown[w] || 0) + (parseFloat(e.usd_value) || 0);
+    });
+
+    const topActivities = esgEntries
+      .filter((e) => e.title && e.usd_value)
+      .map((e) => ({ title: e.title, value: parseFloat(e.usd_value) || 0 }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    const topOutcomes = businessEntries
+      .filter((e) => e.outcome_statement && e.usd_value)
+      .map((e) => ({
+        outcome: e.outcome_statement,
+        value: parseFloat(e.usd_value) || 0,
+        verification: e.verification_level === "tier_1" ? "Self-Reported" : e.verification_level === "tier_2" ? "Partner/Manager Verified" : "Externally Audited",
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    const filename = `impact-report-${now.toISOString().slice(0, 7)}.pdf`;
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    doc.pipe(res);
+
+    const primaryColor = "#3B0F7A";
+    const labelColor = "#555";
+    const sectionBg = "#F3F0FF";
+    const PAGE_H = 762;
+    const MARGIN = 40;
+    const ROW = 12;
+    const SECTION_H = 18;
+
+    const addFooter = (pageNum, totalPages) => {
+      const footerY = PAGE_H + MARGIN - 16;
+      doc.fontSize(7).fillColor("#999").text(
+        `Page ${pageNum} of ${totalPages} • ${orgName} • Generated from Tier Platform`,
+        40, footerY, { width: 515, align: "center" }
+      );
+    };
+
+    // ----- Page 1: Cover (vertically centered) -----
+    const coverBlockHeight = 100;
+    doc.y = MARGIN + (PAGE_H - coverBlockHeight) / 2;
+    doc.fontSize(26).fillColor(primaryColor).text("Impact Report", { align: "center" });
+    doc.moveDown(0.4);
+    doc.fontSize(13).fillColor("#555").text(orgName, { align: "center" });
+    doc.moveDown(0.2);
+    doc.fontSize(11).text(`${formatPdfDate(from)} - ${formatPdfDate(to)}`, { align: "center" });
+    doc.moveDown(1.2);
+    doc.fontSize(10).fillColor("#999").text(`Generated on ${formatPdfDateFull(now.toISOString())}`, { align: "center" });
+    addFooter(1, 3);
+    doc.addPage();
+
+    // ----- Page 2: Summary + Verification + ESG + Top Activities -----
+    doc.fontSize(9).fillColor(primaryColor).text("Impact Report", 40, 36);
+    doc.fontSize(7).fillColor("#777").text(orgName, 40, 47);
+
+    let y = 62;
+    const section = (title) => {
+      doc.rect(40, y, 515, SECTION_H).fill(sectionBg).stroke();
+      doc.fontSize(11).fillColor(primaryColor).text(title, 46, y + 4);
+      y += SECTION_H + 4;
+    };
+    const row = (label, value) => {
+      doc.fontSize(9).fillColor(labelColor).text(label, 40, y);
+      doc.fontSize(9).fillColor("#000").text(String(value), 40, y, { width: 515, align: "right" });
+      y += ROW;
+    };
+    const box = (fn) => {
+      y += 2;
+      fn();
+      y += 4;
+    };
+
+    section("Executive Summary");
+    box(() => {
+      row("Total People Impacted:", totalPeople.toLocaleString());
+      row("Total Hours Contributed:", totalHours.toLocaleString());
+      row("ESG Social Value (estimated):", "$" + totalEsgValue.toLocaleString());
+      row("Business Outcomes (verified savings):", "$" + totalBusinessValue.toLocaleString());
+      y += 2;
+      doc.moveTo(40, y).lineTo(555, y).stroke("#CCC");
+      y += 10;
+      doc.fontSize(9).fillColor(labelColor).text("Total Combined Impact Value:", 40, y);
+      doc.fontSize(11).fillColor(primaryColor).text("$" + totalCombined.toLocaleString(), 40, y, { width: 515, align: "right" });
+      y += ROW + 4;
+    });
+
+    section("Verification Summary");
+    box(() => {
+      row("Tier 1 (Self-Reported):", `${tier1} (${Math.round((tier1 / totalT) * 100)}%)`);
+      row("Tier 2 (Partner/Manager Verified):", `${tier2} (${Math.round((tier2 / totalT) * 100)}%)`);
+      row("Tier 3 (Externally Audited):", `${tier3} (${Math.round((tier3 / totalT) * 100)}%)`);
+      y += 6;
+    });
+
+    section("ESG Impact Breakdown");
+    box(() => {
+      row("Environmental:", `${environmental.length} activities | $${environmental.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0).toLocaleString()}`);
+      row("Social:", `${social.length} activities | $${social.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0).toLocaleString()}`);
+      row("Governance:", `${governance.length} activities | $${governance.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0).toLocaleString()}`);
+      y += 6;
+    });
+
+    section("Top ESG Activities by Impact");
+    box(() => {
+      if (!topActivities.length) doc.fontSize(9).fillColor(labelColor).text("No ESG activities in this period.", 40, y);
+      else topActivities.forEach((a, i) => { row(`${i + 1}. ${(a.title || "").slice(0, 45)}`, "$" + a.value.toLocaleString()); });
+      y += 6;
+    });
+
+    addFooter(2, 3);
+    doc.addPage();
+
+    // ----- Page 3: Business Outcomes + Total Impact + Methodology -----
+    doc.fontSize(9).fillColor(primaryColor).text("Impact Report", 40, 36);
+    doc.fontSize(7).fillColor("#777").text(orgName, 40, 47);
+    y = 62;
+
+    section("Business Outcomes Breakdown");
+    box(() => {
+      row("Total Operational Savings:", "$" + totalBusinessValue.toLocaleString());
+      doc.fontSize(9).fillColor("#000").text("By Waste Category:", 40, y + 1);
+      y += 12;
+      if (!Object.keys(wasteBreakdown).length) doc.fontSize(9).fillColor(labelColor).text("No business outcome entries in this period.", 40, y);
+      else Object.entries(wasteBreakdown).forEach(([w, v]) => { row(getWasteLabel(w), "$" + Number(v).toLocaleString()); });
+      y += 6;
+    });
+
+    section("Top Business Outcomes");
+    box(() => {
+      if (!topOutcomes.length) doc.fontSize(9).fillColor(labelColor).text("No business outcome entries in this period.", 40, y);
+      else topOutcomes.forEach((o, i) => {
+        doc.fontSize(9).fillColor(labelColor).text(`${i + 1}. ${(o.outcome || "").slice(0, 55)}`, 40, y);
+        doc.fontSize(9).fillColor("#000").text("$" + o.value.toLocaleString(), 40, y, { width: 515, align: "right" });
+        y += 11;
+        doc.fontSize(7).fillColor("#777").text(`Verification: ${o.verification}`, 48, y);
+        y += 10;
+      });
+      y += 4;
+    });
+
+    section("Total Impact Value");
+    doc.rect(40, y, 515, 28).fill("#EEF9F7").stroke("#B6E2DA");
+    doc.fontSize(11).fillColor("#2A9D8F").text("Total impact value: $" + totalCombined.toLocaleString(), 46, y + 5);
+    doc.fontSize(8).fillColor("#333").text(`(of which $${totalEsgValue.toLocaleString()} estimated social value and $${totalBusinessValue.toLocaleString()} verified operational savings)`, 46, y + 18, { width: 503 });
+    y += 36;
+
+    section("Methodology & Assurance Notes");
+    const methodologyText = "USD social value is calculated using published benchmark rates and sector cost proxies (e.g. ATD, US EPA IWG, One Tree Planted). Volunteer time is valued at the Independent Sector rate ($33.49/hour, 2024). Figures are estimated social value or costs avoided, not cash or audited outcomes. Business outcome values are user-entered; verification tier indicates validation level. This report aligns with SASB and IFRS ISSB for board reporting and ESG disclosures.";
+    doc.fontSize(7).fillColor(labelColor).text(methodologyText, 40, y, { width: 515, lineGap: 1.5 });
+
+    addFooter(3, 3);
+    doc.end();
+  } catch (err) {
+    console.error("❌ Error generating impact PDF:", err);
+    if (!res.headersSent) res.status(500).json({ error: "Failed to generate PDF", details: err.message });
+  }
+});
+
+// ============================================
+// AMBASSADOR IMPACT LOG (same features as partner)
+// ============================================
+
+// --- GET /api/ambassador/impact/bulk-template ---
+app.get("/api/ambassador/impact/bulk-template", requireAuth, requireRole("ambassador"), async (req, res) => {
+  try {
+    const columns = [
+      "impact_type", "date", "activity_title", "description", "esg_category", "esg_activity_type",
+      "people_impacted", "hours_contributed", "waste_primary", "waste_secondary", "improvement_method",
+      "usd_saved", "outcome_statement", "evidence_url", "usd_value", "verification_tier",
+    ];
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="t4l-impactlog-template.csv"');
+    return res.send(columns.join(","));
+  } catch (error) {
+    console.error("❌ Ambassador bulk template:", error);
+    return res.status(500).json({ error: "Failed to generate template", details: error.message });
+  }
+});
+
+// --- POST /api/ambassador/impact/business-entry ---
+app.post("/api/ambassador/impact/business-entry", requireAuth, requireRole("ambassador"), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const userRole = "ambassador";
+    const {
+      title, description, waste_primary, waste_secondary, improvement_method,
+      usd_saved, outcome_statement, activity_date, evidence_link,
+      send_for_verification, verifier_name, verifier_email, verifier_role,
+    } = req.body || {};
+
+    if (!waste_primary || !improvement_method || !usd_saved || !outcome_statement) {
+      return res.status(400).json({
+        error: "waste_primary, improvement_method, usd_saved, and outcome_statement are required",
+      });
+    }
+    const usdValue = parseFloat(usd_saved);
+    if (!usdValue || usdValue <= 0) {
+      return res.status(400).json({ error: "usd_saved must be a positive number" });
+    }
+    const todayIso = new Date().toISOString();
+    const activityDateStr = activity_date || todayIso.split("T")[0];
+    const entryId = uuidv4();
+    const entryData = {
+      entry_id: entryId,
+      user_id: userId,
+      user_role: userRole,
+      entry_type: "individual",
+      impact_type: "business_outcome",
+      title: (title || "Business outcome").trim(),
+      description: (description || "").trim(),
+      esg_category: "governance",
+      people_impacted: 0,
+      hours_contributed: 0,
+      usd_value: usdValue,
+      usd_value_source: "user_entered",
+      impact_unit: "USD saved/created",
+      verification_level: "tier_1",
+      verification_multiplier: 1.0,
+      evidence_link: evidence_link || null,
+      scp_earned: 0,
+      points_earned: 0,
+      points_eligible: false,
+      activity_date: activityDateStr,
+      waste_primary,
+      waste_secondary: waste_secondary || null,
+      improvement_method,
+      outcome_statement,
+      created_at: todayIso,
+      updated_at: todayIso,
+    };
+
+    const { data: entry, error } = await supabase.from("impact_entries").insert([entryData]).select().single();
+    if (error) throw error;
+
+    let emailResult = null;
+    if (send_for_verification && verifier_email) {
+      const token = uuidv4();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 14);
+      const { error: tokenError } = await supabase.from("business_verification_tokens").insert([{
+        token, entry_id: entryId, verifier_name: verifier_name || null, verifier_email, verifier_role: verifier_role || null,
+        status: "pending", expires_at: expiresAt.toISOString(),
+      }]);
+      if (!tokenError) {
+        const baseUrl = `${req.protocol}://${req.get("host")}`;
+        const reviewUrl = `${baseUrl}/business-verification.html?token=${encodeURIComponent(token)}`;
+        try {
+          emailResult = await emailService.sendBusinessVerificationRequestEmail({
+            verifier_name, verifier_email, verifier_role, partner_name: null,
+            entry_title: entry.title, usd_value: entry.usd_value, outcome_statement: entry.outcome_statement, review_url: reviewUrl,
+          });
+          emailResult = { sent: true };
+        } catch (e) {
+          emailResult = { sent: false, reason: e.message };
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      entry,
+      email: emailResult,
+      message: send_for_verification && verifier_email
+        ? (emailResult?.sent ? "Business Outcome logged and verification email sent." : "Business Outcome logged but email failed.")
+        : "Business Outcome entry logged successfully",
+    });
+  } catch (error) {
+    console.error("❌ Ambassador business-entry:", error);
+    return res.status(500).json({ error: "Failed to create Business Outcome entry", details: error.message });
+  }
+});
+
+// --- GET /api/ambassador/impact/entries ---
+app.get("/api/ambassador/impact/entries", requireAuth, requireRole("ambassador"), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const { esg_category, from, to } = req.query;
+
+    if (firebaseInitialized) {
+      try {
+        const { data: userRow } = await supabase.from("users").select("email, firebase_uid").eq("user_id", userId).single();
+        let fbUid = userRow?.firebase_uid;
+        if (!fbUid && userRow?.email) {
+          try {
+            const fbUser = await firebaseAdmin.auth().getUserByEmail(userRow.email);
+            fbUid = fbUser.uid;
+            await supabase.from("users").update({ firebase_uid: fbUid, updated_at: new Date().toISOString() }).eq("user_id", userId);
+          } catch (_) {}
+        }
+        if (fbUid) await impactSync.fullSync(supabase, userId, fbUid, "ambassador");
+      } catch (_) {}
+    }
+
+    let query = supabase
+      .from("impact_entries")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("user_role", "ambassador")
+      .order("created_at", { ascending: false });
+    if (esg_category) query = query.eq("esg_category", esg_category);
+    if (from) query = query.gte("activity_date", from);
+    if (to) query = query.lte("activity_date", to);
+
+    const { data: entries, error } = await query;
+    if (error) throw error;
+    const list = entries || [];
+    const aggregates = list.reduce(
+      (acc, e) => {
+        acc.total_people_impacted += parseFloat(e.people_impacted) || 0;
+        acc.total_hours_contributed += parseFloat(e.hours_contributed) || 0;
+        acc.total_usd_value += parseFloat(e.usd_value) || 0;
+        acc.total_scp += parseFloat(e.scp_earned) || 0;
+        return acc;
+      },
+      { total_people_impacted: 0, total_hours_contributed: 0, total_usd_value: 0, total_scp: 0 }
+    );
+    return res.json({ entries: list, count: list.length, aggregates });
+  } catch (error) {
+    console.error("❌ Ambassador impact entries:", error);
+    return res.status(500).json({ error: "Failed to fetch impact entries", details: error.message });
+  }
+});
+
+// --- GET /api/ambassador/impact/export-pdf ---
+app.get("/api/ambassador/impact/export-pdf", requireAuth, requireRole("ambassador"), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    let { from, to } = req.query || {};
+    const now = new Date();
+    if (!to) to = now.toISOString().slice(0, 10);
+    if (!from) {
+      const start = new Date(now.getFullYear(), 0, 1);
+      from = start.toISOString().slice(0, 10);
+    }
+
+    let query = supabase
+      .from("impact_entries")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("user_role", "ambassador")
+      .order("activity_date", { ascending: false });
+    query = query.gte("activity_date", from).lte("activity_date", to);
+    const { data: entries, error } = await query;
+    if (error) throw error;
+    const list = entries || [];
+    if (!list.length) {
+      return res.status(400).json({ error: "No entries to include in report for the selected date range." });
+    }
+
+    const { data: userRow } = await supabase.from("users").select("email").eq("user_id", userId).single();
+    const orgName = userRow?.email || "Ambassador";
+
+    const esgEntries = list.filter((e) => (e.impact_type || "esg") === "esg");
+    const businessEntries = list.filter((e) => e.impact_type === "business_outcome");
+    const totalPeople = esgEntries.reduce((s, e) => s + (parseFloat(e.people_impacted) || 0), 0);
+    const totalHours = list.reduce((s, e) => s + (parseFloat(e.hours_contributed) || 0), 0);
+    const totalEsgValue = esgEntries.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+    const totalBusinessValue = businessEntries.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+    const totalCombined = totalEsgValue + totalBusinessValue;
+
+    const tier1 = list.filter((e) => (e.verification_level || "tier_1") === "tier_1").length;
+    const tier2 = list.filter((e) => e.verification_level === "tier_2").length;
+    const tier3 = list.filter((e) => e.verification_level === "tier_3").length;
+    const totalT = list.length || 1;
+
+    const environmental = esgEntries.filter((e) => e.esg_category === "environmental");
+    const social = esgEntries.filter((e) => e.esg_category === "social");
+    const governance = esgEntries.filter((e) => e.esg_category === "governance");
+
+    const wasteBreakdown = {};
+    businessEntries.forEach((e) => {
+      const w = e.waste_primary || e.business_activity || "Unknown";
+      wasteBreakdown[w] = (wasteBreakdown[w] || 0) + (parseFloat(e.usd_value) || 0);
+    });
+
+    const topActivities = esgEntries
+      .filter((e) => e.title && e.usd_value)
+      .map((e) => ({ title: e.title, value: parseFloat(e.usd_value) || 0 }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    const topOutcomes = businessEntries
+      .filter((e) => e.outcome_statement && e.usd_value)
+      .map((e) => ({
+        outcome: e.outcome_statement,
+        value: parseFloat(e.usd_value) || 0,
+        verification: e.verification_level === "tier_1" ? "Self-Reported" : e.verification_level === "tier_2" ? "Partner/Manager Verified" : "Externally Audited",
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    const filename = `impact-report-${now.toISOString().slice(0, 7)}.pdf`;
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    doc.pipe(res);
+
+    const primaryColor = "#3B0F7A";
+    const labelColor = "#555";
+    const sectionBg = "#F3F0FF";
+    const PAGE_H = 762;
+    const MARGIN = 40;
+    const ROW = 12;
+    const SECTION_H = 18;
+
+    const addFooter = (pageNum, totalPages) => {
+      doc.fontSize(7).fillColor("#999").text(
+        `Page ${pageNum} of ${totalPages} • ${orgName} • Generated from Tier Platform`,
+        40, PAGE_H + MARGIN - 16,
+        { width: 515, align: "center" }
+      );
+    };
+
+    const coverBlockHeight = 100;
+    doc.y = MARGIN + (PAGE_H - coverBlockHeight) / 2;
+    doc.fontSize(26).fillColor(primaryColor).text("Impact Report", { align: "center" });
+    doc.moveDown(0.4);
+    doc.fontSize(13).fillColor("#555").text(orgName, { align: "center" });
+    doc.moveDown(0.2);
+    doc.fontSize(11).text(`${formatPdfDate(from)} - ${formatPdfDate(to)}`, { align: "center" });
+    doc.moveDown(1.2);
+    doc.fontSize(10).fillColor("#999").text(`Generated on ${formatPdfDateFull(now.toISOString())}`, { align: "center" });
+    addFooter(1, 3);
+    doc.addPage();
+
+    doc.fontSize(9).fillColor(primaryColor).text("Impact Report", 40, 36);
+    doc.fontSize(7).fillColor("#777").text(orgName, 40, 47);
+    let y = 62;
+    const section = (title) => {
+      doc.rect(40, y, 515, SECTION_H).fill(sectionBg).stroke();
+      doc.fontSize(11).fillColor(primaryColor).text(title, 46, y + 4);
+      y += SECTION_H + 4;
+    };
+    const row = (label, value) => {
+      doc.fontSize(9).fillColor(labelColor).text(label, 40, y);
+      doc.fontSize(9).fillColor("#000").text(String(value), 40, y, { width: 515, align: "right" });
+      y += ROW;
+    };
+    const box = (fn) => { y += 2; fn(); y += 4; };
+
+    section("Executive Summary");
+    box(() => {
+      row("Total People Impacted:", totalPeople.toLocaleString());
+      row("Total Hours Contributed:", totalHours.toLocaleString());
+      row("ESG Social Value (estimated):", "$" + totalEsgValue.toLocaleString());
+      row("Business Outcomes (verified savings):", "$" + totalBusinessValue.toLocaleString());
+      y += 2;
+      doc.moveTo(40, y).lineTo(555, y).stroke("#CCC");
+      y += 10;
+      doc.fontSize(9).fillColor(labelColor).text("Total Combined Impact Value:", 40, y);
+      doc.fontSize(11).fillColor(primaryColor).text("$" + totalCombined.toLocaleString(), 40, y, { width: 515, align: "right" });
+      y += ROW + 4;
+    });
+    section("Verification Summary");
+    box(() => {
+      row("Tier 1 (Self-Reported):", `${tier1} (${Math.round((tier1 / totalT) * 100)}%)`);
+      row("Tier 2 (Partner/Manager Verified):", `${tier2} (${Math.round((tier2 / totalT) * 100)}%)`);
+      row("Tier 3 (Externally Audited):", `${tier3} (${Math.round((tier3 / totalT) * 100)}%)`);
+      y += 6;
+    });
+    section("ESG Impact Breakdown");
+    box(() => {
+      row("Environmental:", `${environmental.length} activities | $${environmental.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0).toLocaleString()}`);
+      row("Social:", `${social.length} activities | $${social.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0).toLocaleString()}`);
+      row("Governance:", `${governance.length} activities | $${governance.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0).toLocaleString()}`);
+      y += 6;
+    });
+    section("Top ESG Activities by Impact");
+    box(() => {
+      if (!topActivities.length) doc.fontSize(9).fillColor(labelColor).text("No ESG activities in this period.", 40, y);
+      else topActivities.forEach((a, i) => { row(`${i + 1}. ${(a.title || "").slice(0, 45)}`, "$" + a.value.toLocaleString()); });
+      y += 6;
+    });
+    addFooter(2, 3);
+    doc.addPage();
+
+    doc.fontSize(9).fillColor(primaryColor).text("Impact Report", 40, 36);
+    doc.fontSize(7).fillColor("#777").text(orgName, 40, 47);
+    y = 62;
+    section("Business Outcomes Breakdown");
+    box(() => {
+      row("Total Operational Savings:", "$" + totalBusinessValue.toLocaleString());
+      doc.fontSize(9).fillColor("#000").text("By Waste Category:", 40, y + 1);
+      y += 12;
+      if (!Object.keys(wasteBreakdown).length) doc.fontSize(9).fillColor(labelColor).text("No business outcome entries in this period.", 40, y);
+      else Object.entries(wasteBreakdown).forEach(([w, v]) => { row(getWasteLabel(w), "$" + Number(v).toLocaleString()); });
+      y += 6;
+    });
+    section("Top Business Outcomes");
+    box(() => {
+      if (!topOutcomes.length) doc.fontSize(9).fillColor(labelColor).text("No business outcome entries in this period.", 40, y);
+      else topOutcomes.forEach((o, i) => {
+        doc.fontSize(9).fillColor(labelColor).text(`${i + 1}. ${(o.outcome || "").slice(0, 55)}`, 40, y);
+        doc.fontSize(9).fillColor("#000").text("$" + o.value.toLocaleString(), 40, y, { width: 515, align: "right" });
+        y += 11;
+        doc.fontSize(7).fillColor("#777").text(`Verification: ${o.verification}`, 48, y);
+        y += 10;
+      });
+      y += 4;
+    });
+    section("Total Impact Value");
+    doc.rect(40, y, 515, 28).fill("#EEF9F7").stroke("#B6E2DA");
+    doc.fontSize(11).fillColor("#2A9D8F").text("Total impact value: $" + totalCombined.toLocaleString(), 46, y + 5);
+    doc.fontSize(8).fillColor("#333").text(`(of which $${totalEsgValue.toLocaleString()} estimated social value and $${totalBusinessValue.toLocaleString()} verified operational savings)`, 46, y + 18, { width: 503 });
+    y += 36;
+    section("Methodology & Assurance Notes");
+    doc.fontSize(7).fillColor(labelColor).text("USD social value is calculated using published benchmark rates and sector cost proxies. Volunteer time is valued at the Independent Sector rate ($33.49/hour, 2024). Figures are estimated social value or costs avoided, not cash or audited outcomes. Business outcome values are user-entered; verification tier indicates validation level. This report aligns with SASB and IFRS ISSB for board reporting and ESG disclosures.", 40, y, { width: 515, lineGap: 1.5 });
+    addFooter(3, 3);
+    doc.end();
+  } catch (err) {
+    console.error("❌ Ambassador export PDF:", err);
+    if (!res.headersSent) res.status(500).json({ error: "Failed to generate PDF", details: err.message });
+  }
+});
+
+// Ambassador bulk upload (same validation as partner, role=ambassador)
+app.post("/api/ambassador/impact/bulk-upload", requireAuth, requireRole("ambassador"), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const userRole = "ambassador";
+    const { csv } = req.body || {};
+    if (!csv || typeof csv !== "string") return res.status(400).json({ error: "csv field (string) is required" });
+
+    const lines = csv.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith("#"));
+    if (lines.length < 2) return res.status(400).json({ error: "CSV must include a header row and at least one data row" });
+
+    const headerCols = lines[0].split(",").map((h) => h.trim());
+    const requiredCols = ["impact_type", "date", "activity_title", "description", "esg_category", "esg_activity_type", "people_impacted", "hours_contributed", "waste_primary", "improvement_method", "usd_saved", "outcome_statement", "evidence_url"];
+    const missingCols = requiredCols.filter((c) => !headerCols.includes(c));
+    if (missingCols.length > 0) return res.status(400).json({ error: "CSV header is missing required columns: " + missingCols.join(", ") });
+
+    const colIndex = {};
+    headerCols.forEach((name, idx) => { colIndex[name] = idx; });
+
+    const { data: rates, error: ratesError } = await supabase.from("rate_configuration").select("*").eq("is_active", true);
+    if (ratesError) throw ratesError;
+    const rateMap = {};
+    (rates || []).forEach((r) => {
+      rateMap[`${r.esg_category || ""}::${(r.activity_label || "").toLowerCase()}`] = r;
+    });
+
+    const entriesToInsert = [];
+    const errors = [];
+    for (let i = 1; i < lines.length; i++) {
+      const rowNumber = i + 1;
+      const cells = lines[i].split(",");
+      const get = (name) => (cells[colIndex[name]] || "").trim();
+
+      const impactType = get("impact_type").toLowerCase();
+      const dateStr = get("date");
+      const activityTitle = get("activity_title");
+      const description = get("description");
+      const esgCategory = get("esg_category");
+      const esgActivityType = get("esg_activity_type");
+      const peopleStr = get("people_impacted");
+      const hoursStr = get("hours_contributed");
+      const wastePrimary = get("waste_primary");
+      const wasteSecondary = get("waste_secondary");
+      const improvementMethod = get("improvement_method");
+      const usdSavedStr = get("usd_saved");
+      const outcomeStatement = get("outcome_statement");
+      const evidenceUrl = get("evidence_url");
+
+      if (!impactType || !["esg", "business_outcome"].includes(impactType)) {
+        errors.push({ row: rowNumber, message: 'impact_type must be "esg" or "business_outcome"' });
+        continue;
+      }
+      if (!dateStr || isNaN(Date.parse(dateStr))) {
+        errors.push({ row: rowNumber, message: "date is required and must be a valid YYYY-MM-DD date" });
+        continue;
+      }
+      const activityDate = new Date(dateStr);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (activityDate > today) {
+        errors.push({ row: rowNumber, message: "date must not be in the future" });
+        continue;
+      }
+      if (!activityTitle || !description) {
+        errors.push({ row: rowNumber, message: "activity_title and description are required" });
+        continue;
+      }
+
+      if (impactType === "esg") {
+        if (!esgCategory || !["environmental", "social", "governance"].includes(esgCategory)) {
+          errors.push({ row: rowNumber, message: 'esg_category must be environmental, social, or governance' });
+          continue;
+        }
+        if (!esgActivityType) {
+          errors.push({ row: rowNumber, message: "esg_activity_type is required for ESG entries" });
+          continue;
+        }
+        const people = parseFloat(peopleStr);
+        const hours = parseFloat(hoursStr);
+        if (!people || people <= 0 || isNaN(people)) {
+          errors.push({ row: rowNumber, message: "people_impacted must be a positive number for ESG entries" });
+          continue;
+        }
+        if (hours < 0 || isNaN(hours)) {
+          errors.push({ row: rowNumber, message: "hours_contributed must be 0 or greater" });
+          continue;
+        }
+        const rateKey = `${esgCategory}::${esgActivityType.toLowerCase()}`;
+        const rate = rateMap[rateKey];
+        if (!rate) {
+          errors.push({ row: rowNumber, message: "esg_activity_type does not match any configured rate" });
+          continue;
+        }
+        const unitRate = parseFloat(rate.unit_rate_usd) || 0;
+        const volHourRate = parseFloat(rate.volunteer_hour_rate) || 33.49;
+        const usdValue = people * unitRate + hours * volHourRate;
+
+        entriesToInsert.push({
+          entry_id: uuidv4(),
+          user_id: userId,
+          user_role: userRole,
+          entry_type: "individual",
+          impact_type: "esg",
+          activity_date: dateStr,
+          title: activityTitle.slice(0, 100),
+          description: description.slice(0, 500),
+          esg_category: esgCategory,
+          people_impacted: people,
+          hours_contributed: hours,
+          usd_value: usdValue,
+          usd_value_source: "auto",
+          impact_unit: rate.impact_unit || rate.unit_label || "people",
+          verification_level: "tier_1",
+          verification_multiplier: 1.0,
+          evidence_link: evidenceUrl || null,
+          scp_earned: 0,
+          points_earned: 0,
+          points_eligible: false,
+          waste_primary: null,
+          waste_secondary: null,
+          improvement_method: null,
+          outcome_statement: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      } else {
+        if (!wastePrimary || !["DEF", "OVR", "WAI", "NUT", "TRA", "INV", "MOT", "EXP"].includes(wastePrimary)) {
+          errors.push({ row: rowNumber, message: "waste_primary must be DEF, OVR, WAI, NUT, TRA, INV, MOT, or EXP" });
+          continue;
+        }
+        if (!improvementMethod) {
+          errors.push({ row: rowNumber, message: "improvement_method is required for Business Outcome entries" });
+          continue;
+        }
+        const usdSaved = parseFloat(usdSavedStr);
+        if (!usdSaved || usdSaved <= 0 || isNaN(usdSaved)) {
+          errors.push({ row: rowNumber, message: "usd_saved must be a positive number for Business Outcome entries" });
+          continue;
+        }
+        if (!outcomeStatement) {
+          errors.push({ row: rowNumber, message: "outcome_statement is required for Business Outcome entries" });
+          continue;
+        }
+        entriesToInsert.push({
+          entry_id: uuidv4(),
+          user_id: userId,
+          user_role: userRole,
+          entry_type: "individual",
+          impact_type: "business_outcome",
+          activity_date: dateStr,
+          title: activityTitle.slice(0, 100),
+          description: description.slice(0, 500),
+          esg_category: null,
+          people_impacted: 0,
+          hours_contributed: 0,
+          usd_value: usdSaved,
+          usd_value_source: "user_entered",
+          impact_unit: "USD saved/created",
+          verification_level: "tier_1",
+          verification_multiplier: 1.0,
+          evidence_link: evidenceUrl || null,
+          scp_earned: 0,
+          points_earned: 0,
+          points_eligible: false,
+          waste_primary: wastePrimary,
+          waste_secondary: wasteSecondary || null,
+          improvement_method: improvementMethod,
+          outcome_statement: outcomeStatement.slice(0, 150),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      }
+    }
+
+    let importedCount = 0;
+    if (entriesToInsert.length > 0) {
+      const { error: insertError } = await supabase.from("impact_entries").insert(entriesToInsert);
+      if (!insertError) importedCount = entriesToInsert.length;
+    }
+    return res.json({ success: true, imported_count: importedCount, errors });
+  } catch (error) {
+    console.error("❌ Ambassador bulk upload:", error);
+    return res.status(500).json({ error: "Failed to process bulk upload", details: error.message });
   }
 });
 
@@ -6072,7 +9079,7 @@ app.get("/api/impact/admin-aggregates", requireAuth, async (req, res) => {
       total_impact_entries: (allEntries || []).length,
       total_shared_events: totalEvents || 0,
       by_category: { environmental: 0, social: 0, governance: 0 },
-      by_tier: { tier_1: 0, tier_2: 0, tier_3: 0, tier_4: 0 },
+      by_tier: { tier_1: 0, tier_2: 0, tier_3: 0 },
       by_role: { user: 0, ambassador: 0, partner: 0, admin: 0 },
     };
 
@@ -6130,6 +9137,385 @@ app.get("/api/impact/public-totals", async (req, res) => {
   } catch (error) {
     console.error("❌ Error fetching public totals:", error);
     return res.status(500).json({ error: "Failed to fetch public totals" });
+  }
+});
+
+// ============================================
+// CROSS-PLATFORM IMPACT IDENTITY API
+// Authenticates via Firebase ID Token (same token used by Tier platform).
+// The Firebase UID bridges both platforms: Tier (Firebase) ↔ Ambassadors (Supabase).
+// Also supports API-key auth as fallback for server-to-server calls.
+// ============================================
+
+// Middleware: verify Firebase ID token OR API key
+async function requireCrossPlatformAuth(req, res, next) {
+  // Option 1: Firebase ID token in Authorization header
+  const authHeader = req.headers.authorization || "";
+  if (authHeader.startsWith("Bearer ") && firebaseInitialized) {
+    try {
+      const idToken = authHeader.split("Bearer ")[1];
+      const decoded = await firebaseAdmin.auth().verifyIdToken(idToken);
+      req.firebaseUid = decoded.uid;
+      req.firebaseEmail = decoded.email;
+      return next();
+    } catch (err) {
+      // Token invalid -- fall through to API key check
+      log("⚠️ Firebase token verification failed:", err.message);
+    }
+  }
+
+  // Option 2: API key in body (server-to-server)
+  const expectedKey = process.env.CROSS_PLATFORM_API_KEY;
+  const apiKey = req.body?.api_key || req.query?.api_key;
+  if (expectedKey && apiKey === expectedKey) {
+    return next();
+  }
+
+  return res.status(401).json({ error: "Unauthorized: provide a valid Firebase ID token or api_key" });
+}
+
+// Full impact data for a user (identified by Firebase UID, email+phone, or api_key + body params)
+app.post("/api/cross-platform/impact-lookup", requireCrossPlatformAuth, async (req, res) => {
+  try {
+    let user = null;
+
+    // Priority 1: Firebase UID from token
+    if (req.firebaseUid) {
+      user = await getUserByFirebaseUid(req.firebaseUid);
+    }
+
+    // Priority 2: email + phone_number from body
+    if (!user && req.body.email && req.body.phone_number) {
+      user = await getUserByEmailAndPhone(req.body.email, req.body.phone_number.trim());
+    }
+
+    // Priority 3: email-only lookup
+    if (!user && req.body.email) {
+      user = await getUserByEmail(req.body.email, req.body.role || "ambassador");
+      if (!user) user = await getUserByEmail(req.body.email, "partner");
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found on the Ambassadors platform" });
+    }
+
+    // Fetch impact entries
+    const { data: entries } = await supabase
+      .from("impact_entries")
+      .select("*")
+      .eq("user_id", user.user_id)
+      .order("created_at", { ascending: false });
+
+    // Fetch impact events created by this user
+    const { data: events } = await supabase
+      .from("impact_events")
+      .select("*")
+      .eq("created_by", user.user_id)
+      .order("created_at", { ascending: false });
+
+    // Fetch events this user participated in
+    const { data: participations } = await supabase
+      .from("event_participants")
+      .select("*, impact_events(*)")
+      .eq("user_id", user.user_id);
+
+    // Compute aggregated stats
+    const stats = {
+      total_people_impacted: 0,
+      total_hours: 0,
+      total_usd_value: 0,
+      total_scp: 0,
+      total_points: 0,
+      total_entries: (entries || []).length,
+      by_category: { environmental: 0, social: 0, governance: 0 },
+    };
+
+    (entries || []).forEach(e => {
+      stats.total_people_impacted += parseFloat(e.people_impacted) || 0;
+      stats.total_hours += parseFloat(e.hours_contributed) || 0;
+      stats.total_usd_value += parseFloat(e.usd_value) || 0;
+      stats.total_scp += parseFloat(e.scp_earned) || 0;
+      stats.total_points += parseInt(e.points_earned) || 0;
+      if (e.esg_category && stats.by_category[e.esg_category] !== undefined) {
+        stats.by_category[e.esg_category] += parseFloat(e.people_impacted) || 0;
+      }
+    });
+
+    return res.json({
+      user: {
+        user_id: user.user_id,
+        firebase_uid: user.firebase_uid,
+        email: user.email,
+        phone_number: user.phone_number,
+        role: user.role,
+        name: user.first_name || user.contact_person || "",
+        status: user.status,
+      },
+      stats,
+      entries: entries || [],
+      events_created: events || [],
+      events_participated: (participations || []).map(p => ({
+        participant_id: p.participant_id,
+        event: p.impact_events,
+        joined_at: p.created_at,
+      })),
+    });
+  } catch (error) {
+    console.error("❌ Cross-platform impact lookup error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Lightweight identity check: does this user exist on the Ambassadors platform?
+app.post("/api/cross-platform/verify-identity", requireCrossPlatformAuth, async (req, res) => {
+  try {
+    let user = null;
+
+    if (req.firebaseUid) {
+      user = await getUserByFirebaseUid(req.firebaseUid);
+    }
+    if (!user && req.body.email && req.body.phone_number) {
+      user = await getUserByEmailAndPhone(req.body.email, req.body.phone_number.trim());
+    }
+
+    return res.json({
+      exists: !!user,
+      user_id: user ? user.user_id : null,
+      firebase_uid: user ? user.firebase_uid : null,
+      role: user ? user.role : null,
+    });
+  } catch (error) {
+    console.error("❌ Cross-platform verify error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Link a Firebase UID to an existing Supabase user (for users who existed before Firebase integration)
+app.post("/api/cross-platform/link-firebase-uid", requireCrossPlatformAuth, async (req, res) => {
+  try {
+    const { email, phone_number, firebase_uid } = req.body;
+
+    // If called with a Firebase token, use the UID from the token
+    const uidToLink = req.firebaseUid || firebase_uid;
+    if (!uidToLink) {
+      return res.status(400).json({ error: "firebase_uid is required (via token or body)" });
+    }
+    if (!email) {
+      return res.status(400).json({ error: "email is required" });
+    }
+
+    // Find the user in Supabase
+    let user = null;
+    if (email && phone_number) {
+      user = await getUserByEmailAndPhone(email, phone_number.trim());
+    }
+    if (!user) {
+      user = await getUserByEmail(email, "ambassador");
+      if (!user) user = await getUserByEmail(email, "partner");
+      if (!user) user = await getUserByEmail(email, "admin");
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found in Ambassadors platform" });
+    }
+
+    // Check if this firebase_uid is already linked to someone else
+    const existingFbUser = await getUserByFirebaseUid(uidToLink);
+    if (existingFbUser && existingFbUser.user_id !== user.user_id) {
+      return res.status(409).json({ error: "This Firebase UID is already linked to a different user" });
+    }
+
+    // Link the firebase_uid
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({ firebase_uid: uidToLink, updated_at: new Date().toISOString() })
+      .eq("user_id", user.user_id);
+
+    if (updateError) {
+      console.error("❌ Error linking firebase_uid:", updateError);
+      return res.status(500).json({ error: "Failed to link Firebase UID" });
+    }
+
+    log("✅ Linked firebase_uid", uidToLink, "to user_id", user.user_id);
+
+    return res.json({
+      success: true,
+      user_id: user.user_id,
+      firebase_uid: uidToLink,
+      email: user.email,
+      role: user.role,
+    });
+  } catch (error) {
+    console.error("❌ Cross-platform link error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ============================================
+// IMPACT LOG SYNC API
+// Bidirectional sync between Ambassadors (Supabase) and Tier (Firestore).
+// Uses email + phone as the identity key, firebase_uid as the bridge.
+// ============================================
+
+// Full bidirectional sync for the currently authenticated user
+app.post("/api/sync/my-impact", requireAuth, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const role = req.auth.role;
+
+    const user = await getUserById(userId, role);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (!user.firebase_uid) {
+      return res.status(400).json({
+        error: "No Firebase UID linked. Cross-platform sync requires a linked Firebase account.",
+        hint: "Call POST /api/cross-platform/link-firebase-uid first",
+      });
+    }
+
+    const result = await impactSync.fullSync(supabase, user.user_id, user.firebase_uid);
+
+    return res.json({
+      success: result.success,
+      user: { email: user.email, phone_number: user.phone_number, firebase_uid: user.firebase_uid },
+      push: result.push,
+      pull: result.pull,
+      syncedAt: result.syncedAt,
+    });
+  } catch (error) {
+    console.error("❌ Sync error:", error);
+    return res.status(500).json({ error: "Sync failed", details: error.message });
+  }
+});
+
+// Push all Ambassadors impact data to Tier for a specific user (admin or cross-platform)
+app.post("/api/sync/push-to-tier", requireCrossPlatformAuth, async (req, res) => {
+  try {
+    let user = null;
+
+    if (req.firebaseUid) {
+      user = await getUserByFirebaseUid(req.firebaseUid);
+    }
+    if (!user && req.body.email && req.body.phone_number) {
+      user = await getUserByEmailAndPhone(req.body.email, req.body.phone_number.trim());
+    }
+    if (!user && req.body.email) {
+      user = await getUserByEmail(req.body.email, "ambassador");
+      if (!user) user = await getUserByEmail(req.body.email, "partner");
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    if (!user.firebase_uid) {
+      return res.status(400).json({ error: "User has no linked Firebase UID" });
+    }
+
+    const result = await impactSync.pushAllUserEntriesToFirestore(supabase, user.user_id, user.firebase_uid);
+
+    return res.json({
+      success: result.success,
+      firebase_uid: user.firebase_uid,
+      ...result,
+    });
+  } catch (error) {
+    console.error("❌ Push sync error:", error);
+    return res.status(500).json({ error: "Push sync failed" });
+  }
+});
+
+// Pull all Tier impact data into Ambassadors for a specific user
+app.post("/api/sync/pull-from-tier", requireCrossPlatformAuth, async (req, res) => {
+  try {
+    let user = null;
+
+    if (req.firebaseUid) {
+      user = await getUserByFirebaseUid(req.firebaseUid);
+    }
+    if (!user && req.body.email && req.body.phone_number) {
+      user = await getUserByEmailAndPhone(req.body.email, req.body.phone_number.trim());
+    }
+    if (!user && req.body.email) {
+      user = await getUserByEmail(req.body.email, "ambassador");
+      if (!user) user = await getUserByEmail(req.body.email, "partner");
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    if (!user.firebase_uid) {
+      return res.status(400).json({ error: "User has no linked Firebase UID" });
+    }
+
+    const result = await impactSync.pullEntriesFromFirestore(supabase, user.user_id, user.firebase_uid, user.role);
+
+    return res.json({
+      success: result.success,
+      firebase_uid: user.firebase_uid,
+      ...result,
+    });
+  } catch (error) {
+    console.error("❌ Pull sync error:", error);
+    return res.status(500).json({ error: "Pull sync failed" });
+  }
+});
+
+// Webhook: Tier platform notifies Ambassadors when impact data changes
+app.post("/api/sync/webhook/tier-update", async (req, res) => {
+  try {
+    const expectedKey = process.env.CROSS_PLATFORM_API_KEY;
+    const apiKey = req.body?.api_key || req.query?.api_key;
+    if (!expectedKey || apiKey !== expectedKey) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { firebase_uid, email, phone_number, entry_id, action } = req.body;
+
+    if (!firebase_uid && !email) {
+      return res.status(400).json({ error: "firebase_uid or email is required" });
+    }
+
+    // Resolve the user on the Ambassadors side
+    let user = null;
+    if (firebase_uid) {
+      user = await getUserByFirebaseUid(firebase_uid);
+    }
+    if (!user && email && phone_number) {
+      user = await getUserByEmailAndPhone(email, phone_number);
+    }
+    if (!user && email) {
+      user = await getUserByEmail(email, "ambassador");
+      if (!user) user = await getUserByEmail(email, "partner");
+    }
+
+    if (!user) {
+      return res.json({
+        success: false,
+        reason: "user_not_found_on_ambassadors",
+        message: "User does not exist on the Ambassadors platform yet",
+      });
+    }
+
+    const effectiveFirebaseUid = user.firebase_uid || firebase_uid;
+    if (!effectiveFirebaseUid) {
+      return res.json({ success: false, reason: "no_firebase_uid" });
+    }
+
+    // Pull the latest data from Firestore for this user
+    const result = await impactSync.pullEntriesFromFirestore(supabase, user.user_id, effectiveFirebaseUid, user.role);
+
+    return res.json({
+      success: result.success,
+      action: action || "pull",
+      user_id: user.user_id,
+      firebase_uid: effectiveFirebaseUid,
+      ...result,
+    });
+  } catch (error) {
+    console.error("❌ Webhook error:", error);
+    return res.status(500).json({ error: "Webhook processing failed" });
   }
 });
 
@@ -8843,7 +12229,8 @@ app.get(
           users!inner (
             access_code,
             email,
-            status
+            status,
+            phone_number
           )
         `
         )
@@ -8864,6 +12251,7 @@ app.get(
         id: ambassador.ambassador_id,
         name: ambassador.first_name || "Ambassador",
         email: ambassador.users?.email || ambassador.email,
+        phone_number: ambassador.users?.phone_number || ambassador.phone_number || "",
         access_code: ambassador.users?.access_code, // ✅ NOW IT WILL WORK!
         password: ambassador.generated_password || "", // ✅ Include password for admin reference
         status: ambassador.users?.status || ambassador.status,
@@ -8928,36 +12316,73 @@ app.post(
     try {
       log("📝 Creating ambassador:", req.body);
 
-      const { first_name, email, access_code, password, subscription_type } = req.body; // ✅ ADDED subscription_type
+      const { first_name, email, phone_number, access_code, password, subscription_type } = req.body;
 
-      if (!first_name || !email || !access_code || !password) {
-        // CHANGED: name → first_name
+      if (!first_name || !email || !phone_number || !access_code || !password) {
         return res.status(400).json({
-          error: "Name, email, access code, and password are required",
+          error: "Name, email, phone number, access code, and password are required",
         });
       }
 
       const emailLower = email.toLowerCase().trim();
+      const phoneTrimmed = phone_number.trim();
       const accessCodeUpper = access_code.toUpperCase().trim();
 
-      // Check if email exists
+      // Check if email already exists
       const existingUser = await getUserByEmail(emailLower, "ambassador");
       if (existingUser) {
         return res.status(400).json({ error: "Email already registered" });
       }
 
+      // Check if phone number already exists (must be unique across all users)
+      const existingPhone = await getUserByPhone(phoneTrimmed);
+      if (existingPhone) {
+        return res.status(400).json({ error: "Phone number already registered to another user" });
+      }
+
       const salt = crypto.randomBytes(8).toString("hex");
       const hashedPassword = hashPassword(password, salt);
 
+      // Create Firebase Auth user so both platforms share the same UID
+      let firebaseUid = null;
+      if (firebaseInitialized) {
+        try {
+          // Check if user already exists in Firebase (e.g. registered on Tier first)
+          try {
+            const existingFbUser = await firebaseAdmin.auth().getUserByEmail(emailLower);
+            firebaseUid = existingFbUser.uid;
+            log("✅ Found existing Firebase user:", firebaseUid);
+          } catch (fbLookupErr) {
+            if (fbLookupErr.code === "auth/user-not-found") {
+              // Create new Firebase Auth user
+              const fbUser = await firebaseAdmin.auth().createUser({
+                email: emailLower,
+                password: password,
+                displayName: first_name,
+                phoneNumber: phoneTrimmed.startsWith("+") ? phoneTrimmed : undefined,
+              });
+              firebaseUid = fbUser.uid;
+              log("✅ Created new Firebase Auth user:", firebaseUid);
+            } else {
+              throw fbLookupErr;
+            }
+          }
+        } catch (fbError) {
+          console.error("⚠️ Firebase Auth user creation failed (continuing without UID):", fbError.message);
+        }
+      }
+
       const userData = {
-        first_name: first_name, // CHANGED: name → first_name
+        first_name: first_name,
         email: emailLower,
+        phone_number: phoneTrimmed,
+        firebase_uid: firebaseUid,
         access_code: accessCodeUpper,
         password_hash: hashedPassword,
         salt: salt,
-        generated_password: password, // Store the plain text password for admin reference
+        generated_password: password,
         status: "active",
-        subscription_type: subscription_type || "free", // ✅ NEW: Default to free
+        subscription_type: subscription_type || "free",
       };
 
       log("💾 Saving ambassador to database:", userData);
@@ -9005,13 +12430,15 @@ app.post(
         success: true,
         ambassador: {
           id: newAmbassador.ambassador_id || newAmbassador.id,
+          firebase_uid: newAmbassador.firebase_uid,
           name: newAmbassador.first_name,
           email: newAmbassador.email,
+          phone_number: newAmbassador.phone_number,
           access_code: newAmbassador.access_code,
           status: newAmbassador.status,
-          subscription_type: newAmbassador.subscription_type, // ✅ NEW
+          subscription_type: newAmbassador.subscription_type,
         },
-        emailSent: true, // Email is being sent in background
+        emailSent: true,
         message: "✅ Ambassador added! Welcome email will be sent shortly.",
       });
     } catch (error) {
@@ -9091,7 +12518,7 @@ app.put(
   requireRole("admin"),
   async (req, res) => {
     try {
-      const { name, email, access_code, status, subscription_type } = req.body;
+      const { name, email, phone_number, access_code, status, subscription_type } = req.body;
       const ambassador = await getUserById(req.params.id, "ambassador");
 
       if (!ambassador) {
@@ -9110,6 +12537,18 @@ app.put(
           return res.status(400).json({ error: "Email already registered" });
         }
         updates.email = email.toLowerCase();
+      }
+
+      // Check if phone number is being changed and if it's already taken
+      if (phone_number !== undefined) {
+        const phoneTrimmed = phone_number.trim();
+        if (phoneTrimmed !== (ambassador.phone_number || "")) {
+          const existingPhone = await getUserByPhone(phoneTrimmed);
+          if (existingPhone && String(existingPhone.user_id) !== String(ambassador.user_id)) {
+            return res.status(400).json({ error: "Phone number already registered to another user" });
+          }
+          updates.phone_number = phoneTrimmed;
+        }
       }
 
       // Check if access code is being changed and if it's already taken
@@ -9201,38 +12640,74 @@ app.post(
         contact_person,
         organization_name,
         email,
+        phone_number,
         access_code,
         password,
-      } = req.body; // CHANGED
+      } = req.body;
 
-      if (!contact_person || !email || !access_code || !password) {
-        // CHANGED: name → contact_person
+      if (!contact_person || !email || !phone_number || !access_code || !password) {
         return res.status(400).json({
           error:
-            "Contact person, email, access code, and password are required",
+            "Contact person, email, phone number, access code, and password are required",
         });
       }
 
       const emailLower = email.toLowerCase().trim();
+      const phoneTrimmed = phone_number.trim();
       const accessCodeUpper = access_code.toUpperCase().trim();
 
-      // Check if email exists
+      // Check if email already exists
       const existingUser = await getUserByEmail(emailLower, "partner");
       if (existingUser) {
         return res.status(400).json({ error: "Email already registered" });
       }
 
+      // Check if phone number already exists (must be unique across all users)
+      const existingPhone = await getUserByPhone(phoneTrimmed);
+      if (existingPhone) {
+        return res.status(400).json({ error: "Phone number already registered to another user" });
+      }
+
       const salt = crypto.randomBytes(8).toString("hex");
       const hashedPassword = hashPassword(password, salt);
 
+      // Create Firebase Auth user so both platforms share the same UID
+      let firebaseUid = null;
+      if (firebaseInitialized) {
+        try {
+          try {
+            const existingFbUser = await firebaseAdmin.auth().getUserByEmail(emailLower);
+            firebaseUid = existingFbUser.uid;
+            log("✅ Found existing Firebase user:", firebaseUid);
+          } catch (fbLookupErr) {
+            if (fbLookupErr.code === "auth/user-not-found") {
+              const fbUser = await firebaseAdmin.auth().createUser({
+                email: emailLower,
+                password: password,
+                displayName: contact_person,
+                phoneNumber: phoneTrimmed.startsWith("+") ? phoneTrimmed : undefined,
+              });
+              firebaseUid = fbUser.uid;
+              log("✅ Created new Firebase Auth user:", firebaseUid);
+            } else {
+              throw fbLookupErr;
+            }
+          }
+        } catch (fbError) {
+          console.error("⚠️ Firebase Auth user creation failed (continuing without UID):", fbError.message);
+        }
+      }
+
       const userData = {
-        contact_person: contact_person, // CHANGED: contact_name → contact_person
-        organization_name: organization_name || "", // CHANGED: company → organization_name
+        contact_person: contact_person,
+        organization_name: organization_name || "",
         email: emailLower,
+        phone_number: phoneTrimmed,
+        firebase_uid: firebaseUid,
         access_code: accessCodeUpper,
         password_hash: hashedPassword,
         salt: salt,
-        generated_password: password, // Store the plain text password for admin reference
+        generated_password: password,
         status: "approved",
       };
 
@@ -9267,13 +12742,15 @@ app.post(
         success: true,
         partner: {
           id: newPartner.partner_id || newPartner.id,
+          firebase_uid: newPartner.firebase_uid,
           name: newPartner.contact_person || contact_person,
           email: newPartner.email,
+          phone_number: newPartner.phone_number,
           company: newPartner.organization_name,
           access_code: newPartner.access_code,
           status: newPartner.status,
         },
-        emailSent: true, // Email is being sent in background
+        emailSent: true,
         message: "✅ Partner added! Welcome email will be sent shortly.",
       });
     } catch (error) {
@@ -9293,7 +12770,7 @@ app.put(
   requireRole("admin"),
   async (req, res) => {
     try {
-      const { contact_person, organization_name, email, access_code, status } = req.body;
+      const { contact_person, organization_name, email, phone_number, access_code, status } = req.body;
       const partner = await getUserById(req.params.id, "partner");
 
       if (!partner) {
@@ -9309,6 +12786,18 @@ app.put(
           return res.status(400).json({ error: "Email already registered" });
         }
         updates.email = email.toLowerCase();
+      }
+
+      // Check if phone number is being changed and if it's already taken
+      if (phone_number !== undefined) {
+        const phoneTrimmed = phone_number.trim();
+        if (phoneTrimmed && phoneTrimmed !== (partner.phone_number || "")) {
+          const existingPhone = await getUserByPhone(phoneTrimmed);
+          if (existingPhone && String(existingPhone.user_id) !== String(partner.user_id)) {
+            return res.status(400).json({ error: "Phone number already registered to another user" });
+          }
+          updates.phone_number = phoneTrimmed;
+        }
       }
 
       // Check if access code is being changed

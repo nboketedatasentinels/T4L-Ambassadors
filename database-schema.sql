@@ -15,7 +15,9 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ============================================
 CREATE TABLE IF NOT EXISTS users (
     user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    firebase_uid VARCHAR(128) UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
+    phone_number VARCHAR(20) UNIQUE,
     password_hash TEXT NOT NULL,
     salt TEXT NOT NULL,
     user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('ambassador', 'partner', 'admin')),
@@ -27,6 +29,8 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_firebase_uid ON users(firebase_uid);
+CREATE INDEX IF NOT EXISTS idx_users_phone_number ON users(phone_number);
 CREATE INDEX IF NOT EXISTS idx_users_user_type ON users(user_type);
 CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
 CREATE INDEX IF NOT EXISTS idx_users_access_code ON users(access_code);
@@ -41,6 +45,7 @@ CREATE TABLE IF NOT EXISTS ambassadors (
     first_name VARCHAR(100),
     last_name VARCHAR(100),
     gender VARCHAR(20),
+    phone_number VARCHAR(20),
     whatsapp_number VARCHAR(20),
     country VARCHAR(100),
     state VARCHAR(100),
@@ -1087,11 +1092,14 @@ CREATE TABLE IF NOT EXISTS impact_entries (
     points_eligible BOOLEAN DEFAULT TRUE,
     activity_date DATE NOT NULL DEFAULT CURRENT_DATE,
     share_externally BOOLEAN DEFAULT FALSE,
+    source_platform VARCHAR(50) DEFAULT NULL,
+    source_entry_id VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_impact_entries_user_id ON impact_entries(user_id);
+CREATE INDEX IF NOT EXISTS idx_impact_entries_source ON impact_entries(source_platform, source_entry_id);
 CREATE INDEX IF NOT EXISTS idx_impact_entries_user_role ON impact_entries(user_role);
 CREATE INDEX IF NOT EXISTS idx_impact_entries_entry_type ON impact_entries(entry_type);
 CREATE INDEX IF NOT EXISTS idx_impact_entries_event_id ON impact_entries(event_id);

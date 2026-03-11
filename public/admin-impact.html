@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Impact Log Admin | T4L</title>
+  <link rel="icon" type="image/png" href="/images/favicon.png" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f3f4f6; }
+    .page { max-width: 1080px; margin: 32px auto; padding: 0 16px 48px; }
+    h1 { font-size: 24px; font-weight: 700; color: #111827; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #6b7280; margin-bottom: 20px; }
+    .card { background: #ffffff; border-radius: 16px; box-shadow: 0 10px 30px rgba(15,23,42,0.1); border: 1px solid #e5e7eb; padding: 18px 20px; margin-bottom: 20px; }
+    .card h2 { font-size: 18px; font-weight: 600; color: #111827; margin-bottom: 4px; }
+    .card p { font-size: 12px; color: #6b7280; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; text-align: left; }
+    th { background: #f9fafb; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; }
+    tr:last-child td { border-bottom: none; }
+    input[type="number"], input[type="text"] { width: 100%; border-radius: 8px; border: 1px solid #e5e7eb; padding: 4px 6px; font-size: 12px; }
+    input[type="checkbox"] { width: 14px; height: 14px; }
+    .btn { border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; }
+    .btn-primary { background: #4b0d7f; color: #ffffff; }
+    .btn-primary:hover { background: #6b21a8; }
+    .btn-secondary { background: #ffffff; color: #374151; border: 1px solid #d1d5db; }
+    .btn-secondary:hover { background: #f3f4f6; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .tag-active { background: #ecfdf3; color: #166534; }
+    .tag-inactive { background: #fef2f2; color: #b91c1c; }
+    .small { font-size: 11px; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>Impact Log Admin</h1>
+    <p class="subtitle">Internal admin console for managing ESG rates and reviewing bulk upload batches.</p>
+
+    <div class="card">
+      <h2>ESG Rate Configuration</h2>
+      <p>Update benchmark rates, volunteer hour rate, and active status. Changes apply to new entries only; historical entries keep their applied rates.</p>
+      <div class="flex justify-between items-center mb-2">
+        <button class="btn btn-secondary" onclick="loadRates()">Reload rates</button>
+        <span class="small" id="ratesStatus"></span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table id="ratesTable">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Category</th>
+              <th>Activity</th>
+              <th>Impact Unit</th>
+              <th>Unit Rate (USD)</th>
+              <th>Vol Hour Rate</th>
+              <th>Source</th>
+              <th>Active</th>
+              <th>Save</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="9" class="small">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Bulk Upload Batches</h2>
+      <p>Recent CSV bulk uploads into the Impact Log, including row counts and status.</p>
+      <div class="flex justify-between items-center mb-2">
+        <button class="btn btn-secondary" onclick="loadBatches()">Reload batches</button>
+        <span class="small" id="batchesStatus"></span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table id="batchesTable">
+          <thead>
+            <tr>
+              <th>Created</th>
+              <th>Uploaded By</th>
+              <th>Source</th>
+              <th>Status</th>
+              <th>Total</th>
+              <th>Success</th>
+              <th>Errors</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="7" class="small">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="/signin.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Require admin session
+      requireAuth('/admin-signin');
+      loadRates();
+      loadBatches();
+    });
+
+    async function loadRates() {
+      const statusEl = document.getElementById('ratesStatus');
+      const tbody = document.querySelector('#ratesTable tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '<tr><td colspan="9" class="small">Loading...</td></tr>';
+      statusEl.textContent = '';
+      try {
+        const res = await fetch('/admin/api/impact/rates', { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load rates');
+        const rates = data.rates || [];
+        if (rates.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="9" class="small">No rate configuration rows found.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = rates.map(r => {
+          const id = r.rate_id;
+          const active = r.is_active !== false;
+          return `
+            <tr data-id="${id}">
+              <td class="small">${r.activity_key}</td>
+              <td class="small">${r.esg_category}</td>
+              <td class="small">${r.activity_label}</td>
+              <td class="small">${r.impact_unit || ''}</td>
+              <td><input type="number" step="0.01" class="rate-unit" value="${r.unit_rate_usd || 0}"></td>
+              <td><input type="number" step="0.01" class="rate-vol" value="${r.volunteer_hour_rate || 33.49}"></td>
+              <td><input type="text" class="rate-source" value="${(r.rate_source || '').replace(/"/g,'&quot;')}"></td>
+              <td style="text-align:center;"><input type="checkbox" class="rate-active" ${active ? 'checked' : ''}></td>
+              <td><button class="btn btn-primary btn-save-rate" onclick="saveRate('${id}')">Save</button></td>
+            </tr>`;
+        }).join('');
+        statusEl.textContent = `Loaded ${rates.length} rows.`;
+      } catch (err) {
+        console.error('Failed to load rates:', err);
+        const tbody = document.querySelector('#ratesTable tbody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="small text-red-600">Failed to load rates.</td></tr>';
+        statusEl.textContent = 'Error loading rates.';
+      }
+    }
+
+    async function saveRate(id) {
+      const row = document.querySelector(`#ratesTable tr[data-id="${id}"]`);
+      const statusEl = document.getElementById('ratesStatus');
+      if (!row) return;
+      const unitInput = row.querySelector('.rate-unit');
+      const volInput = row.querySelector('.rate-vol');
+      const sourceInput = row.querySelector('.rate-source');
+      const activeInput = row.querySelector('.rate-active');
+      const btn = row.querySelector('.btn-save-rate');
+      const body = {
+        unit_rate_usd: parseFloat(unitInput.value || '0'),
+        volunteer_hour_rate: parseFloat(volInput.value || '33.49'),
+        rate_source: sourceInput.value || '',
+        is_active: !!activeInput.checked,
+      };
+      btn.disabled = true;
+      try {
+        const res = await fetch('/admin/api/impact/rates/' + encodeURIComponent(id), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to save rate');
+        statusEl.textContent = 'Saved changes.';
+      } catch (err) {
+        console.error('Failed to save rate:', err);
+        statusEl.textContent = 'Error saving rate.';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function loadBatches() {
+      const statusEl = document.getElementById('batchesStatus');
+      const tbody = document.querySelector('#batchesTable tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '<tr><td colspan="7" class="small">Loading...</td></tr>';
+      statusEl.textContent = '';
+      try {
+        const res = await fetch('/admin/api/impact/uploads', { credentials: 'include' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load batches');
+        const batches = data.batches || [];
+        if (batches.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" class="small">No upload batches found.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = batches.map(b => {
+          const created = b.created_at ? new Date(b.created_at).toLocaleString() : '';
+          const status = b.status || 'pending';
+          const statusClass = status === 'completed' ? 'tag tag-active' : status === 'failed' ? 'tag tag-inactive' : 'tag';
+          return `
+            <tr>
+              <td class="small">${created}</td>
+              <td class="small">${b.uploaded_by || ''}</td>
+              <td class="small">${b.source || ''}</td>
+              <td><span class="${statusClass}">${status}</span></td>
+              <td class="small">${b.total_rows || 0}</td>
+              <td class="small">${b.success_rows || 0}</td>
+              <td class="small">${b.error_rows || 0}</td>
+            </tr>`;
+        }).join('');
+        statusEl.textContent = `Loaded ${batches.length} batches.`;
+      } catch (err) {
+        console.error('Failed to load batches:', err);
+        tbody.innerHTML = '<tr><td colspan="7" class="small text-red-600">Failed to load batches.</td></tr>';
+        statusEl.textContent = 'Error loading batches.';
+      }
+    }
+  </script>
+</body>
+</html>
+

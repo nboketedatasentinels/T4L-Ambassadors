@@ -1120,6 +1120,11 @@
                 </div>
                 
                 <div class="form-group">
+                    <label class="form-label" for="editPhone">Phone Number</label>
+                    <input type="tel" id="editPhone" class="form-input" placeholder="e.g. +1234567890">
+                </div>
+                
+                <div class="form-group">
                     <label class="form-label" for="editAccessCode">Access Code</label>
                     <input type="text" id="editAccessCode" class="form-input" placeholder="T4LA-XXXX" required>
                 </div>
@@ -4576,6 +4581,7 @@ async function markAllNotificationsRead() {
                 
                 // Populate common fields
                 document.getElementById('editEmail').value = user.email || '';
+                document.getElementById('editPhone').value = user.phone_number || '';
                 document.getElementById('editAccessCode').value = user.access_code || '';
                 document.getElementById('editPassword').value = user.password || user.generated_password || 'Not available';
                 
@@ -4633,6 +4639,7 @@ async function markAllNotificationsRead() {
                         contact_person: document.getElementById('editContactPerson').value.trim(),
                         organization_name: document.getElementById('editOrganizationName').value.trim(),
                         email: document.getElementById('editEmail').value.trim(),
+                        phone_number: document.getElementById('editPhone').value.trim(),
                         access_code: document.getElementById('editAccessCode').value.trim(),
                         status: document.getElementById('editStatus').value
                     };
@@ -4641,6 +4648,7 @@ async function markAllNotificationsRead() {
                     requestBody = {
                         name: document.getElementById('editName').value.trim(),
                         email: document.getElementById('editEmail').value.trim(),
+                        phone_number: document.getElementById('editPhone').value.trim(),
                         access_code: document.getElementById('editAccessCode').value.trim(),
                         // For ambassadors, this dropdown controls subscription (free/paid)
                         subscription_type: document.getElementById('editStatus').value

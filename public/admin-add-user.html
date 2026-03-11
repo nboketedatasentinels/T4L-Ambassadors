@@ -259,6 +259,17 @@
                     <p id="ambEmailError" class="mt-1 text-sm text-red-600 hidden"></p>
                 </div>
                 
+                <!-- Phone Number -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-phone mr-2"></i> Phone Number *
+                    </label>
+                    <input type="tel" id="ambPhone" name="phone_number"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                           placeholder="+1 234 567 8900" required>
+                    <p id="ambPhoneError" class="mt-1 text-sm text-red-600 hidden"></p>
+                </div>
+                
                 <!-- Access Code Generator -->
                 <div class="mb-4">
                     <label class="block text-sm font-semibold text-gray-700 mb-2">
@@ -440,6 +451,17 @@
                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                            placeholder="partner@company.com" required>
                     <p id="parEmailError" class="mt-1 text-sm text-red-600 hidden"></p>
+                </div>
+                
+                <!-- Phone Number -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-phone mr-2"></i> Phone Number *
+                    </label>
+                    <input type="tel" id="parPhone" name="phone_number"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                           placeholder="+1 234 567 8900" required>
+                    <p id="parPhoneError" class="mt-1 text-sm text-red-600 hidden"></p>
                 </div>
                 
                 <!-- Access Code Generator -->
@@ -870,6 +892,7 @@
         function hideAmbassadorErrors() {
             document.getElementById('ambNameError').classList.add('hidden');
             document.getElementById('ambEmailError').classList.add('hidden');
+            document.getElementById('ambPhoneError').classList.add('hidden');
             document.getElementById('ambCodeError').classList.add('hidden');
             document.getElementById('ambPasswordError').classList.add('hidden');
         }
@@ -877,6 +900,7 @@
         function hidePartnerErrors() {
             document.getElementById('parNameError').classList.add('hidden');
             document.getElementById('parEmailError').classList.add('hidden');
+            document.getElementById('parPhoneError').classList.add('hidden');
             document.getElementById('parCodeError').classList.add('hidden');
             document.getElementById('parPasswordError').classList.add('hidden');
         }
@@ -1340,6 +1364,17 @@
                 isValid = false;
             }
             
+            const phone = document.getElementById('ambPhone').value.trim();
+            if (!phone) {
+                document.getElementById('ambPhoneError').textContent = 'Phone number is required';
+                document.getElementById('ambPhoneError').classList.remove('hidden');
+                isValid = false;
+            } else if (phone.replace(/[\s\-\(\)]/g, '').length < 7) {
+                document.getElementById('ambPhoneError').textContent = 'Please enter a valid phone number';
+                document.getElementById('ambPhoneError').classList.remove('hidden');
+                isValid = false;
+            }
+            
             const accessCode = document.getElementById('ambAccessCode').value.trim();
             if (!accessCode) {
                 document.getElementById('ambCodeError').textContent = 'Please generate an access code';
@@ -1380,6 +1415,17 @@
             } else if (!/\S+@\S+\.\S+/.test(email)) {
                 document.getElementById('parEmailError').textContent = 'Please enter a valid email';
                 document.getElementById('parEmailError').classList.remove('hidden');
+                isValid = false;
+            }
+            
+            const phone = document.getElementById('parPhone').value.trim();
+            if (!phone) {
+                document.getElementById('parPhoneError').textContent = 'Phone number is required';
+                document.getElementById('parPhoneError').classList.remove('hidden');
+                isValid = false;
+            } else if (phone.replace(/[\s\-\(\)]/g, '').length < 7) {
+                document.getElementById('parPhoneError').textContent = 'Please enter a valid phone number';
+                document.getElementById('parPhoneError').classList.remove('hidden');
                 isValid = false;
             }
             
@@ -1427,9 +1473,10 @@
                 const formData = {
                     first_name: document.getElementById('ambName').value.trim(),
                     email: document.getElementById('ambEmail').value.trim(),
+                    phone_number: document.getElementById('ambPhone').value.trim(),
                     access_code: document.getElementById('ambAccessCode').value.trim(),
                     password: document.getElementById('ambPassword').value.trim(),
-                    subscription_type: document.getElementById('ambSubscription').value // ✅ NEW
+                    subscription_type: document.getElementById('ambSubscription').value
                 };
                 
                 console.log('Saving ambassador:', formData);
@@ -1513,9 +1560,9 @@
                     contact_person: document.getElementById('parName').value.trim(),
                     organization_name: document.getElementById('parCompany').value.trim(),
                     email: document.getElementById('parEmail').value.trim(),
+                    phone_number: document.getElementById('parPhone').value.trim(),
                     access_code: document.getElementById('parAccessCode').value.trim(),
                     password: document.getElementById('parPassword').value.trim()
-                    // status removed: partner status will use backend default
                 };
                 
                 console.log('Saving partner:', formData);

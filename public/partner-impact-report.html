@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Organization Impact Report | Transformation Leader</title>
+  <link rel="icon" type="image/png" href="/images/favicon.png" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #fff; color: #1a1a2e; padding: 48px; max-width: 900px; margin: 0 auto; }
+    .header-bar { height: 4px; background: linear-gradient(90deg, #4b0d7f, #7c3aed, #f59e0b); border-radius: 2px; margin-bottom: 32px; }
+    h1 { font-size: 32px; font-weight: 800; color: #4b0d7f; margin-bottom: 4px; }
+    .subtitle { color: #6b7280; font-size: 14px; margin-bottom: 4px; }
+    .period { color: #374151; font-size: 14px; font-weight: 600; margin-bottom: 32px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 40px; }
+    .kpi-card { border: 2px solid #e9d5ff; border-radius: 12px; padding: 24px; text-align: center; }
+    .kpi-value { font-size: 36px; font-weight: 800; color: #4b0d7f; }
+    .kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #6b7280; margin-top: 4px; }
+    h2 { font-size: 22px; font-weight: 700; color: #4b0d7f; margin-bottom: 16px; margin-top: 32px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
+    th { background: #4b0d7f; color: #fff; padding: 10px 14px; text-align: left; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    th:first-child { border-radius: 8px 0 0 0; }
+    th:last-child { border-radius: 0 8px 0 0; }
+    td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; font-size: 14px; color: #374151; }
+    tr:last-child td { border-bottom: none; }
+    .disclosure { margin-top: 40px; padding-top: 24px; border-top: 2px solid #e9d5ff; }
+    .disclosure h2 { font-size: 20px; margin-bottom: 12px; }
+    .disclosure p { font-size: 13px; color: #6b7280; line-height: 1.7; margin-bottom: 8px; }
+    .footer { margin-top: 40px; text-align: center; color: #9ca3af; font-size: 12px; }
+    .footer .logo-text { font-weight: 700; color: #4b0d7f; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 6px; }
+    .pill-esg { background: #ecfdf5; color: #15803d; }
+    .pill-biz { background: #eff6ff; color: #1d4ed8; }
+    .no-print { }
+    @media print {
+      body { padding: 24px; }
+      .no-print { display: none !important; }
+    }
+    .print-actions { position: fixed; top: 16px; right: 16px; display: flex; gap: 8px; }
+    .print-actions button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; }
+    .btn-print { background: #4b0d7f; color: #fff; }
+    .btn-print:hover { background: #6b21a8; }
+    .btn-close { background: #f3f4f6; color: #374151; }
+    .btn-close:hover { background: #e5e7eb; }
+  </style>
+</head>
+<body>
+  <div class="print-actions no-print">
+    <button class="btn-print" onclick="window.print()">&#128438; Print / Save PDF</button>
+    <button class="btn-close" onclick="window.close()">Close</button>
+  </div>
+
+  <div class="header-bar"></div>
+
+  <h1>Organization Impact Report</h1>
+  <p class="subtitle">Positive Impact | Sustainable Change</p>
+  <p class="period" id="reportPeriod">Reporting Period: All time to Present</p>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpiPeople">0</div>
+      <div class="kpi-label">People Impacted</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpiHours">0</div>
+      <div class="kpi-label">Hours Contributed (ESG)</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpiUsd">0</div>
+      <div class="kpi-label">Total Impact Value (ESG + Business)</div>
+    </div>
+  </div>
+
+  <h2>ESG Breakdown</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th>People</th>
+        <th>Hours</th>
+        <th>USD Value</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Environmental</td>
+        <td id="esgEnvPeople">0</td>
+        <td id="esgEnvHours">0</td>
+        <td id="esgEnvUsd">$0.00</td>
+      </tr>
+      <tr>
+        <td>Social</td>
+        <td id="esgSocPeople">0</td>
+        <td id="esgSocHours">0</td>
+        <td id="esgSocUsd">$0.00</td>
+      </tr>
+      <tr>
+        <td>Governance</td>
+        <td id="esgGovPeople">0</td>
+        <td id="esgGovHours">0</td>
+        <td id="esgGovUsd">$0.00</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Verification Transparency</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Tier</th>
+        <th>% of Entries</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Tier 1 – Self-Reported</td>
+        <td id="tier1Pct">0.0%</td>
+      </tr>
+      <tr>
+        <td>Tier 2 – Partner / Manager Verified</td>
+        <td id="tier2Pct">0.0%</td>
+      </tr>
+      <tr>
+        <td>Tier 3 – Externally Audited</td>
+        <td id="tier3Pct">0.0%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Business Outcomes (Operational Value)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Outcome</th>
+        <th>USD Saved / Created</th>
+        <th>Waste Category</th>
+        <th>Method</th>
+      </tr>
+    </thead>
+    <tbody id="bizTableBody">
+      <tr>
+        <td colspan="4" style="text-align:center; color:#9ca3af;">No Business Outcome entries yet.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="disclosure">
+    <h2>Methodology &amp; Disclosure</h2>
+    <p><strong>ESG Social Value (Benchmark-based).</strong> USD social value figures in this report are calculated using published benchmark rates applied to verified impact quantities. Impact-based values use sector-specific cost proxies (e.g. training cost per participant from ATD, social cost of carbon from US EPA IWG, tree planting costs from One Tree Planted). Volunteer time is valued at the Independent Sector’s nationally recognised rate ($33.49/hour, 2024).</p>
+    <p>All rates are reviewed annually and stored at the time of entry for audit purposes. These figures represent estimated social value created or costs avoided. They do not represent cash transactions, revenue, or audited financial outcomes. Verification tiers indicate the level of external validation applied to the underlying activity data.</p>
+    <p><strong>Business Outcomes (Operational Value).</strong> Business Outcome values are entered directly by users and represent actual operational savings or revenue created. Where a manager or finance contact has verified the figure, this is noted in the verification status (Tier 2).</p>
+    <p>Reports produced from this Impact Log are intended for transparent internal and stakeholder communication. They do not constitute audited financial statements or ESG assurance reports.</p>
+  </div>
+
+  <div class="footer">
+    <p><span class="logo-text">Transformation Leader</span> — Positive Impact | Sustainable Change</p>
+    <p style="margin-top:4px;" id="reportGenerated">Report generated</p>
+  </div>
+
+  <script>
+    function fmtNum(n) {
+      const v = parseFloat(n) || 0;
+      return v.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    }
+    function fmtUsd(n) {
+      const v = parseFloat(n) || 0;
+      return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    async function loadReport() {
+      try {
+        const res = await fetch('/api/impact/my-stats', { credentials: 'include' });
+        const data = await res.json();
+        const s = data.stats || {};
+
+        // Top KPIs
+        document.getElementById('kpiPeople').textContent = fmtNum(s.total_people_impacted);
+        document.getElementById('kpiHours').textContent = fmtNum(s.total_hours);
+        const esgUsd = s.esg_usd_value || 0;
+        const bizUsd = s.business_usd_value || 0;
+        document.getElementById('kpiUsd').textContent = fmtUsd(esgUsd + bizUsd);
+
+        // ESG breakdown
+        const cat = s.category_breakdown || { environmental: {people:0,hours:0,usd:0}, social: {people:0,hours:0,usd:0}, governance: {people:0,hours:0,usd:0} };
+        document.getElementById('esgEnvPeople').textContent = fmtNum(cat.environmental?.people);
+        document.getElementById('esgEnvHours').textContent = fmtNum(cat.environmental?.hours);
+        document.getElementById('esgEnvUsd').textContent = fmtUsd(cat.environmental?.usd);
+        document.getElementById('esgSocPeople').textContent = fmtNum(cat.social?.people);
+        document.getElementById('esgSocHours').textContent = fmtNum(cat.social?.hours);
+        document.getElementById('esgSocUsd').textContent = fmtUsd(cat.social?.usd);
+        document.getElementById('esgGovPeople').textContent = fmtNum(cat.governance?.people);
+        document.getElementById('esgGovHours').textContent = fmtNum(cat.governance?.hours);
+        document.getElementById('esgGovUsd').textContent = fmtUsd(cat.governance?.usd);
+
+        // Verification
+        const ver = s.verification_breakdown || { tier_1: 0, tier_2: 0, tier_3: 0 };
+        const totalEntries = s.total_entries || 0;
+        const t1Pct = totalEntries > 0 ? ((ver.tier_1 / totalEntries) * 100).toFixed(1) : '0.0';
+        const t2Pct = totalEntries > 0 ? ((ver.tier_2 / totalEntries) * 100).toFixed(1) : '0.0';
+        const t3Pct = totalEntries > 0 ? ((ver.tier_3 / totalEntries) * 100).toFixed(1) : '0.0';
+        document.getElementById('tier1Pct').textContent = t1Pct + '%';
+        document.getElementById('tier2Pct').textContent = t2Pct + '%';
+        document.getElementById('tier3Pct').textContent = t3Pct + '%';
+
+        // Business Outcomes table (optional detail)
+        try {
+          const resEntries = await fetch('/api/partner/impact/entries', { credentials: 'include' });
+          const entriesData = await resEntries.json();
+          const entries = (entriesData.entries || []).filter(e => e.impact_type === 'business_outcome');
+          const tbody = document.getElementById('bizTableBody');
+          if (!tbody) return;
+          if (entries.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#9ca3af;">No Business Outcome entries yet.</td></tr>';
+          } else {
+            tbody.innerHTML = entries.slice(0, 25).map(e => {
+              const usd = fmtUsd(e.usd_value);
+              return `
+                <tr>
+                  <td>${escapeHtml(e.outcome_statement || e.title || '')}</td>
+                  <td>${usd}</td>
+                  <td>${escapeHtml(e.waste_primary || '')}${e.waste_secondary ? ' / ' + escapeHtml(e.waste_secondary) : ''}</td>
+                  <td>${escapeHtml(e.improvement_method || '')}</td>
+                </tr>
+              `;
+            }).join('');
+          }
+        } catch (err) {
+          // Non-fatal
+          console.error('Failed to load business outcomes for report:', err);
+        }
+
+        // Period & generated text
+        const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('reportGenerated').textContent = 'Report generated on ' + today;
+      } catch (err) {
+        console.error('Failed to load report data:', err);
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    loadReport();
+  </script>
+</body>
+</html>
+

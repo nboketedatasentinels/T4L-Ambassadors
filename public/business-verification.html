@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Business Outcome Verification | Transformation Leader</title>
+  <link rel="icon" type="image/png" href="/images/favicon.png" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <style>
+    body { background: #f3f4f6; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .page-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .card { max-width: 640px; width: 100%; background: white; border-radius: 18px; box-shadow: 0 20px 40px rgba(15,23,42,0.18); border: 1px solid #e5e7eb; overflow: hidden; }
+    .card-header { padding: 20px 24px; background: linear-gradient(135deg, #4b0d7f 0%, #7c3aed 100%); color: white; }
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 999px; background: rgba(243,244,246,0.16); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+    .card-body { padding: 20px 24px 24px; }
+    .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 2px; }
+    .value { font-size: 14px; color: #111827; }
+    .value-muted { font-size: 13px; color: #4b5563; }
+    .field-group { margin-bottom: 12px; }
+    .pill { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; font-size: 11px; background: #eef2ff; color: #4f46e5; margin-right: 4px; }
+    .pill-secondary { background: #fef3c7; color: #92400e; }
+    .pill-method { background: #ecfeff; color: #0369a1; }
+    .input, .textarea, .select { width: 100%; border-radius: 10px; border: 1px solid #e5e7eb; padding: 8px 10px; font-size: 14px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+    .input:focus, .textarea:focus, .select:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.16); }
+    .textarea { min-height: 80px; resize: vertical; }
+    .btn { border-radius: 999px; padding: 8px 16px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-primary { background: #16a34a; color: white; }
+    .btn-primary:hover { background: #15803d; }
+    .btn-secondary { background: white; color: #374151; border: 1px solid #e5e7eb; }
+    .btn-secondary:hover { background: #f3f4f6; }
+    .btn-danger { background: #b91c1c; color: white; }
+    .btn-danger:hover { background: #991b1b; }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
+    .actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+    .status-pill { border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 600; }
+    .status-pending { background: #eff6ff; color: #1d4ed8; }
+    .status-confirmed { background: #dcfce7; color: #166534; }
+    .status-rejected { background: #fee2e2; color: #b91c1c; }
+    .meta-footer { font-size: 11px; color: #6b7280; margin-top: 10px; }
+    .alert { border-radius: 12px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
+    .alert-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+    .alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .alert-success { background: #ecfdf3; color: #166534; border: 1px solid #bbf7d0; }
+  </style>
+</head>
+<body>
+  <div class="page-wrapper">
+    <div class="card" id="cardRoot">
+      <div class="card-header">
+        <div class="badge">Business Outcome Verification</div>
+        <h1 style="margin: 0; font-size: 20px;">Review impact entry</h1>
+        <p style="margin: 4px 0 0; font-size: 13px; color: #e5e7eb;">Confirm or reject the reported USD amount for this improvement.</p>
+      </div>
+      <div class="card-body" id="content">
+        <p class="value-muted">Loading entry details...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const qs = new URLSearchParams(window.location.search);
+    const token = qs.get('token') || '';
+
+    const contentEl = document.getElementById('content');
+    const cardRoot = document.getElementById('cardRoot');
+
+    async function loadVerification() {
+      if (!token) {
+        contentEl.innerHTML = '<div class="alert alert-error">Missing verification token.</div>';
+        return;
+      }
+      try {
+        const res = await fetch('/api/impact/business-verification?token=' + encodeURIComponent(token));
+        const data = await res.json();
+        if (!res.ok) {
+          contentEl.innerHTML = '<div class="alert alert-error">' + (data.error || 'Verification link is invalid or has expired.') + '</div>';
+          return;
+        }
+        renderVerification(data);
+      } catch (err) {
+        contentEl.innerHTML = '<div class="alert alert-error">Failed to load verification details. Please try again later.</div>';
+      }
+    }
+
+    function renderVerification(data) {
+      const { entry, verification } = data;
+      if (!entry || !verification) {
+        contentEl.innerHTML = '<div class="alert alert-error">Verification link is invalid or has expired.</div>';
+        return;
+      }
+      const status = verification.status;
+      const amount = Number(entry.usd_value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const dateStr = entry.activity_date
+        ? new Date(entry.activity_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+        : 'Not provided';
+
+      let statusPill = '<span class="status-pill status-pending">Pending your review</span>';
+      let disabledAttr = '';
+      let infoText = 'Please confirm whether this USD amount is accurate. Your decision will be recorded with your name and role.';
+      if (status === 'confirmed') {
+        statusPill = '<span class="status-pill status-confirmed">Already confirmed</span>';
+        disabledAttr = 'disabled';
+        infoText = 'You have already confirmed this Business Outcome. Thank you for your review.';
+      } else if (status === 'rejected' || status === 'expired') {
+        statusPill = '<span class="status-pill status-rejected">No longer active</span>';
+        disabledAttr = 'disabled';
+        infoText = 'This verification link is no longer active.';
+      }
+
+      contentEl.innerHTML = `
+        <div class="field-group">
+          ${statusPill}
+        </div>
+        <div class="alert alert-info">
+          ${infoText}
+        </div>
+        <div class="field-group">
+          <div class="label">Title</div>
+          <div class="value">${escapeHtml(entry.title || 'Business outcome')}</div>
+        </div>
+        <div class="field-group">
+          <div class="label">Outcome</div>
+          <div class="value-muted">${escapeHtml(entry.outcome_statement || entry.description || '') || 'Not provided'}</div>
+        </div>
+        <div class="field-group">
+          <div class="label">USD saved / created</div>
+          <div class="value">$${amount}</div>
+        </div>
+        <div class="field-group">
+          <div class="label">Date</div>
+          <div class="value">${escapeHtml(dateStr)}</div>
+        </div>
+        <div class="field-group">
+          <div class="label">Waste & Method</div>
+          <div class="value">
+            ${entry.waste_primary ? `<span class="pill">Waste: ${escapeHtml(entry.waste_primary)}</span>` : ''}
+            ${entry.waste_secondary ? `<span class="pill pill-secondary">${escapeHtml(entry.waste_secondary)}</span>` : ''}
+            ${entry.improvement_method ? `<span class="pill pill-method">${escapeHtml(entry.improvement_method)}</span>` : ''}
+          </div>
+        </div>
+        <form id="decisionForm" class="field-group" onsubmit="return false;">
+          <div class="field-group">
+            <label class="label">Your name</label>
+            <input type="text" class="input" name="verifier_name" placeholder="Your full name" value="${escapeAttr(verification.verifier_name || '')}" ${disabledAttr} />
+          </div>
+          <div class="field-group">
+            <label class="label">Your role</label>
+            <input type="text" class="input" name="verifier_role" placeholder="e.g. Finance Manager, Head of Dept" value="${escapeAttr(verification.verifier_role || '')}" ${disabledAttr} />
+          </div>
+          <div class="field-group">
+            <label class="label">Comment (optional)</label>
+            <textarea class="textarea" name="verifier_comment" placeholder="Add any context or conditions for your decision..." ${disabledAttr}>${escapeHtml(verification.verifier_comment || '')}</textarea>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-danger btn-sm" onclick="submitDecision('rejected')" ${disabledAttr}>Reject</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="submitDecision('confirmed')" ${disabledAttr}>Confirm amount is accurate</button>
+          </div>
+          <div class="meta-footer">
+            Your decision will be recorded with this entry as Tier 2 (manager/finance verified). This does not give you access to any other data.
+          </div>
+        </form>
+      `;
+    }
+
+    async function submitDecision(decision) {
+      if (!token) return;
+      const form = document.getElementById('decisionForm');
+      if (!form) return;
+      const formData = new FormData(form);
+      const payload = {
+        token,
+        decision,
+        verifier_name: formData.get('verifier_name') || '',
+        verifier_role: formData.get('verifier_role') || '',
+        verifier_comment: formData.get('verifier_comment') || '',
+      };
+      try {
+        const res = await fetch('/api/impact/business-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.error || 'Failed to submit decision.');
+          return;
+        }
+        // Reload state
+        await loadVerification();
+        alert(data.message || 'Your decision has been recorded. Thank you.');
+      } catch (err) {
+        alert('Failed to submit decision. Please try again later.');
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+    function escapeAttr(str) {
+      return escapeHtml(str).replace(/"/g, '&quot;');
+    }
+
+    loadVerification();
+  </script>
+</body>
+</html>
+

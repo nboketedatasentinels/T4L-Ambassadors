@@ -35,15 +35,17 @@ function normalizeAmbassadorData(userData, ambassadorData) {
     id: ambassadorData.ambassador_id,
     ambassador_id: ambassadorData.ambassador_id,
     user_id: userData.user_id,
+    firebase_uid: userData.firebase_uid || null,
     email: userData.email,
     access_code: userData.access_code,
     password_hash: userData.password_hash,
     salt: userData.salt,
-    status: userData.status, // ✅ status comes from users table
+    status: userData.status,
     role: 'ambassador',
     first_name: ambassadorData.first_name,
     last_name: ambassadorData.last_name,
     gender: ambassadorData.gender,
+    phone_number: userData.phone_number || ambassadorData.phone_number,
     whatsapp_number: ambassadorData.whatsapp_number,
     country: ambassadorData.country,
     state: ambassadorData.state,
@@ -70,15 +72,16 @@ function normalizePartnerData(userData, partnerData) {
     id: partnerData.partner_id,
     partner_id: partnerData.partner_id,
     user_id: userData.user_id,
+    firebase_uid: userData.firebase_uid || null,
     email: userData.email,
     access_code: userData.access_code,
     password_hash: userData.password_hash,
     salt: userData.salt,
-    status: userData.status, // ✅ status comes from users table
+    status: userData.status,
     role: 'partner',
     organization_name: partnerData.organization_name,
     contact_person: partnerData.contact_person,
-    phone_number: partnerData.phone_number,
+    phone_number: userData.phone_number || partnerData.phone_number,
     location: partnerData.location,
     partner_type: partnerData.partner_type,
     generated_password: partnerData.generated_password || '', // ✅ Include password for admin reference
@@ -95,6 +98,7 @@ function normalizeAdminData(userData, adminData) {
     id: adminData.admin_id,
     admin_id: adminData.admin_id,
     user_id: userData.user_id,
+    firebase_uid: userData.firebase_uid || null,
     email: userData.email,
     access_code: userData.access_code,
     password_hash: userData.password_hash,
@@ -260,6 +264,133 @@ async function getUserByEmail(email, role = 'ambassador') {
 }
 
 // ============================================
+// GET USER BY EMAIL + PHONE (CROSS-PLATFORM IDENTITY)
+// ============================================
+async function getUserByEmailAndPhone(email, phoneNumber) {
+  try {
+    log(`🔍 getUserByEmailAndPhone: ${email} / ${phoneNumber}`);
+
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email.toLowerCase())
+      .eq('phone_number', phoneNumber)
+      .single();
+
+    if (userError || !userData) {
+      log(`⚠️ No user found with email: ${email} and phone: ${phoneNumber}`);
+      return null;
+    }
+
+    const role = userData.user_type;
+    let roleTable, normalizer;
+
+    if (role === 'ambassador') {
+      roleTable = 'ambassadors';
+      normalizer = normalizeAmbassadorData;
+    } else if (role === 'partner') {
+      roleTable = 'partners';
+      normalizer = normalizePartnerData;
+    } else if (role === 'admin') {
+      roleTable = 'admins';
+      normalizer = normalizeAdminData;
+    } else {
+      return null;
+    }
+
+    const { data: roleData, error: roleError } = await supabase
+      .from(roleTable)
+      .select('*')
+      .eq('user_id', userData.user_id)
+      .single();
+
+    if (roleError || !roleData) {
+      console.error(`❌ No ${role} profile for user_id:`, userData.user_id);
+      return null;
+    }
+
+    const normalized = normalizer(userData, roleData);
+    log(`✅ Found ${role} by email+phone:`, normalized.id);
+    return normalized;
+  } catch (error) {
+    console.error('❌ getUserByEmailAndPhone error:', error);
+    return null;
+  }
+}
+
+// ============================================
+// GET USER BY PHONE NUMBER
+// ============================================
+async function getUserByPhone(phoneNumber) {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('user_id, email, phone_number, user_type')
+      .eq('phone_number', phoneNumber)
+      .single();
+
+    if (error || !data) return null;
+    return data;
+  } catch (error) {
+    return null;
+  }
+}
+
+// ============================================
+// GET USER BY FIREBASE UID (CROSS-PLATFORM BRIDGE)
+// ============================================
+async function getUserByFirebaseUid(firebaseUid) {
+  try {
+    log(`🔍 getUserByFirebaseUid: ${firebaseUid}`);
+
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('firebase_uid', firebaseUid)
+      .single();
+
+    if (userError || !userData) {
+      log(`⚠️ No user found with firebase_uid: ${firebaseUid}`);
+      return null;
+    }
+
+    const role = userData.user_type;
+    let roleTable, normalizer;
+
+    if (role === 'ambassador') {
+      roleTable = 'ambassadors';
+      normalizer = normalizeAmbassadorData;
+    } else if (role === 'partner') {
+      roleTable = 'partners';
+      normalizer = normalizePartnerData;
+    } else if (role === 'admin') {
+      roleTable = 'admins';
+      normalizer = normalizeAdminData;
+    } else {
+      return null;
+    }
+
+    const { data: roleData, error: roleError } = await supabase
+      .from(roleTable)
+      .select('*')
+      .eq('user_id', userData.user_id)
+      .single();
+
+    if (roleError || !roleData) {
+      console.error(`❌ No ${role} profile for firebase_uid user_id:`, userData.user_id);
+      return null;
+    }
+
+    const normalized = normalizer(userData, roleData);
+    log(`✅ Found ${role} by firebase_uid:`, normalized.id);
+    return normalized;
+  } catch (error) {
+    console.error('❌ getUserByFirebaseUid error:', error);
+    return null;
+  }
+}
+
+// ============================================
 // GET USER BY ID - FIXED TO PRIORITIZE user_id
 // ============================================
 async function getUserById(id, role = 'ambassador') {
@@ -349,6 +480,10 @@ async function createUser(userData, role = 'ambassador') {
       access_code: userData.access_code,
     };
 
+    // Only include cross-platform fields if they have values (columns may not exist pre-migration)
+    if (userData.phone_number) userInsert.phone_number = userData.phone_number;
+    if (userData.firebase_uid) userInsert.firebase_uid = userData.firebase_uid;
+
     const { data: newUser, error: userError } = await supabase
       .from('users')
       .insert([userInsert])
@@ -368,19 +503,20 @@ async function createUser(userData, role = 'ambassador') {
     if (role === 'ambassador') {
       roleTable = 'ambassadors';  // ✅ CORRECT
       normalizer = normalizeAmbassadorData;
-      roleInsert = {  // ✅ CORRECT
+      roleInsert = {
         user_id: newUser.user_id,
         email: userData.email.toLowerCase(),
         first_name: userData.first_name || userData.name || '',
         last_name: userData.last_name || '',
         gender: userData.gender || '',
+        phone_number: userData.phone_number || null,
         whatsapp_number: userData.whatsapp_number || '',
         country: userData.country || '',
         state: userData.state || '',
         continent: userData.continent || '',
         cv_filename: userData.cv_filename || null,
-        generated_password: userData.generated_password || null, // Store plain text password for admin reference
-        subscription_type: userData.subscription_type || 'free', // ✅ NEW: Subscription type
+        generated_password: userData.generated_password || null,
+        subscription_type: userData.subscription_type || 'free',
       };
     } else if (role === 'partner') {
       roleTable = 'partners';
@@ -440,6 +576,8 @@ async function updateUser(id, updates, role = 'ambassador') {
 
     // Fields that go to users table
     if (updates.email !== undefined) userUpdates.email = updates.email;
+    if (updates.phone_number !== undefined) userUpdates.phone_number = updates.phone_number;
+    if (updates.firebase_uid !== undefined) userUpdates.firebase_uid = updates.firebase_uid;
     if (updates.password_hash !== undefined) userUpdates.password_hash = updates.password_hash;
     if (updates.salt !== undefined) userUpdates.salt = updates.salt;
     if (updates.status !== undefined) userUpdates.status = updates.status;
@@ -452,11 +590,12 @@ async function updateUser(id, updates, role = 'ambassador') {
       if (updates.last_name !== undefined) roleUpdates.last_name = updates.last_name;
       if (updates.cv_filename !== undefined) roleUpdates.cv_filename = updates.cv_filename;
       if (updates.gender !== undefined) roleUpdates.gender = updates.gender;
+      if (updates.phone_number !== undefined) roleUpdates.phone_number = updates.phone_number;
       if (updates.whatsapp_number !== undefined) roleUpdates.whatsapp_number = updates.whatsapp_number;
       if (updates.country !== undefined) roleUpdates.country = updates.country;
       if (updates.state !== undefined) roleUpdates.state = updates.state;
       if (updates.continent !== undefined) roleUpdates.continent = updates.continent;
-      if (updates.subscription_type !== undefined) roleUpdates.subscription_type = updates.subscription_type; // ✅ NEW: Subscription type
+      if (updates.subscription_type !== undefined) roleUpdates.subscription_type = updates.subscription_type;
     } else if (role === 'partner') {
       if (updates.organization_name !== undefined) roleUpdates.organization_name = updates.organization_name;
       if (updates.contact_person !== undefined) roleUpdates.contact_person = updates.contact_person;
@@ -552,14 +691,14 @@ async function updateUser(id, updates, role = 'ambassador') {
 }
 
 // ============================================
-// DELETE USER - FIXED (CASCADE HANDLES PROFILE)
+// DELETE USER (handles DBs without ON DELETE CASCADE)
 // ============================================
 async function deleteUser(id, role = 'ambassador') {
   try {
     log(`🗑️ Deleting ${role} with ID:`, id);
 
     let roleTable, roleIdField;
-    
+
     if (role === 'ambassador') {
       roleTable = 'ambassadors';
       roleIdField = 'ambassador_id';
@@ -569,31 +708,46 @@ async function deleteUser(id, role = 'ambassador') {
     } else if (role === 'admin') {
       roleTable = 'admins';
       roleIdField = 'admin_id';
+    } else {
+      throw new Error(`Unsupported role for deleteUser: ${role}`);
     }
 
-    // Get user_id from role table
-    const { data: roleData } = await supabase
+    // Get role row so we know the owning user_id
+    const { data: roleData, error: roleFetchError } = await supabase
       .from(roleTable)
       .select('user_id')
       .eq(roleIdField, id)
       .single();
 
-    if (!roleData) {
+    if (roleFetchError || !roleData) {
       throw new Error(`${role} not found`);
     }
 
-    // Delete from users table (CASCADE will delete role profile)
-    const { error } = await supabase
-      .from('users')
-      .delete()
-      .eq('user_id', roleData.user_id);
+    const userId = roleData.user_id;
 
-    if (error) {
-      console.error(`❌ Error deleting user:`, error);
-      throw error;
+    // Explicitly delete ALL role rows for this user first to avoid FK issues
+    const { error: roleDeleteError } = await supabase
+      .from(roleTable)
+      .delete()
+      .eq('user_id', userId);
+
+    if (roleDeleteError) {
+      console.error(`❌ Error deleting ${role} profile(s):`, roleDeleteError);
+      throw roleDeleteError;
     }
 
-    log(`✅ ${role} deleted successfully`);
+    // Now safely delete from users table
+    const { error: userDeleteError } = await supabase
+      .from('users')
+      .delete()
+      .eq('user_id', userId);
+
+    if (userDeleteError) {
+      console.error('❌ Error deleting user:', userDeleteError);
+      throw userDeleteError;
+    }
+
+    log(`✅ ${role} and user deleted successfully`);
     return true;
   } catch (error) {
     console.error('❌ deleteUser error:', error);
@@ -1293,6 +1447,9 @@ module.exports = {
   supabase, // Export supabase client
   supabase,
   getUserByEmail,
+  getUserByEmailAndPhone,
+  getUserByPhone,
+  getUserByFirebaseUid,
   getUserById,
   createUser,
   updateUser,

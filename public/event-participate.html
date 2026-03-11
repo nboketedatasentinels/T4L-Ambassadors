@@ -11,38 +11,126 @@
     <meta property="og:description" content="Participate in a community impact event and be part of something bigger.">
     <meta property="og:type" content="website">
     <style>
-      :root { --primary: #4b0d7f; --primary-light: #7c3aed; }
+      /* T4L share-card inspired palette */
+      :root {
+        --t4l-gold: #D4A017;
+        --t4l-gold-hover: #B8860B;
+        --t4l-gold-muted: rgba(212, 160, 23, 0.15);
+        --t4l-dark: #0B0B0F;
+        --t4l-dark-soft: #1e293b;
+      }
       body {
-        background: linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 50%, #faf5ff 100%);
-        min-height: 100vh; display: flex; align-items: center; justify-content: center;
-        padding: 1rem;
+        background: #f8f9fa;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
       }
 
       .participate-card {
-        background: white; border-radius: 2rem; box-shadow: 0 25px 50px -12px rgba(75,13,127,0.15);
-        overflow: hidden; position: relative; max-width: 520px; width: 100%;
+        background: #ffffff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+        border: 1px solid #e5e7eb;
+        max-width: 580px;
+        width: 100%;
+        position: relative;
       }
       .participate-card::before {
-        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px;
-        background: linear-gradient(90deg, #4b0d7f, #f59e0b, #4b0d7f);
-        background-size: 200% 100%; animation: gradient-shift 3s ease infinite;
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--t4l-gold), #facc15, var(--t4l-gold));
       }
-      @keyframes gradient-shift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
 
-      .badge { padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+      .badge { padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
       .badge-env { background: #d1fae5; color: #065f46; }
       .badge-social { background: #dbeafe; color: #1e40af; }
       .badge-gov { background: #fef3c7; color: #92400e; }
       .badge-open { background: #d1fae5; color: #065f46; }
       .badge-closed { background: #fee2e2; color: #991b1b; }
 
+      .header-brand {
+        padding: 14px 24px;
+        background: #ffffff;
+        border-bottom: 2px solid var(--t4l-gold);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .header-brand-logo {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        background: var(--t4l-gold);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #111827;
+        font-size: 16px;
+      }
+      .header-brand-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--t4l-dark);
+        letter-spacing: 0.02em;
+      }
+      .header-brand-sub {
+        font-size: 10px;
+        color: #64748b;
+        font-weight: 500;
+      }
+
+      .header-banner {
+        padding: 24px 24px 20px;
+        background: var(--t4l-dark);
+        color: #fff;
+      }
+      .header-pill-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+        gap: 8px;
+      }
+      .header-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background: rgba(255,255,255,0.12);
+        color: #e5e7eb;
+      }
+      .header-title {
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1.35;
+        margin-bottom: 8px;
+        letter-spacing: -0.01em;
+      }
+      .header-subtitle {
+        font-size: 13px;
+        color: #94a3b8;
+      }
+
       .participate-btn {
-        background: linear-gradient(135deg, #4b0d7f, #6b21a8); color: white;
+        background: linear-gradient(135deg, var(--t4l-gold), var(--t4l-gold-hover)); color: #111827;
         padding: 1rem 2rem; border-radius: 1rem; font-weight: 700; font-size: 1.1rem;
         border: none; cursor: pointer; transition: all 0.3s; width: 100%;
         display: flex; align-items: center; justify-content: center; gap: 0.75rem;
       }
-      .participate-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(75,13,127,0.3); }
+      .participate-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.25); }
       .participate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
       .success-container { text-align: center; padding: 2rem; }
@@ -56,7 +144,7 @@
       .error-icon { width: 80px; height: 80px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
       .error-icon i { font-size: 2.5rem; color: #dc2626; }
 
-      .metric-box { background: #f9fafb; border-radius: 0.75rem; padding: 0.75rem; text-align: center; }
+      .metric-box { background: #fafafa; border-radius: 0.75rem; padding: 0.75rem; text-align: center; border: 1px solid #e5e7eb; }
 
       /* Share buttons */
       .share-btn { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; }
@@ -68,6 +156,22 @@
       .powered-by { text-align: center; margin-top: 1.5rem; }
       .powered-by a { color: #4b0d7f; text-decoration: none; font-weight: 600; }
       .powered-by a:hover { text-decoration: underline; }
+
+      /* Guest registration form */
+      .guest-form-group { margin-bottom: 1rem; }
+      .guest-label { display: block; font-size: 0.8rem; font-weight: 600; color: #374151; margin-bottom: 0.375rem; }
+      .guest-input {
+        width: 100%; padding: 0.65rem 0.875rem;
+        border: 1.5px solid #e5e7eb; border-radius: 0.625rem;
+        font-size: 0.9rem; color: #111827; background: #fff;
+        transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box;
+        font-family: inherit;
+      }
+      .guest-input:focus { outline: none; border-color: #4b0d7f; box-shadow: 0 0 0 3px rgba(75,13,127,0.08); }
+      .guest-input::placeholder { color: #9ca3af; }
+      .required-star { color: #dc2626; }
+      .guest-form-divider { border: none; border-top: 1px solid #f3f4f6; margin: 1.25rem 0; }
+      .guest-form-header { font-size: 0.8rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1rem; }
     </style>
 </head>
 <body>
@@ -80,15 +184,28 @@
 
       <!-- Event Info -->
       <div id="eventState" style="display: none;">
-        <!-- Header Banner -->
-        <div class="bg-gradient-to-br from-purple-600 to-purple-800 text-white p-6 pb-8">
-          <div class="flex items-center gap-2 mb-3">
-            <div class="bg-white/20 rounded-lg px-3 py-1 text-xs font-semibold backdrop-blur-sm">
-              <i class="bx bx-calendar-event mr-1"></i> Impact Event
-            </div>
+        <!-- Brand row -->
+        <div class="header-brand">
+          <div class="header-brand-logo">
+            <i class="bx bx-play"></i>
           </div>
-          <h1 class="text-xl md:text-2xl font-bold mb-2" id="eventTitle"></h1>
-          <p class="text-purple-200 text-sm" id="eventCreator"></p>
+          <div>
+            <div class="header-brand-title">Transformation Leader</div>
+            <div class="header-brand-sub">Positive Impact · Sustainable Change</div>
+          </div>
+        </div>
+
+        <!-- Header Banner -->
+        <div class="header-banner">
+          <div class="header-pill-row">
+            <span class="header-pill">
+              <i class="bx bx-calendar-event"></i>
+              Impact Event
+            </span>
+            <div id="eventBadgesHeader"></div>
+          </div>
+          <h1 class="header-title" id="eventTitle"></h1>
+          <p class="header-subtitle" id="eventCreator"></p>
         </div>
 
         <!-- Content -->
@@ -125,7 +242,7 @@
           <div id="actionContainer">
             <button class="participate-btn" id="participateBtn" onclick="confirmParticipation()">
               <i class="bx bx-check-circle text-xl"></i>
-              <span>I Participated</span>
+              <span>Register here</span>
             </button>
             <p class="text-center text-xs text-gray-400 mt-3">Click to confirm your participation. No account required.</p>
           </div>
@@ -138,8 +255,22 @@
           <div class="success-icon">
             <i class="bx bx-check"></i>
           </div>
-          <h2 class="text-xl font-bold text-gray-900 mb-2">You're In!</h2>
-          <p class="text-gray-600 text-sm mb-6">Your participation has been confirmed. Thank you for making a positive impact!</p>
+          <h2 class="text-xl font-bold text-gray-900 mb-2" id="successTitle">You're In!</h2>
+          <p class="text-gray-600 text-sm mb-6">Your participation has been recorded. Thank you for making a positive impact!</p>
+
+          <!-- Registration link surfaced after confirmation (if host provided one) -->
+          <div id="registrationCta" class="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-5" style="display:none;">
+            <h3 class="font-semibold text-gray-800 text-sm mb-1">Complete your registration</h3>
+            <p class="text-xs text-gray-500 mb-3">Use the link below provided by the event host when they created this event.</p>
+            <a id="registrationLink"
+               href="#"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="inline-flex items-center gap-2 text-sm font-semibold text-amber-700 hover:text-amber-800">
+              <i class="bx bx-link-external"></i>
+              <span>Open event registration page</span>
+            </a>
+          </div>
 
           <!-- Share Participation -->
           <div class="bg-purple-50 border border-purple-100 rounded-xl p-5 mb-4">
@@ -183,12 +314,6 @@
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- Powered By -->
-    <div class="powered-by">
-      <p class="text-xs text-gray-400">Powered by <a href="https://www.t4leader.com" target="_blank">Transformation Leader</a></p>
-      <p class="text-xs text-gray-400 mt-1">Positive Impact | Sustainable Change</p>
     </div>
 
     <script>
@@ -240,10 +365,13 @@
         const catBadge = currentEvent.esg_category === 'environmental' ? 'badge-env' :
                          currentEvent.esg_category === 'social' ? 'badge-social' : 'badge-gov';
         const statusBadge = currentEvent.status === 'open' ? 'badge-open' : 'badge-closed';
-        document.getElementById('eventBadges').innerHTML = `
+        const badgesHtml = `
           <span class="badge ${statusBadge}">${currentEvent.status}</span>
           <span class="badge ${catBadge}">${currentEvent.esg_category}</span>
         `;
+        document.getElementById('eventBadges').innerHTML = badgesHtml;
+        const headerBadges = document.getElementById('eventBadgesHeader');
+        if (headerBadges) headerBadges.innerHTML = badgesHtml;
 
         // Update OG tags
         document.title = `${currentEvent.title} | Transformation Leader`;
@@ -263,9 +391,131 @@
         document.getElementById('loadingState').style.display = 'none';
         document.getElementById('eventState').style.display = 'block';
 
+        // If open, decide whether to show the guest form or the quick confirm button
+        if (currentEvent.status === 'open') {
+          checkSessionAndRender();
+        }
+
       } catch (err) {
         console.error('Error loading event:', err);
         showError('Connection Error', 'Unable to load event details. Please try again.');
+      }
+    }
+
+    // Check if the visitor has an active T4L session.
+    // If yes → keep the quick-confirm button (server will auto-look up their profile).
+    // If no  → replace the action area with the guest registration form.
+    async function checkSessionAndRender() {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        if (res.ok) return; // logged in — existing button stays
+      } catch (_) {}
+      // Not logged in — show guest form
+      showGuestForm();
+    }
+
+    function showGuestForm() {
+      document.getElementById('actionContainer').innerHTML = `
+        <p class="guest-form-header">Your details</p>
+        <div class="guest-form-group">
+          <label class="guest-label" for="guestName">Full Name <span class="required-star">*</span></label>
+          <input type="text" id="guestName" class="guest-input" placeholder="Your full name" autocomplete="name">
+        </div>
+        <div class="guest-form-group">
+          <label class="guest-label" for="guestPhone">Phone Number <span class="required-star">*</span></label>
+          <input type="tel" id="guestPhone" class="guest-input" placeholder="+1 234 567 8900" autocomplete="tel">
+        </div>
+        <div class="guest-form-group">
+          <label class="guest-label" for="guestEmail">Email <span class="required-star">*</span></label>
+          <input type="email" id="guestEmail" class="guest-input" placeholder="your@email.com" autocomplete="email">
+        </div>
+        <div class="guest-form-group">
+          <label class="guest-label" for="guestOrg">Organisation <span style="color:#9ca3af;font-weight:400;">(optional)</span></label>
+          <input type="text" id="guestOrg" class="guest-input" placeholder="Your company or organisation" autocomplete="organization">
+        </div>
+        <div id="guestFormError" class="hidden mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700"></div>
+        <button class="participate-btn" id="guestSubmitBtn" onclick="submitGuestForm()">
+          <i class="bx bx-check-circle text-xl"></i>
+          <span>Log My Participation</span>
+        </button>
+        <p class="text-center text-xs text-gray-400 mt-3">Your details will only be shared with the event organiser.</p>
+      `;
+    }
+
+    async function submitGuestForm() {
+      const name  = (document.getElementById('guestName').value  || '').trim();
+      const phone = (document.getElementById('guestPhone').value || '').trim();
+      const email = (document.getElementById('guestEmail').value || '').trim();
+      const org   = (document.getElementById('guestOrg').value   || '').trim();
+      const errorEl = document.getElementById('guestFormError');
+
+      // Validate
+      if (!name) {
+        errorEl.textContent = 'Please enter your full name.';
+        errorEl.classList.remove('hidden');
+        document.getElementById('guestName').focus();
+        return;
+      }
+      if (!phone) {
+        errorEl.textContent = 'Please enter your phone number.';
+        errorEl.classList.remove('hidden');
+        document.getElementById('guestPhone').focus();
+        return;
+      }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errorEl.textContent = 'Please enter a valid email address.';
+        errorEl.classList.remove('hidden');
+        document.getElementById('guestEmail').focus();
+        return;
+      }
+      errorEl.classList.add('hidden');
+
+      const btn = document.getElementById('guestSubmitBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div><span>Saving...</span>';
+
+      try {
+        const res = await fetch(`/api/impact/events/${currentEvent.event_id}/participate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name:           name,
+            email:          email,
+            phone:          phone,
+            company:        org || undefined,
+            sourcePlatform: 'guest',
+            anonymous_hash: deviceHash,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (res.status === 409) {
+          document.getElementById('eventState').style.display = 'none';
+          document.getElementById('alreadyState').style.display = 'block';
+          return;
+        }
+
+        if (!res.ok) throw new Error(data.error || 'Failed to record participation');
+
+        // Optimistically update participant count
+        const currentCount = parseInt(currentEvent.participant_count || 0, 10) || 0;
+        currentEvent.participant_count = currentCount + 1;
+        const participantsEl = document.getElementById('eventParticipants');
+        if (participantsEl) participantsEl.textContent = currentEvent.participant_count;
+
+        const regLink = currentEvent.registration_link;
+        if (regLink) { window.location.href = regLink; return; }
+
+        document.getElementById('eventState').style.display = 'none';
+        document.getElementById('successState').style.display = 'block';
+        document.getElementById('successTitle').textContent = `You're in, ${name.split(' ')[0]}!`;
+
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bx bx-check-circle text-xl"></i><span>Log My Participation</span>';
+        errorEl.textContent = err.message;
+        errorEl.classList.remove('hidden');
       }
     }
 
@@ -281,15 +531,14 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({
-            anonymous_hash: deviceHash,
-          }),
+          body: JSON.stringify({ anonymous_hash: deviceHash }),
         });
 
         const data = await res.json();
 
         if (res.status === 409) {
-          // Already participated
+          const regLink = currentEvent.registration_link;
+          if (regLink) { window.location.href = regLink; return; }
           document.getElementById('eventState').style.display = 'none';
           document.getElementById('alreadyState').style.display = 'block';
           return;
@@ -297,13 +546,20 @@
 
         if (!res.ok) throw new Error(data.error || 'Failed to confirm participation');
 
-        // Success!
+        const currentCount = parseInt(currentEvent.participant_count || 0, 10) || 0;
+        currentEvent.participant_count = currentCount + 1;
+        const participantsEl = document.getElementById('eventParticipants');
+        if (participantsEl) participantsEl.textContent = currentEvent.participant_count;
+
+        const regLink = currentEvent.registration_link;
+        if (regLink) { window.location.href = regLink; return; }
+
         document.getElementById('eventState').style.display = 'none';
         document.getElementById('successState').style.display = 'block';
 
       } catch (err) {
         btn.disabled = false;
-        btn.innerHTML = '<i class="bx bx-check-circle text-xl"></i><span>I Participated</span>';
+        btn.innerHTML = '<i class="bx bx-check-circle text-xl"></i><span>Register here</span>';
         showToast(err.message, 'error');
       }
     }
