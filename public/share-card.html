@@ -11,7 +11,15 @@
   <meta property="og:description" id="ogDesc" content="See the positive impact we're making through the Transformation Leader programme." />
   <meta property="og:image" content="https://ambassadors.t4leader.com/images/favicon.png" />
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    /* T4L brand: professional gold + dark for trust */
+    :root {
+      --t4l-gold: #D4A017;
+      --t4l-gold-hover: #B8860B;
+      --t4l-gold-muted: rgba(212, 160, 23, 0.15);
+      --t4l-dark: #0B0B0F;
+      --t4l-dark-soft: #1e293b;
+    }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       min-height: 100vh;
@@ -20,39 +28,100 @@
       justify-content: center;
       padding: 24px;
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background: linear-gradient(160deg, #f0eaff 0%, #e8f4f8 40%, #fdf6e3 100%);
+      background: #f8f9fa;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    .blobs {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.28;
+      will-change: transform;
+    }
+    .blob-1 {
+      width: 320px;
+      height: 320px;
+      background: #e8d5a3;
+      top: -80px;
+      right: -100px;
+      animation: blob-float 18s ease-in-out infinite;
+    }
+    .blob-2 {
+      width: 280px;
+      height: 280px;
+      background: #e2e8f0;
+      bottom: -60px;
+      left: -80px;
+      animation: blob-float 22s ease-in-out infinite reverse;
+      animation-delay: -5s;
+    }
+    .blob-3 {
+      width: 200px;
+      height: 200px;
+      background: #f0e6c8;
+      top: 50%;
+      left: 10%;
+      opacity: 0.18;
+      animation: blob-float 20s ease-in-out infinite;
+      animation-delay: -10s;
+    }
+    .blob-4 {
+      width: 180px;
+      height: 180px;
+      background: var(--t4l-dark);
+      bottom: 20%;
+      right: 15%;
+      opacity: 0.08;
+      animation: blob-float 25s ease-in-out infinite reverse;
+      animation-delay: -2s;
+    }
+    @keyframes blob-float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(20px, -15px) scale(1.05); }
+      66% { transform: translate(-15px, 10px) scale(0.98); }
     }
 
     .wrapper {
-      width: 520px;
+      width: 580px;
       max-width: 100%;
+      position: relative;
+      z-index: 1;
     }
 
     .card {
-      position: relative;
       background: #ffffff;
-      border-radius: 20px;
+      border-radius: 12px;
       overflow: hidden;
-      box-shadow:
-        0 1px 3px rgba(0,0,0,0.04),
-        0 8px 24px rgba(75,13,127,0.08),
-        0 24px 48px rgba(75,13,127,0.04);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+      border: 1px solid #e5e7eb;
+      min-height: 420px;
     }
 
-    .card-header {
-      position: relative;
-      padding: 28px 28px 20px;
-      background: linear-gradient(135deg, #4b0d7f 0%, #7c3aed 50%, #a78bfa 100%);
-      color: white;
+    .card-brand-top {
+      padding: 14px 28px;
+      background: #ffffff;
+      border-bottom: 2px solid var(--t4l-gold);
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
-    .card-header::after {
-      content: '';
-      position: absolute;
-      bottom: -1px;
-      left: 0; right: 0;
-      height: 24px;
-      background: white;
-      border-radius: 20px 20px 0 0;
+    .card-brand-top .brand-logo { width: 28px; height: 28px; border-radius: 0; object-fit: contain; }
+    .card-brand-top .brand-text { font-size: 13px; font-weight: 700; color: var(--t4l-dark); letter-spacing: 0.02em; }
+    .card-brand-top .brand-sub { font-size: 10px; color: #64748b; font-weight: 500; }
+
+    .card-header {
+      padding: 28px 28px 24px;
+      background: var(--t4l-dark);
+      color: #fff;
     }
 
     .badge-row {
@@ -64,89 +133,116 @@
     .pill {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       padding: 5px 12px;
-      border-radius: 999px;
+      border-radius: 6px;
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.05em;
     }
     .pill-esg {
-      background: rgba(255,255,255,0.2);
-      color: #fde68a;
-      backdrop-filter: blur(4px);
+      background: var(--t4l-gold-muted);
+      color: #f0e6c8;
     }
     .pill-biz {
-      background: rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.12);
       color: #a7f3d0;
-      backdrop-filter: blur(4px);
     }
     .pill-category {
-      background: rgba(255,255,255,0.15);
-      color: rgba(255,255,255,0.9);
-      backdrop-filter: blur(4px);
+      background: rgba(255,255,255,0.1);
+      color: #94a3b8;
     }
     .pill-dot {
-      width: 6px; height: 6px;
+      width: 4px; height: 4px;
       border-radius: 50%;
       display: inline-block;
     }
-    .pill-esg .pill-dot { background: #fde68a; }
-    .pill-biz .pill-dot { background: #a7f3d0; }
+    .pill-esg .pill-dot { background: var(--t4l-gold); }
+    .pill-biz .pill-dot { background: #34d399; }
 
     .card-title {
-      font-size: 22px;
-      font-weight: 800;
-      line-height: 1.25;
-      margin-bottom: 6px;
-      position: relative;
-      z-index: 1;
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1.35;
+      margin-bottom: 8px;
+      color: #fff;
+      letter-spacing: -0.01em;
     }
     .card-subtitle {
       font-size: 14px;
-      color: rgba(255,255,255,0.8);
-      line-height: 1.5;
-      position: relative;
-      z-index: 1;
+      color: #94a3b8;
+      line-height: 1.55;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
+    .card-subtitle.expanded {
+      -webkit-line-clamp: unset;
+      overflow: visible;
+      display: block;
+    }
+    .view-more-toggle {
+      font-size: 12px;
+      color: var(--t4l-gold);
+      cursor: pointer;
+      margin-top: 6px;
+      font-weight: 500;
+      background: none;
+      border: none;
+      padding: 0;
+      text-decoration: underline;
+    }
+    .view-more-toggle:hover { color: #f0e6c8; }
+    .metric-box .view-more-toggle { margin-top: 8px; font-size: 12px; color: var(--t4l-gold); }
+    .metric-box .view-more-toggle:hover { color: var(--t4l-gold-hover); }
+
+    .card-creator {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 10px;
+      font-weight: 500;
+    }
+    .card-creator span { color: #e2e8f0; }
 
     .card-body {
-      padding: 20px 28px 24px;
+      padding: 26px 28px 26px;
+      background: #fff;
     }
 
     .metrics-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 14px;
       margin-bottom: 20px;
     }
     .metric-box {
-      background: #faf9fe;
-      border: 1px solid #ede9fe;
-      border-radius: 14px;
+      background: #fafafa;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
       padding: 14px 16px;
-      transition: transform 0.15s;
     }
-    .metric-box:hover { transform: translateY(-1px); }
     .metric-box.full-width { grid-column: 1 / -1; }
     .metric-label {
-      font-size: 10px;
+      font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: #7c3aed;
+      letter-spacing: 0.08em;
+      color: #64748b;
       font-weight: 600;
-      margin-bottom: 4px;
+      margin-bottom: 5px;
     }
     .metric-value {
       font-size: 20px;
-      font-weight: 800;
-      color: #1e1b4b;
+      font-weight: 700;
+      color: #0f172a;
+      letter-spacing: -0.02em;
     }
     .metric-value.small {
       font-size: 14px;
-      font-weight: 600;
-      color: #374151;
+      font-weight: 500;
+      color: #475569;
+      line-height: 1.45;
     }
 
     .verification-badge {
@@ -154,138 +250,155 @@
       align-items: center;
       gap: 6px;
       padding: 6px 14px;
-      border-radius: 999px;
-      font-size: 11px;
+      border-radius: 6px;
+      font-size: 12px;
       font-weight: 600;
       margin-bottom: 20px;
+      color: #475569;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
     }
-    .verification-badge.tier-1 { background: #f3f4f6; color: #6b7280; }
-    .verification-badge.tier-2 { background: #dbeafe; color: #1d4ed8; }
-    .verification-badge.tier-3 { background: #d1fae5; color: #065f46; }
+    .verification-badge.tier-2 {
+      background: #ecfdf5;
+      color: #047857;
+      border-color: #a7f3d0;
+    }
+    .verification-badge.tier-3 {
+      background: #ecfdf5;
+      color: #065f46;
+      border-color: #6ee7b7;
+    }
 
     .divider {
       height: 1px;
-      background: linear-gradient(90deg, transparent, #e5e7eb, transparent);
-      margin: 0 0 16px;
+      background: #e2e8f0;
+      margin: 0 0 20px;
     }
 
     .cta-section {
       text-align: center;
-      padding: 0 0 4px;
+      margin-bottom: 22px;
     }
     .cta-label {
-      font-size: 12px;
-      color: #9ca3af;
-      margin-bottom: 10px;
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 12px;
     }
     .cta-btn {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
-      padding: 12px 28px;
-      border-radius: 12px;
+      padding: 12px 26px;
+      border-radius: 8px;
       font-size: 14px;
-      font-weight: 700;
+      font-weight: 600;
       text-decoration: none;
-      transition: all 0.2s;
+      transition: background 0.2s, color 0.2s;
       cursor: pointer;
       border: none;
     }
     .cta-btn-partner {
-      background: linear-gradient(135deg, #4b0d7f, #7c3aed);
-      color: white;
-      box-shadow: 0 4px 14px rgba(75,13,127,0.3);
+      background: var(--t4l-gold);
+      color: #1a1d24;
     }
     .cta-btn-partner:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(75,13,127,0.4);
+      background: var(--t4l-gold-hover);
+      color: #fff;
     }
     .cta-btn-ambassador {
-      background: linear-gradient(135deg, #c9a227, #e2b93b);
-      color: #1e1b4b;
-      box-shadow: 0 4px 14px rgba(201,162,39,0.3);
+      background: var(--t4l-gold);
+      color: #1a1d24;
     }
     .cta-btn-ambassador:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(201,162,39,0.4);
+      background: var(--t4l-gold-hover);
+      color: #fff;
     }
 
+    .card-share-section {
+      padding-top: 18px;
+      border-top: 1px solid #e2e8f0;
+    }
+    .card-share-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .card-share-bar {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
     .card-footer {
       padding: 16px 28px;
-      border-top: 1px solid #f3f4f6;
+      border-top: 1px solid #e5e7eb;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      background: #ffffff;
+      border-bottom: 2px solid var(--t4l-gold);
     }
     .brand-line {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
     .brand-logo {
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
+      width: 26px;
+      height: 26px;
+      border-radius: 0;
       object-fit: contain;
     }
     .brand-text {
       font-size: 12px;
       font-weight: 700;
-      color: #4b0d7f;
+      color: var(--t4l-dark);
+      letter-spacing: 0.02em;
     }
     .brand-sub {
       font-size: 10px;
-      color: #9ca3af;
+      color: #64748b;
       font-weight: 500;
     }
-    .disclaimer {
-      font-size: 9px;
-      color: #d1d5db;
-      max-width: 180px;
-      text-align: right;
-      line-height: 1.4;
-    }
 
-    .share-bar {
-      margin-top: 16px;
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-    }
     .share-btn {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       padding: 10px 18px;
-      border-radius: 10px;
+      border-radius: 8px;
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 500;
       text-decoration: none;
       cursor: pointer;
-      border: 1px solid #e5e7eb;
-      background: white;
-      color: #374151;
-      transition: all 0.2s;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      color: #475569;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
     }
     .share-btn:hover {
-      background: #f9fafb;
-      border-color: #d1d5db;
-      transform: translateY(-1px);
+      background: #fffbeb;
+      border-color: var(--t4l-gold);
+      color: var(--t4l-dark);
     }
-    .share-btn svg { width: 16px; height: 16px; }
+    .share-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
 
     .loading {
       text-align: center;
       padding: 60px 20px;
-      color: #9ca3af;
+      color: #64748b;
       font-size: 14px;
     }
     .loading .spinner {
-      width: 32px; height: 32px;
-      border: 3px solid #e5e7eb;
-      border-top-color: #7c3aed;
+      width: 28px; height: 28px;
+      border: 2px solid #e2e8f0;
+      border-top-color: #64748b;
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      animation: spin 0.7s linear infinite;
       margin: 0 auto 12px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -293,8 +406,23 @@
 </head>
 <body>
 
+  <div class="blobs" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <div class="blob blob-4"></div>
+  </div>
+
   <div class="wrapper">
     <div class="card" id="cardRoot" style="display:none;">
+      <!-- Brand at top (Section 11 layout) -->
+      <div class="card-brand-top">
+        <img src="/images/favicon.png" alt="T4L" class="brand-logo" onerror="this.style.display='none'"/>
+        <div>
+          <div class="brand-text">Transformation Leader</div>
+          <div class="brand-sub">Positive Impact &middot; Sustainable Change</div>
+        </div>
+      </div>
       <!-- Header -->
       <div class="card-header">
         <div class="badge-row">
@@ -303,6 +431,8 @@
         </div>
         <div class="card-title" id="cardTitle">Impact Title</div>
         <div class="card-subtitle" id="cardSubtitle">Description goes here.</div>
+        <button type="button" class="view-more-toggle" id="subtitleViewMore" style="display:none;">View more</button>
+        <div class="card-creator" id="cardCreator" style="display:none;">By <span id="cardCreatorName"></span></div>
       </div>
 
       <!-- Body -->
@@ -322,6 +452,25 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </a>
         </div>
+
+        <!-- Share (inside card) -->
+        <div class="card-share-section" id="shareBar" style="display:none;">
+          <div class="card-share-label">Share this impact</div>
+          <div class="card-share-bar">
+            <button class="share-btn" id="btnCopyLink">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              Copy Link
+            </button>
+            <a class="share-btn" id="btnLinkedIn" href="#" target="_blank">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+              LinkedIn
+            </a>
+            <a class="share-btn" id="btnWhatsApp" href="#" target="_blank">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              WhatsApp
+            </a>
+          </div>
+        </div>
       </div>
 
       <!-- Footer -->
@@ -333,24 +482,7 @@
             <div class="brand-sub">Positive Impact &middot; Sustainable Change</div>
           </div>
         </div>
-        <div class="disclaimer">For storytelling only.<br/>Not a verified ESG statement.</div>
       </div>
-    </div>
-
-    <!-- Share bar -->
-    <div class="share-bar" id="shareBar" style="display:none;">
-      <button class="share-btn" id="btnCopyLink">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-        Copy Link
-      </button>
-      <a class="share-btn" id="btnLinkedIn" href="#" target="_blank">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-        LinkedIn
-      </a>
-      <a class="share-btn" id="btnWhatsApp" href="#" target="_blank">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-        WhatsApp
-      </a>
     </div>
 
     <!-- Loading -->
@@ -379,11 +511,6 @@
       return rounded.toLocaleString() + '+';
     }
 
-    function fmtUsd(n) {
-      const v = parseFloat(n) || 0;
-      return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-    }
-
     function escapeHtml(str) {
       if (!str) return '';
       return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -402,7 +529,7 @@
       if (!entryId) { document.getElementById('loadingState').innerHTML = '<p>No entry specified.</p>'; return; }
 
       try {
-        const res = await fetch('/api/impact/entries/' + encodeURIComponent(entryId), { credentials: 'include' });
+        const res = await fetch('/api/public/impact-entry/' + encodeURIComponent(entryId));
         const data = await res.json();
         if (!res.ok || !data.entry) { document.getElementById('loadingState').innerHTML = '<p>Entry not found.</p>'; return; }
         const e = data.entry;
@@ -421,32 +548,72 @@
         }
         pillCat.textContent = e.esg_category ? e.esg_category.charAt(0).toUpperCase() + e.esg_category.slice(1) : (e.waste_primary || 'Impact');
 
-        // Title & subtitle
-        document.getElementById('cardTitle').textContent = e.title || (isBusiness ? 'Business Outcome' : 'Impact Entry');
-        const desc = e.description || e.outcome_statement || '';
-        document.getElementById('cardSubtitle').textContent = desc.length > 120 ? desc.slice(0, 117) + '...' : desc;
+        // Title (activity title per Section 11.1) & subtitle (description; for Business, body shows outcome statement)
+        const activityTitle = e.title || (isBusiness ? 'Business Outcome' : 'Impact Entry');
+        document.getElementById('cardTitle').textContent = activityTitle;
+        const desc = isBusiness ? '' : (e.description || '');
+        const subtitleEl = document.getElementById('cardSubtitle');
+        const subtitleViewMoreBtn = document.getElementById('subtitleViewMore');
+        const descTruncated = desc.length > 120 ? desc.slice(0, 117) + '...' : desc;
+        subtitleEl.textContent = descTruncated;
+        subtitleEl.style.display = desc ? 'block' : 'none';
+        subtitleEl.classList.remove('expanded');
+        if (desc.length > 120) {
+          subtitleViewMoreBtn.style.display = 'block';
+          subtitleViewMoreBtn.textContent = 'View more';
+          subtitleViewMoreBtn.onclick = function () {
+            const isExp = subtitleEl.classList.toggle('expanded');
+            subtitleEl.textContent = isExp ? desc : descTruncated;
+            subtitleViewMoreBtn.textContent = isExp ? 'View less' : 'View more';
+          };
+        } else {
+          subtitleViewMoreBtn.style.display = 'none';
+        }
 
-        // Metrics
+        // Creator (organization or person name)
+        const creatorEl = document.getElementById('cardCreator');
+        const creatorNameEl = document.getElementById('cardCreatorName');
+        if (e.creator_display) {
+          creatorNameEl.textContent = e.creator_display;
+          creatorEl.style.display = 'block';
+        } else {
+          creatorEl.style.display = 'none';
+        }
+
+        // Metrics — Section 11: NO USD values, NO verification tier. ESG: rounded people + hours. Business: outcome statement only.
         const grid = document.getElementById('metricsGrid');
         grid.innerHTML = '';
         if (isBusiness) {
-          grid.appendChild(buildMetricBox('USD Saved / Created', fmtUsd(e.usd_value), false));
-          grid.appendChild(buildMetricBox('Waste Eliminated', e.waste_primary || 'N/A', false));
-          if (e.outcome_statement) grid.appendChild(buildMetricBox('Outcome', e.outcome_statement, true));
+          if (e.outcome_statement) {
+            const outcomeFull = e.outcome_statement;
+            const outcomeTruncated = outcomeFull.length > 200 ? outcomeFull.slice(0, 197) + '...' : outcomeFull;
+            const outcomeBox = buildMetricBox('Outcome', '"' + outcomeTruncated + '"', true);
+            if (outcomeFull.length > 200) {
+              const valueEl = outcomeBox.querySelector('.metric-value');
+              const toggleBtn = document.createElement('button');
+              toggleBtn.type = 'button';
+              toggleBtn.className = 'view-more-toggle';
+              toggleBtn.textContent = 'View more';
+              toggleBtn.onclick = function () {
+                const isExp = valueEl.dataset.expanded === '1';
+                valueEl.textContent = isExp ? '"' + outcomeTruncated + '"' : '"' + outcomeFull + '"';
+                valueEl.dataset.expanded = isExp ? '0' : '1';
+                toggleBtn.textContent = isExp ? 'View more' : 'View less';
+              };
+              outcomeBox.appendChild(toggleBtn);
+            }
+            grid.appendChild(outcomeBox);
+          }
         } else {
-          grid.appendChild(buildMetricBox('People Reached', fmtRoundedPeople(e.people_impacted), false));
-          if (e.hours_contributed > 0) grid.appendChild(buildMetricBox('Hours Contributed', parseFloat(e.hours_contributed).toLocaleString(), false));
-          else grid.appendChild(buildMetricBox('Category', (e.esg_category || 'N/A').charAt(0).toUpperCase() + (e.esg_category || '').slice(1), false));
-          if (e.usd_value > 0) grid.appendChild(buildMetricBox('Social Value', fmtUsd(e.usd_value), true));
+          grid.appendChild(buildMetricBox('People reached', fmtRoundedPeople(e.people_impacted), false));
+          const hours = parseFloat(e.hours_contributed) || 0;
+          if (hours > 0) {
+            grid.appendChild(buildMetricBox('Hours contributed', String(Math.floor(hours)), false));
+          }
         }
 
-        // Verification badge
-        const vl = e.verification_level || 'tier_1';
-        const badgeEl = document.getElementById('verificationBadge');
-        const tierLabels = { tier_1: 'Self-Reported', tier_2: 'Partner Verified', tier_3: 'Externally Audited' };
-        const tierIcons = { tier_1: '○', tier_2: '◑', tier_3: '●' };
-        badgeEl.innerHTML = `<span class="verification-badge ${vl.replace('_','-')}">${tierIcons[vl] || '○'} ${tierLabels[vl] || 'Self-Reported'}</span>`;
-        badgeEl.style.display = 'block';
+        // Verification badge — Section 11.2: Must NOT show verification tier (Tier 1/2/3). Hide entirely.
+        document.getElementById('verificationBadge').style.display = 'none';
 
         // CTA
         const ctaBtn = document.getElementById('ctaBtn');
@@ -463,10 +630,11 @@
           ctaBtn.href = PARTNER_PLATFORM + '/partner-signin.html';
           ctaBtn.className = 'cta-btn cta-btn-partner';
         }
-
-        // Share links
+        // Share links (no USD per Section 11)
         const shareUrl = window.location.href;
-        const shareText = `Check out this impact: "${e.title}" — ${fmtRoundedPeople(e.people_impacted)} people reached via Transformation Leader.`;
+        const shareText = isBusiness
+          ? `Check out this impact: "${e.title}" via Transformation Leader.`
+          : `Check out this impact: "${e.title}" — ${fmtRoundedPeople(e.people_impacted)} people reached via Transformation Leader.`;
         document.getElementById('btnLinkedIn').href = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
         document.getElementById('btnWhatsApp').href = `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`;
         document.getElementById('btnCopyLink').addEventListener('click', () => {
@@ -484,7 +652,7 @@
         // Show
         document.getElementById('loadingState').style.display = 'none';
         document.getElementById('cardRoot').style.display = 'block';
-        document.getElementById('shareBar').style.display = 'flex';
+        document.getElementById('shareBar').style.display = 'block';
 
       } catch (err) {
         console.error('Failed to load share card:', err);

@@ -691,14 +691,14 @@ async function updateUser(id, updates, role = 'ambassador') {
 }
 
 // ============================================
-// DELETE USER - FIXED (CASCADE HANDLES PROFILE)
+// DELETE USER (handles DBs without ON DELETE CASCADE)
 // ============================================
 async function deleteUser(id, role = 'ambassador') {
   try {
     log(`🗑️ Deleting ${role} with ID:`, id);
 
     let roleTable, roleIdField;
-    
+
     if (role === 'ambassador') {
       roleTable = 'ambassadors';
       roleIdField = 'ambassador_id';
@@ -708,31 +708,46 @@ async function deleteUser(id, role = 'ambassador') {
     } else if (role === 'admin') {
       roleTable = 'admins';
       roleIdField = 'admin_id';
+    } else {
+      throw new Error(`Unsupported role for deleteUser: ${role}`);
     }
 
-    // Get user_id from role table
-    const { data: roleData } = await supabase
+    // Get role row so we know the owning user_id
+    const { data: roleData, error: roleFetchError } = await supabase
       .from(roleTable)
       .select('user_id')
       .eq(roleIdField, id)
       .single();
 
-    if (!roleData) {
+    if (roleFetchError || !roleData) {
       throw new Error(`${role} not found`);
     }
 
-    // Delete from users table (CASCADE will delete role profile)
-    const { error } = await supabase
-      .from('users')
-      .delete()
-      .eq('user_id', roleData.user_id);
+    const userId = roleData.user_id;
 
-    if (error) {
-      console.error(`❌ Error deleting user:`, error);
-      throw error;
+    // Explicitly delete ALL role rows for this user first to avoid FK issues
+    const { error: roleDeleteError } = await supabase
+      .from(roleTable)
+      .delete()
+      .eq('user_id', userId);
+
+    if (roleDeleteError) {
+      console.error(`❌ Error deleting ${role} profile(s):`, roleDeleteError);
+      throw roleDeleteError;
     }
 
-    log(`✅ ${role} deleted successfully`);
+    // Now safely delete from users table
+    const { error: userDeleteError } = await supabase
+      .from('users')
+      .delete()
+      .eq('user_id', userId);
+
+    if (userDeleteError) {
+      console.error('❌ Error deleting user:', userDeleteError);
+      throw userDeleteError;
+    }
+
+    log(`✅ ${role} and user deleted successfully`);
     return true;
   } catch (error) {
     console.error('❌ deleteUser error:', error);

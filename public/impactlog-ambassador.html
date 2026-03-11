@@ -7,7 +7,8 @@
     <link rel="icon" type="image/png" href="/images/favicon.png" />
     <link rel="stylesheet" href="css/styles.css" />
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="/js/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
       :root {
         --primary: #4b0d7f;
@@ -79,7 +80,7 @@
       .share-copy { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
 
       /* QR */
-      .qr-container { background: white; border: 2px solid #e9d5ff; border-radius: 1rem; padding: 1.5rem; text-align: center; }
+      .qr-container { background: white; border: 2px solid #e9d5ff; border-radius: 1rem; padding: 1.5rem; text-align: center; min-height: 200px; display: flex; align-items: center; justify-content: center; }
 
       /* Empty state */
       .empty-state { text-align: center; padding: 3rem 1rem; }
@@ -94,6 +95,87 @@
         .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
         .tab-container { flex-wrap: wrap; }
       }
+
+      /* ===== Impact Log Entry Wizard (Chakra-style) ===== */
+      .impact-wizard-modal .modal-content { max-width: 56rem; width: 95%; max-height: 92vh; }
+      .create-event-wizard-modal .modal-content { max-width: 52rem; width: 94%; min-height: 28rem; max-height: 90vh; }
+      .impact-wizard-steps { display: flex; gap: 1.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+      .impact-wizard-step { font-weight: 500; color: #9ca3af; padding-bottom: 0.25rem; border-bottom: 3px solid transparent; transition: all 0.2s; cursor: default; }
+      .impact-wizard-step.active { color: var(--primary); border-color: var(--amber); }
+      .impact-wizard-progress { height: 6px; background: #f3f4f6; border-radius: 9999px; overflow: hidden; margin-bottom: 1.5rem; }
+      .impact-wizard-progress-fill { height: 100%; background: var(--amber); transition: width 0.25s ease-out; }
+      .impact-wizard-panel { display: none; }
+      .impact-wizard-panel.active { display: block; }
+      .impact-category-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+      @media (max-width: 768px) { .impact-category-cards { grid-template-columns: 1fr; } }
+      .impact-category-card {
+        text-align: left; padding: 1rem; min-height: 170px; border-radius: 1rem; border: 2px solid #e5e7eb;
+        background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all 0.15s ease-out;
+        cursor: pointer; display: flex; flex-direction: column; justify-content: flex-start;
+      }
+      .impact-category-card:hover { border-color: #a78bfa; box-shadow: 0 4px 12px rgba(75,13,127,0.12); transform: translateY(-1px); }
+      .impact-category-card.selected { border-color: #22c55e; box-shadow: 0 4px 12px rgba(34,197,94,0.2); background: linear-gradient(135deg, #E6F4EA, #F3FFF6); }
+      .impact-category-card.selected.env { border-color: #22c55e; background: linear-gradient(135deg, #E6F4EA, #F3FFF6); }
+      .impact-category-card.selected.social { border-color: var(--primary); background: linear-gradient(135deg, #F4E9FF, #FDF3FF); }
+      .impact-category-card.selected.gov { border-color: #3b82f6; background: linear-gradient(135deg, #E7F1FF, #F3F7FF); }
+      .impact-category-card .card-icon { width: 1.5rem; height: 1.5rem; margin-bottom: 0.25rem; }
+      .impact-category-card .card-title { font-weight: 700; color: #111827; margin-bottom: 0.25rem; }
+      .impact-category-card .card-desc { font-size: 0.875rem; color: #6b7280; line-height: 1.4; }
+      .impact-activity-pills {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem;
+      }
+      .impact-activity-pill {
+        padding: 0.625rem 1rem; font-size: 0.875rem; font-weight: 500; border-radius: 0.5rem;
+        border: 1.5px solid #e5e7eb; background: white; color: #374151; cursor: pointer;
+        transition: all 0.2s; text-align: center;
+      }
+      .impact-activity-pill:hover { border-color: #a78bfa; color: var(--primary); background: #f5f3ff; }
+      .impact-activity-pill.selected {
+        background: var(--primary); color: white; border-color: var(--primary);
+        box-shadow: 0 2px 8px rgba(75, 13, 127, 0.25);
+      }
+      .impact-usd-preview { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 0.75rem; padding: 0.75rem 1rem; font-size: 0.875rem; color: #1e40af; }
+      .impact-usd-preview .total { font-weight: 700; color: #1e3a8a; margin-top: 0.25rem; }
+      .impact-review-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.75rem; padding: 1rem 1.25rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+      .impact-attestation { margin-top: 1rem; }
+      .impact-attestation label { display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem; color: #374151; }
+      .impact-attestation input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: var(--primary); }
+      .impact-wizard-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #f3f4f6; }
+
+      /* Business Outcome wizard */
+      .impact-biz-category-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+      @media (max-width: 768px) { .impact-biz-category-cards { grid-template-columns: 1fr; } }
+      .impact-biz-category-card {
+        text-align: left; padding: 1rem; min-height: 120px; border-radius: 1rem; border: 2px solid #e5e7eb;
+        background: white; cursor: pointer; display: flex; flex-direction: column; justify-content: flex-start; transition: all 0.15s ease-out;
+      }
+      .impact-biz-category-card:hover { border-color: #a78bfa; box-shadow: 0 4px 12px rgba(75,13,127,0.12); transform: translateY(-1px); }
+      .impact-biz-category-card.selected.cost_savings { border-color: #059669; background: linear-gradient(135deg, #ECFDF5, #D1FAE5); }
+      .impact-biz-category-card.selected.efficiency_gains { border-color: #2563eb; background: linear-gradient(135deg, #EFF6FF, #DBEAFE); }
+      .impact-biz-category-card.selected.revenue_growth { border-color: #d97706; background: linear-gradient(135deg, #FFFBEB, #FEF3C7); }
+      .impact-biz-category-card .card-icon { margin-bottom: 0.5rem; }
+      .impact-biz-category-card .card-title { font-weight: 700; color: #111827; font-size: 1rem; }
+      .impact-biz-category-card .card-desc { font-size: 0.8125rem; color: #6b7280; margin-top: 0.25rem; line-height: 1.4; }
+      .impact-waste-btns { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+      .impact-waste-btn {
+        padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 600; cursor: pointer;
+        border: 2px solid #e5e7eb; background: white; color: #374151; transition: all 0.2s; position: relative;
+      }
+      .impact-waste-btn:hover { border-color: #a78bfa; background: #f5f3ff; color: var(--primary); }
+      .impact-waste-btn.selected { border-color: var(--primary); background: var(--primary); color: white; }
+      .impact-waste-btn[data-tooltip]:hover::after {
+        content: attr(data-tooltip); position: absolute; bottom: 100%; margin-bottom: 6px; left: 50%; transform: translateX(-50%);
+        padding: 0.625rem 1rem; width: 380px; max-width: 90vw; box-sizing: border-box;
+        background: #1f2937; color: #f9fafb; font-size: 0.8125rem; line-height: 1.5; border-radius: 0.5rem; box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+        z-index: 9999; pointer-events: none; white-space: normal; text-align: left;
+      }
+      .impact-improvement-pills { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+      .impact-pill {
+        padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 600; cursor: pointer;
+        border: 2px solid #e5e7eb; background: white; color: #374151; transition: all 0.2s;
+      }
+      .impact-pill:hover { border-color: #c4b5fd; background: #f5f3ff; color: var(--primary); }
+      .impact-pill.selected { border-color: var(--primary); background: var(--primary); color: white; }
     </style>
 </head>
 <body class="font-sans">
@@ -157,7 +239,7 @@
       </aside>
 
       <!-- Main Content -->
-      <main class="flex-1 p-4 md:p-6 lg:p-8 max-w-6xl">
+      <main class="flex-1 p-4 md:p-6 lg:p-8 w-full min-w-0">
         <!-- Header -->
         <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
           <div>
@@ -168,11 +250,14 @@
             <p class="text-gray-500 text-sm mt-1">Track, share, and grow your positive impact</p>
           </div>
           <div class="flex gap-3">
-            <button onclick="openModal('createEntryModal')" class="btn-secondary text-sm flex items-center gap-2">
+            <button type="button" onclick="openImpactWizard()" class="btn-secondary text-sm flex items-center gap-2">
               <i class="bx bx-plus-circle"></i> Log Impact
             </button>
-            <button onclick="openModal('createEventModal')" class="btn-primary text-sm flex items-center gap-2">
-              <i class="bx bx-calendar-plus"></i> Create Shared Event
+            <button type="button" onclick="openBusinessWizard()" class="btn-secondary text-sm flex items-center gap-2">
+              <i class="bx bx-briefcase-alt"></i> Log Business Outcome
+            </button>
+            <button type="button" onclick="openScanEventQrModal()" class="btn-primary text-sm flex items-center gap-2">
+              <i class="bx bx-qr-scan"></i> Scan Event QR
             </button>
           </div>
         </div>
@@ -195,9 +280,15 @@
               <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 <i class="bx bx-time-five text-blue-600 text-xl"></i>
               </div>
-              <div>
-                <p class="text-xs text-gray-500 font-medium">Hours Contributed</p>
+              <div class="flex-1">
+                <p class="text-xs text-gray-500 font-medium">Hours Contributed (ESG)</p>
                 <p class="text-xl font-bold text-gray-900" id="statHours">0</p>
+                <div class="mt-1">
+                  <div class="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div id="hoursProgressBar" class="h-1.5 bg-blue-500 rounded-full" style="width:0%;"></div>
+                  </div>
+                  <p class="text-[11px] text-gray-400 mt-1" id="hoursProgressText">0 / 25h this year</p>
+                </div>
               </div>
             </div>
           </div>
@@ -207,19 +298,9 @@
                 <i class="bx bx-dollar text-green-600 text-xl"></i>
               </div>
               <div>
-                <p class="text-xs text-gray-500 font-medium">USD Value</p>
+                <p class="text-xs text-gray-500 font-medium">Total Impact Value (USD)</p>
                 <p class="text-xl font-bold text-gray-900" id="statUsd">$0</p>
-              </div>
-            </div>
-          </div>
-          <div class="impact-stat-card">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <i class="bx bx-trophy text-amber-600 text-xl"></i>
-              </div>
-              <div>
-                <p class="text-xs text-gray-500 font-medium">SCP Earned</p>
-                <p class="text-xl font-bold text-gray-900" id="statScp">0</p>
+                <p class="text-[11px] text-gray-400 mt-1" id="statUsdBreakdown"></p>
               </div>
             </div>
           </div>
@@ -236,13 +317,16 @@
           </div>
         </div>
 
-        <!-- Share My Impact & Export Report Buttons -->
+        <!-- Share My Impact, Export & Bulk Upload Buttons -->
         <div class="mb-6 flex gap-3 flex-wrap">
           <button onclick="openShareMyImpact()" class="btn-secondary text-sm flex items-center gap-2">
             <i class="bx bx-share-alt"></i> Share My Impact
           </button>
           <button onclick="exportImpactReport()" class="btn-secondary text-sm flex items-center gap-2">
             <i class="bx bx-download"></i> Export Impact Report
+          </button>
+          <button onclick="openModal('bulkUploadModal')" class="btn-secondary text-sm flex items-center gap-2">
+            <i class="bx bx-upload"></i> Bulk Upload (CSV)
           </button>
         </div>
 
@@ -257,10 +341,10 @@
           <div id="eventsLoading" class="text-center py-8"><div class="spinner"></div><p class="text-gray-500 mt-2 text-sm">Loading events...</p></div>
           <div id="eventsList" class="space-y-4" style="display:none;"></div>
           <div id="eventsEmpty" class="empty-state" style="display:none;">
-            <div class="empty-icon"><i class="bx bx-calendar-plus text-3xl text-purple-400"></i></div>
+            <div class="empty-icon"><i class="bx bx-qr-scan text-3xl text-purple-400"></i></div>
             <h3 class="text-lg font-semibold text-gray-700 mb-2">No Shared Impact Events Yet</h3>
-            <p class="text-gray-500 text-sm mb-4">Create your first shared impact event and invite others to participate.</p>
-            <button onclick="openModal('createEventModal')" class="btn-primary text-sm">Create Your First Event</button>
+            <p class="text-gray-500 text-sm mb-4">Scan a partner event QR code to log your participation.</p>
+            <button type="button" onclick="openScanEventQrModal()" class="btn-primary text-sm">Scan Event QR</button>
           </div>
         </div>
 
@@ -272,161 +356,564 @@
             <div class="empty-icon"><i class="bx bx-line-chart text-3xl text-purple-400"></i></div>
             <h3 class="text-lg font-semibold text-gray-700 mb-2">No Impact Entries Yet</h3>
             <p class="text-gray-500 text-sm mb-4">Log your first impact activity to start tracking your contribution.</p>
-            <button onclick="openModal('createEntryModal')" class="btn-primary text-sm">Log Your First Impact</button>
+            <button type="button" onclick="openImpactWizard()" class="btn-primary text-sm">Log Your First Impact</button>
           </div>
         </div>
       </main>
     </div>
 
-    <!-- ===== CREATE SHARED IMPACT EVENT MODAL ===== -->
-    <div id="createEventModal" class="modal-overlay">
+    <!-- ===== SCAN EVENT QR MODAL ===== -->
+    <div id="scanEventQrModal" class="modal-overlay" onclick="if (event.target === this) closeScanEventQrModal();">
+      <div class="modal-content" style="max-width: 520px; position: relative; z-index: 51;" onclick="event.stopPropagation();">
+        <div class="p-6 border-b border-gray-100 flex items-center justify-between" style="position: relative; z-index: 2;">
+          <h2 class="text-xl font-bold text-gray-900">Scan Shared Impact Event QR Code</h2>
+          <button type="button" onclick="closeScanEventQrModal()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors" title="Close">
+            <i class="bx bx-x text-xl text-gray-500"></i>
+          </button>
+        </div>
+        <div class="p-6" style="position: relative; z-index: 1;">
+          <p class="text-sm text-gray-500 mb-4">Point your camera at a partner event QR code to log your participation. Impact will be calculated after the event is processed.</p>
+          <div id="scanEventQrError" class="hidden mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm"></div>
+          <div id="scanEventQrReader" class="rounded-xl overflow-hidden bg-gray-900" style="max-height: 280px;"></div>
+          <p id="scanEventQrFetching" class="hidden mt-4 text-sm text-gray-500 flex items-center gap-2"><span class="inline-block w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></span> Fetching event details...</p>
+        </div>
+        <div class="p-6 pt-0" style="position: relative; z-index: 2;">
+          <button type="button" onclick="closeScanEventQrModal()" class="btn-secondary w-full">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== CONFIRM EVENT PARTICIPATION MODAL ===== -->
+    <div id="confirmEventParticipationModal" class="modal-overlay">
+      <div class="modal-content" style="max-width: 520px;">
+        <div class="p-6 border-b border-gray-100 flex items-center justify-between">
+          <h2 class="text-xl font-bold text-gray-900">Confirm Event Participation</h2>
+          <button type="button" onclick="closeConfirmEventParticipationModal()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+            <i class="bx bx-x text-xl text-gray-500"></i>
+          </button>
+        </div>
+        <div class="p-6">
+          <div id="confirmEventDetails" class="space-y-4">
+            <div class="p-4 bg-teal-50 rounded-lg border border-teal-100">
+              <h3 id="confirmEventTitle" class="font-semibold text-teal-800"></h3>
+              <p id="confirmEventDescription" class="text-sm text-teal-700 mt-2"></p>
+            </div>
+            <div class="grid grid-cols-2 gap-3 text-sm">
+              <div><span class="text-gray-500">Partner</span><p id="confirmEventPartner" class="font-medium text-gray-900"></p></div>
+              <div><span class="text-gray-500">Event Date</span><p id="confirmEventDate" class="font-medium text-gray-900"></p></div>
+              <div><span class="text-gray-500">Category</span><p id="confirmEventCategory" class="font-medium text-gray-900"></p></div>
+              <div><span class="text-gray-500">Activity</span><p id="confirmEventActivity" class="font-medium text-gray-900"></p></div>
+            </div>
+            <div class="p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-800">
+              <strong>How Shared Impact works:</strong> Your impact will be calculated after the organiser closes this event. Total impact will be shared among confirmed participants.
+            </div>
+          </div>
+        </div>
+        <div class="p-6 pt-0 flex gap-3">
+          <button type="button" onclick="closeConfirmEventParticipationModal()" class="btn-secondary flex-1">Cancel</button>
+          <button type="button" id="confirmEventParticipationBtn" class="btn-primary flex-1">Confirm Participation</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== CREATE SHARED IMPACT EVENT MODAL – Wizard (Section 9.1) ===== -->
+    <div id="createEventModal" class="modal-overlay impact-wizard-modal create-event-wizard-modal">
       <div class="modal-content">
         <div class="p-6 border-b border-gray-100 flex items-center justify-between">
           <div>
             <h2 class="text-xl font-bold text-gray-900">Create Shared Impact Event</h2>
-            <p class="text-sm text-gray-500 mt-1">Create a public event for others to log their participation</p>
+            <p class="text-sm text-gray-500 mt-1">Generate a QR code for learners to scan and log participation</p>
           </div>
-          <button onclick="closeModal('createEventModal')" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+          <button onclick="closeCreateEventModal()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
             <i class="bx bx-x text-xl text-gray-500"></i>
           </button>
         </div>
-        <form id="createEventForm" class="p-6 space-y-4">
+
+        <div id="createEventFormPanel" class="p-6">
+          <form id="createEventForm">
+            <div class="impact-wizard-steps">
+              <span class="impact-wizard-step" data-step="title">Title & description</span>
+              <span class="impact-wizard-step" data-step="category">Category & activity</span>
+              <span class="impact-wizard-step" data-step="date">Date & hours</span>
+              <span class="impact-wizard-step" data-step="optional">Optional</span>
+              <span class="impact-wizard-step" data-step="deadline">Deadline</span>
+              <span class="impact-wizard-step" data-step="confirm">Confirm</span>
+            </div>
+            <div class="impact-wizard-progress">
+              <div class="impact-wizard-progress-fill" id="createEventWizardProgress" style="width: 17%;"></div>
+            </div>
+
+            <!-- Step 1: Title, Description (2 fields) -->
+            <div id="createEventPanelTitle" class="impact-wizard-panel active">
+              <p class="text-sm font-semibold text-gray-600 mb-4">Event basics</p>
+              <div class="space-y-5">
+                <div>
+                  <label class="form-label">Event Title *</label>
+                  <input type="text" name="title" class="form-input" placeholder="e.g. Digital Skills Workshop for Youth" required>
+                </div>
+                <div>
+                  <label class="form-label">Description *</label>
+                  <textarea name="description" class="form-textarea" rows="4" placeholder="e.g. Teaching basic coding to underserved youth" required></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 2: ESG Category, Activity Type (2 fields) -->
+            <div id="createEventPanelCategory" class="impact-wizard-panel">
+              <p class="text-sm font-semibold text-gray-600 mb-4">Category & activity type</p>
+              <div class="space-y-5">
+                <div>
+                  <label class="form-label">ESG Category *</label>
+                  <select name="esg_category" id="createEventEsgCategory" class="form-select" required>
+                    <option value="">Select</option>
+                    <option value="environmental">Environmental</option>
+                    <option value="social">Social</option>
+                    <option value="governance">Governance</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="form-label">Activity Type *</label>
+                  <select name="activity_key" id="createEventActivityKey" class="form-select" required>
+                    <option value="">Select (filtered by category above)</option>
+                  </select>
+                  <p class="text-xs text-gray-500 mt-1" id="createEventActivityUnitHint">e.g. Training / Workshop, Tree Planting, Clean-up Drive, Mentorship (filtered by category)</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 3: Event Date, Estimated Hours (2 fields) -->
+            <div id="createEventPanelDate" class="impact-wizard-panel">
+              <p class="text-sm font-semibold text-gray-600 mb-4">Date & hours per participant</p>
+              <div class="space-y-5">
+                <div>
+                  <label class="form-label">Event Date *</label>
+                  <input type="date" name="event_date" class="form-input" required>
+                </div>
+                <div>
+                  <label class="form-label">Estimated Hours per Participant *</label>
+                  <input type="number" name="estimated_hours_per_participant" class="form-input" placeholder="e.g. 4" min="0" step="0.5" required>
+                  <p class="text-xs text-gray-500 mt-1">(Impact auto-calculated: participants × hours)</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 4: Expected Participants, Location (2 fields) -->
+            <div id="createEventPanelOptional" class="impact-wizard-panel">
+              <p class="text-sm font-semibold text-gray-600 mb-4">Optional details</p>
+              <div class="space-y-5">
+                <div>
+                  <label class="form-label">Expected Participants (optional)</label>
+                  <input type="number" name="expected_participants" class="form-input" placeholder="e.g. 50" min="0">
+                </div>
+                <div>
+                  <label class="form-label">Location (optional)</label>
+                  <input type="text" name="location" class="form-input" placeholder="e.g. City, venue or online">
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 5: Registration deadline (1 field) -->
+            <div id="createEventPanelDeadline" class="impact-wizard-panel">
+              <p class="text-sm font-semibold text-gray-600 mb-4">Registration (optional)</p>
+              <div class="space-y-5">
+                <div>
+                  <label class="form-label">Registration deadline (optional)</label>
+                  <input type="date" name="registration_deadline" class="form-input">
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 6: Confirm -->
+            <div id="createEventPanelConfirm" class="impact-wizard-panel">
+              <p class="text-sm font-semibold text-gray-600 mb-3">Review and generate QR code</p>
+              <div class="impact-review-box mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-3">
+                  <div>
+                    <p class="text-gray-500">Event</p>
+                    <p class="font-semibold text-gray-900" id="createEventReviewTitle">—</p>
+                    <p class="text-gray-600 text-xs mt-1 line-clamp-2" id="createEventReviewDescription">—</p>
+                  </div>
+                  <div>
+                    <p class="text-gray-500">Category & activity</p>
+                    <p class="font-semibold text-gray-900" id="createEventReviewCategory">—</p>
+                    <p class="text-gray-600 text-xs" id="createEventReviewActivity">—</p>
+                  </div>
+                </div>
+                <div class="text-sm">
+                  <p class="text-gray-500">Date · Hours per participant · Expected participants</p>
+                  <p class="font-semibold text-gray-900" id="createEventReviewDateHours">—</p>
+                  <p class="text-gray-600 text-xs mt-1" id="createEventReviewLocation"></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="impact-wizard-actions">
+              <button type="button" onclick="closeCreateEventModal()" class="btn-secondary text-sm">Cancel</button>
+              <button type="button" id="createEventWizardBack" class="btn-secondary text-sm" style="display: none;">Back</button>
+              <button type="button" id="createEventWizardNext" class="btn-primary text-sm">Next</button>
+              <button type="submit" id="createEventWizardSubmit" class="btn-primary text-sm flex items-center gap-2" style="display: none;">
+                <span>Generate QR Code</span>
+                <div class="spinner hidden" id="createEventSpinner"></div>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div id="createEventSuccessPanel" class="p-6 hidden">
+          <p class="text-green-700 font-semibold text-center mb-4">After creation, you'll receive:</p>
+          <div class="qr-container mb-4 mx-auto" style="max-width: 220px;" id="createEventQrContainer"></div>
+          <div class="space-y-3 mb-4">
+            <div>
+              <label class="form-label text-xs text-gray-500">Shareable URL</label>
+              <div class="flex gap-2">
+                <input type="text" id="createEventShareUrl" class="form-input text-xs flex-1" readonly>
+                <button type="button" onclick="copyToClipboard('createEventShareUrl')" class="btn-secondary text-sm shrink-0"><i class="bx bx-copy"></i> Copy</button>
+              </div>
+            </div>
+            <div>
+              <label class="form-label text-xs text-gray-500">Event ID (for reference)</label>
+              <input type="text" id="createEventIdDisplay" class="form-input text-xs bg-gray-50" readonly>
+            </div>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 mb-4">
+            <p class="font-semibold mb-1">⚠️ When learners scan:</p>
+            <ul class="space-y-0.5 list-disc list-inside">
+              <li>Impact linked via Event ID (no double counting)</li>
+              <li>Auto-verified as Tier 2 (Partner Verified)</li>
+              <li>Impact divided equally among all confirmed participants</li>
+            </ul>
+          </div>
+          <div class="flex justify-end gap-3">
+            <button type="button" onclick="resetCreateEventModal()" class="btn-secondary text-sm">Create another</button>
+            <button type="button" onclick="closeCreateEventModal()" class="btn-primary text-sm">Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== BULK UPLOAD MODAL ===== -->
+    <div id="bulkUploadModal" class="modal-overlay">
+      <div class="modal-content" style="max-width: 56rem;">
+        <div class="p-6 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <label class="form-label">Event Title *</label>
-            <input type="text" name="title" class="form-input" placeholder="e.g. Community Tree Planting Drive" required>
+            <h2 class="text-xl font-bold text-gray-900">Bulk Upload Impact Logs</h2>
+            <p class="text-sm text-gray-500 mt-1">Download the template, add your ESG and Business Outcome activities, then upload the completed CSV.</p>
           </div>
+          <button onclick="closeModal('bulkUploadModal')" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"><i class="bx bx-x text-xl text-gray-500"></i></button>
+        </div>
+        <div class="p-6 space-y-4">
+          <button type="button" onclick="downloadBulkTemplate()" class="btn-secondary text-sm flex items-center gap-2"><i class="bx bx-download"></i> Download CSV Template</button>
           <div>
-            <label class="form-label">Description *</label>
-            <textarea name="description" class="form-textarea" rows="3" placeholder="Describe the event and its purpose..." required></textarea>
+            <label class="form-label">Upload completed template</label>
+            <input type="file" id="bulkFileInput" accept=".csv,text/csv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
+            <p id="bulkFileName" class="text-sm text-gray-500 mt-2 hidden">File: <span></span></p>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="form-label">ESG Category *</label>
-              <select name="esg_category" class="form-select" required>
-                <option value="">Select category</option>
-                <option value="environmental">Environmental</option>
-                <option value="social">Social</option>
-                <option value="governance">Governance</option>
-              </select>
-            </div>
-            <div>
-              <label class="form-label">Event Date *</label>
-              <input type="date" name="event_date" class="form-input" required>
-            </div>
+          <div id="bulkSummaryBox" class="hidden p-3 bg-blue-50 border border-blue-100 rounded-lg">
+            <p class="font-semibold text-gray-900">Summary</p>
+            <p class="text-sm text-gray-600"><span id="bulkValidCount">0</span> entries ready · <span id="bulkErrorCount">0</span> rows with issues</p>
           </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="form-label">Start Time *</label>
-              <input type="time" name="start_time" class="form-input" required>
-            </div>
-            <div>
-              <label class="form-label">End Time *</label>
-              <input type="time" name="end_time" class="form-input" required>
-            </div>
+          <div id="bulkErrorsBox" class="hidden max-h-[220px] overflow-y-auto border border-gray-200 rounded-lg p-3">
+            <p class="font-semibold text-gray-900 mb-2">Errors</p>
+            <div id="bulkErrorsList" class="space-y-2 text-sm"></div>
+            <p id="bulkErrorsTruncate" class="hidden text-xs text-gray-500 mt-2">Showing first 25 rows with errors.</p>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="form-label">Total Impact Value *</label>
-              <input type="number" name="total_impact_value" class="form-input" placeholder="e.g. 3000" min="0" step="any" required>
-            </div>
-            <div>
-              <label class="form-label">Impact Unit *</label>
-              <input type="text" name="impact_unit" class="form-input" placeholder="e.g. people, trees, hours, items" value="people" required>
-            </div>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="form-label">Hours Contributed</label>
-              <input type="number" name="hours_contributed" class="form-input" placeholder="Optional" min="0" step="any">
-            </div>
-            <div>
-              <label class="form-label">USD Value Created/Saved</label>
-              <input type="number" name="usd_value" class="form-input" placeholder="Optional" min="0" step="any">
-            </div>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="form-label">Expected Participants</label>
-              <input type="number" name="expected_participants" class="form-input" placeholder="Optional" min="0">
-            </div>
-            <div>
-              <label class="form-label">External Verifier Email</label>
-              <input type="email" name="external_verifier_email" class="form-input" placeholder="Optional">
-            </div>
-          </div>
+          <div id="bulkUploadResult" class="text-sm text-gray-700 space-y-1"></div>
+        </div>
+        <div class="p-6 border-t border-gray-100 flex items-center justify-end gap-3">
+          <button type="button" onclick="closeModal('bulkUploadModal')" class="btn-secondary text-sm">Cancel</button>
+          <button type="button" id="bulkImportBtn" class="btn-primary text-sm flex items-center gap-2" disabled>
+            <span id="bulkImportBtnText">Import 0 Entries</span>
+            <div class="spinner hidden" id="bulkImportSpinner"></div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== LOG BUSINESS OUTCOME MODAL (Wizard) ===== -->
+    <div id="createBusinessModal" class="modal-overlay impact-wizard-modal">
+      <div class="modal-content">
+        <div class="p-6 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <label class="form-label">Evidence Link</label>
-            <input type="url" name="evidence_link" class="form-input" placeholder="https://... (optional, can add after event)">
+            <h2 class="text-xl font-bold text-gray-900">Log Business Outcome</h2>
+            <p class="text-sm text-gray-500 mt-1">Record an operational improvement (8 Wastes + USD saved/created)</p>
           </div>
-          <div class="flex justify-end gap-3 pt-2">
-            <button type="button" onclick="closeModal('createEventModal')" class="btn-secondary text-sm">Cancel</button>
-            <button type="submit" class="btn-primary text-sm flex items-center gap-2" id="createEventBtn">
-              <span>Create Event</span>
-              <div class="spinner hidden" id="createEventSpinner"></div>
+          <button type="button" onclick="closeBusinessWizard()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"><i class="bx bx-x text-xl text-gray-500"></i></button>
+        </div>
+        <form id="createBusinessWizardForm" class="p-6" onsubmit="return submitBusinessWizard(event);">
+          <div class="impact-wizard-steps">
+            <span class="impact-wizard-step" data-step="category">Category</span>
+            <span class="impact-wizard-step" data-step="numbers">Numbers</span>
+            <span class="impact-wizard-step" data-step="describe">Describe</span>
+            <span class="impact-wizard-step" data-step="confirm">Confirm</span>
+          </div>
+          <div class="impact-wizard-progress">
+            <div class="impact-wizard-progress-fill" id="businessWizardProgress" style="width: 25%;"></div>
+          </div>
+          <div id="businessPanelCategory" class="impact-wizard-panel active">
+            <p class="text-sm font-semibold text-gray-600 mb-3">Business Outcome Category</p>
+            <div class="impact-biz-category-cards mb-4">
+              <div class="impact-biz-category-card" data-category="cost_savings" role="button" tabindex="0">
+                <span class="card-icon text-green-600"><i class="bx bx-dollar-circle text-2xl"></i></span>
+                <span class="card-title">Cost Savings</span>
+                <span class="card-desc">Reduce waste and operating costs through process changes, automation, or Kaizen efforts.</span>
+              </div>
+              <div class="impact-biz-category-card" data-category="efficiency_gains" role="button" tabindex="0">
+                <span class="card-icon text-blue-600"><i class="bx bx-bar-chart-alt-2 text-2xl"></i></span>
+                <span class="card-title">Efficiency Gains</span>
+                <span class="card-desc">Increase throughput or productivity with continuous improvement and operational upgrades.</span>
+              </div>
+              <div class="impact-biz-category-card" data-category="revenue_growth" role="button" tabindex="0">
+                <span class="card-icon text-amber-600"><i class="bx bx-trending-up text-2xl"></i></span>
+                <span class="card-title">Revenue Growth</span>
+                <span class="card-desc">Drive new revenue with pilots, innovation, and growth-focused initiatives.</span>
+              </div>
+            </div>
+            <input type="hidden" name="business_outcome_category" id="businessOutcomeCategory" value="">
+            <p class="text-sm font-semibold text-gray-600 mb-2">Primary waste (8 Wastes) *</p>
+            <div class="impact-waste-btns mb-4">
+              <button type="button" class="impact-waste-btn" data-waste="DEF" data-tooltip="Errors, rework, or mistakes.">Defects</button>
+              <button type="button" class="impact-waste-btn" data-waste="OVR" data-tooltip="Producing more than needed.">Overproduction</button>
+              <button type="button" class="impact-waste-btn" data-waste="WAI" data-tooltip="Idle time and delays.">Waiting</button>
+              <button type="button" class="impact-waste-btn" data-waste="NUT" data-tooltip="Underusing people's skills.">Non-utilised Talent</button>
+              <button type="button" class="impact-waste-btn" data-waste="TRA" data-tooltip="Unnecessary movement of materials.">Transportation</button>
+              <button type="button" class="impact-waste-btn" data-waste="INV" data-tooltip="Excess stock or work-in-progress.">Inventory</button>
+              <button type="button" class="impact-waste-btn" data-waste="MOT" data-tooltip="Unnecessary movement of people.">Motion</button>
+              <button type="button" class="impact-waste-btn" data-waste="EXP" data-tooltip="Over-processing.">Extra Processing</button>
+            </div>
+            <input type="hidden" name="waste_primary" id="businessWastePrimary" value="">
+            <p class="text-sm font-semibold text-gray-600 mb-2">Improvement Method *</p>
+            <div class="impact-improvement-pills mb-2">
+              <button type="button" class="impact-pill" data-method="automation">Automation</button>
+              <button type="button" class="impact-pill" data-method="process_change">Process change</button>
+              <button type="button" class="impact-pill" data-method="coaching_mentoring">Coaching / mentoring</button>
+              <button type="button" class="impact-pill" data-method="kaizen_ci">Kaizen / CI event</button>
+              <button type="button" class="impact-pill" data-method="policy_change">Policy / standard change</button>
+              <button type="button" class="impact-pill" data-method="pilot_mvp">Pilot / MVP</button>
+              <button type="button" class="impact-pill" data-method="workshop_delivered">Workshop delivered</button>
+              <button type="button" class="impact-pill" data-method="training_session">Training session</button>
+              <button type="button" class="impact-pill" data-method="other">Other</button>
+            </div>
+            <input type="hidden" name="improvement_method" id="businessImprovementMethod" value="">
+          </div>
+          <div id="businessPanelNumbers" class="impact-wizard-panel">
+            <p class="text-sm font-semibold text-gray-600 mb-3">The numbers</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="form-label">USD saved/created *</label>
+                <input type="number" name="usd_saved" id="businessUsdSaved" class="form-input" placeholder="e.g. 45000" min="0" step="any" required>
+              </div>
+              <div>
+                <label class="form-label">Date</label>
+                <input type="date" name="activity_date" id="businessActivityDate" class="form-input">
+              </div>
+            </div>
+            <div>
+              <label class="form-label">One-line outcome *</label>
+              <input type="text" name="outcome_statement" id="businessOutcomeStatement" class="form-input" placeholder="e.g. 3 days faster invoice approvals" maxlength="150" required>
+            </div>
+          </div>
+          <div id="businessPanelDescribe" class="impact-wizard-panel">
+            <p class="text-sm font-semibold text-gray-600 mb-3">Describe & verification</p>
+            <div class="space-y-4">
+              <div>
+                <label class="form-label">Title *</label>
+                <input type="text" name="title" id="businessTitle" class="form-input" placeholder="e.g. Digitised invoice approvals" maxlength="100" required>
+              </div>
+              <div>
+                <label class="form-label">Description</label>
+                <textarea name="description" id="businessDescription" class="form-textarea" rows="3" maxlength="500"></textarea>
+              </div>
+              <div>
+                <label class="form-label">Evidence Link (optional)</label>
+                <input type="url" name="evidence_link" id="businessEvidenceLink" class="form-input" placeholder="https://...">
+              </div>
+              <div class="mt-2 border-t border-gray-100 pt-3">
+                <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input type="checkbox" name="send_for_verification" id="businessSendForVerification" value="1">
+                  <span>Send to manager / finance for verification (optional)</span>
+                </label>
+                <div id="businessVerifierFields" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2" style="display: none;">
+                  <div><label class="form-label">Verifier name</label><input type="text" name="verifier_name" class="form-input"></div>
+                  <div><label class="form-label">Verifier email</label><input type="email" name="verifier_email" class="form-input"></div>
+                </div>
+                <div id="businessVerifierRoleRow" class="mt-2" style="display: none;">
+                  <label class="form-label">Verifier role</label>
+                  <input type="text" name="verifier_role" class="form-input" placeholder="e.g. Finance Manager">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="businessPanelConfirm" class="impact-wizard-panel">
+            <p class="text-sm font-semibold text-gray-600 mb-3">Review your entry</p>
+            <div class="impact-review-box mb-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-3">
+                <div>
+                  <p class="text-gray-500">Waste & Method</p>
+                  <p class="font-semibold text-gray-900" id="businessReviewWaste">—</p>
+                  <p class="text-gray-600" id="businessReviewMethod">—</p>
+                </div>
+                <div>
+                  <p class="text-gray-500">USD & Date</p>
+                  <p class="font-semibold text-gray-900">USD: <span id="businessReviewUsd">—</span> · Date: <span id="businessReviewDate">—</span></p>
+                  <p class="text-gray-600 text-sm mt-1" id="businessReviewOutcome">—</p>
+                </div>
+              </div>
+              <p class="text-gray-500 text-sm">Title</p>
+              <p class="font-semibold text-gray-900" id="businessReviewTitle">—</p>
+            </div>
+            <div class="impact-attestation">
+              <label><input type="checkbox" id="businessAttestation" name="attestation"><span>I confirm that this information is accurate.</span></label>
+            </div>
+          </div>
+          <div class="impact-wizard-actions">
+            <button type="button" onclick="closeBusinessWizard()" class="btn-secondary text-sm">Cancel</button>
+            <button type="button" id="businessWizardBack" onclick="businessWizardBack()" class="btn-secondary text-sm" style="display: none;">Back</button>
+            <button type="button" id="businessWizardNext" onclick="businessWizardNext()" class="btn-primary text-sm">Next</button>
+            <button type="submit" id="businessWizardSubmit" class="btn-primary text-sm flex items-center gap-2" style="display: none;">
+              <span>Log Business Outcome</span>
+              <div class="spinner hidden" id="createBusinessSpinner"></div>
             </button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- ===== CREATE INDIVIDUAL IMPACT ENTRY MODAL ===== -->
-    <div id="createEntryModal" class="modal-overlay">
+    <!-- ===== CREATE INDIVIDUAL IMPACT ENTRY MODAL (Wizard style) ===== -->
+    <div id="createEntryModal" class="modal-overlay impact-wizard-modal">
       <div class="modal-content">
         <div class="p-6 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <h2 class="text-xl font-bold text-gray-900">Log Impact Entry</h2>
-            <p class="text-sm text-gray-500 mt-1">Record an individual impact activity</p>
+            <h2 class="text-xl font-bold text-gray-900">Log Your Impact</h2>
+            <p class="text-sm text-gray-500 mt-1">Track and measure your real-world impact</p>
           </div>
-          <button onclick="closeModal('createEntryModal')" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">
+          <button type="button" onclick="closeImpactWizard()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">
             <i class="bx bx-x text-xl text-gray-500"></i>
           </button>
         </div>
-        <form id="createEntryForm" class="p-6 space-y-4">
-          <div>
-            <label class="form-label">Title *</label>
-            <input type="text" name="title" class="form-input" placeholder="e.g. Community mentoring session" required>
+        <form id="createEntryForm" class="p-6" onsubmit="return submitImpactWizard(event);">
+          <!-- Wizard step headers -->
+          <div class="impact-wizard-steps">
+            <span class="impact-wizard-step" data-step="category">Category</span>
+            <span class="impact-wizard-step" data-step="numbers">Numbers</span>
+            <span class="impact-wizard-step" data-step="describe">Describe</span>
+            <span class="impact-wizard-step" data-step="confirm">Confirm</span>
           </div>
-          <div>
-            <label class="form-label">Description</label>
-            <textarea name="description" class="form-textarea" rows="3" placeholder="What did you do?"></textarea>
+          <div class="impact-wizard-progress">
+            <div class="impact-wizard-progress-fill" id="impactWizardProgress" style="width: 25%;"></div>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="form-label">ESG Category *</label>
-              <select name="esg_category" class="form-select" required>
-                <option value="">Select category</option>
-                <option value="environmental">Environmental</option>
-                <option value="social">Social</option>
-                <option value="governance">Governance</option>
-              </select>
+
+          <!-- Step 1: Category -->
+          <div id="impactPanelCategory" class="impact-wizard-panel active">
+            <p class="text-sm font-semibold text-gray-600 mb-3">Choose ESG Category</p>
+            <div class="impact-category-cards mb-4">
+              <div class="impact-category-card env" data-esg="environmental" role="button" tabindex="0">
+                <span class="card-icon text-green-500"><i class="bx bx-leaf text-2xl"></i></span>
+                <span class="card-title">Environmental</span>
+                <span class="card-desc">Climate, nature, resources, waste, energy, and ecological impact.</span>
+              </div>
+              <div class="impact-category-card social" data-esg="social" role="button" tabindex="0">
+                <span class="card-icon text-purple-500"><i class="bx bx-group text-2xl"></i></span>
+                <span class="card-title">Social</span>
+                <span class="card-desc">People, community, health, education, inclusion, and labour practices.</span>
+              </div>
+              <div class="impact-category-card gov" data-esg="governance" role="button" tabindex="0">
+                <span class="card-icon text-blue-500"><i class="bx bx-shield-quarter text-2xl"></i></span>
+                <span class="card-title">Governance</span>
+                <span class="card-desc">Ethics, compliance, transparency, and organisational practices.</span>
+              </div>
             </div>
-            <div>
-              <label class="form-label">Activity Date</label>
-              <input type="date" name="activity_date" class="form-input">
+            <p class="text-base font-bold text-gray-800 mb-3">Activity Type</p>
+            <div class="impact-activity-pills" id="impactActivityPills">
+              <!-- Filled by JS per category -->
+            </div>
+            <p class="text-xs text-gray-400 mt-2" id="impactActivityHelper">Select a category first.</p>
+          </div>
+
+          <!-- Step 2: Numbers -->
+          <div id="impactPanelNumbers" class="impact-wizard-panel">
+            <p class="text-sm font-semibold text-gray-600 mb-3">Impact metrics</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+              <div>
+                <label class="form-label">People Impacted *</label>
+                <input type="number" name="people_impacted" id="impactPeopleInput" class="form-input" placeholder="0" min="0" step="any" value="0">
+              </div>
+              <div>
+                <label class="form-label">Hours Contributed *</label>
+                <input type="number" name="hours_contributed" id="impactHoursInput" class="form-input" placeholder="0" min="0" step="0.25" value="0">
+              </div>
+              <div>
+                <label class="form-label">Activity Date *</label>
+                <input type="date" name="activity_date" id="impactDateInput" class="form-input">
+              </div>
+            </div>
+            <div class="impact-usd-preview" id="impactUsdPreviewBox">
+              <p class="font-semibold text-blue-800 mb-1">Estimated Social Value (auto-calculated)</p>
+              <p id="impactUsdPreviewText">Enter people and hours above to see estimate.</p>
+              <p class="text-xs text-gray-500 mt-1">Based on benchmark rates and Independent Sector volunteer time ($33.49/hour).</p>
+            </div>
+            <input type="hidden" name="usd_value" id="impactUsdValueHidden" value="0">
+            <input type="hidden" name="impact_unit" id="impactUnitHidden" value="people">
+          </div>
+
+          <!-- Step 3: Describe -->
+          <div id="impactPanelDescribe" class="impact-wizard-panel">
+            <p class="text-sm font-semibold text-gray-600 mb-3">Describe your impact</p>
+            <div class="space-y-4">
+              <div>
+                <label class="form-label">Activity Title *</label>
+                <input type="text" name="title" id="impactTitleInput" class="form-input" placeholder="e.g. Digital skills workshop for youth" maxlength="100" required>
+                <p class="text-xs text-gray-400 mt-1"><span id="impactTitleCount">0</span>/100</p>
+              </div>
+              <div>
+                <label class="form-label">Description *</label>
+                <textarea name="description" id="impactDescInput" class="form-textarea" rows="4" placeholder="Briefly describe what you did and the result." maxlength="500"></textarea>
+                <p class="text-xs text-gray-400 mt-1"><span id="impactDescCount">0</span>/500</p>
+              </div>
+              <div>
+                <label class="form-label">Evidence Link (optional)</label>
+                <input type="url" name="evidence_link" id="impactEvidenceInput" class="form-input" placeholder="https://...">
+              </div>
             </div>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label class="form-label">People Impacted</label>
-              <input type="number" name="people_impacted" class="form-input" placeholder="0" min="0" step="any">
+
+          <!-- Step 4: Confirm -->
+          <div id="impactPanelConfirm" class="impact-wizard-panel">
+            <p class="text-sm font-semibold text-gray-600 mb-3">Review your entry</p>
+            <div class="impact-review-box mb-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-3">
+                <div>
+                  <p class="text-gray-500">Category & Activity</p>
+                  <p class="font-semibold text-gray-900" id="impactReviewCategory">—</p>
+                  <p class="text-gray-600" id="impactReviewActivity">—</p>
+                </div>
+                <div>
+                  <p class="text-gray-500">People & Hours</p>
+                  <p class="font-semibold text-gray-900">People: <span id="impactReviewPeople">0</span> · Hours: <span id="impactReviewHours">0</span></p>
+                </div>
+              </div>
+              <p class="text-gray-500 text-sm">Title & Date</p>
+              <p class="font-semibold text-gray-900" id="impactReviewTitle">—</p>
+              <p class="text-gray-600 text-sm" id="impactReviewDate">—</p>
+              <p class="text-gray-600 text-sm mt-2" id="impactReviewDesc"></p>
+              <p class="text-lg font-bold text-purple-700 mt-2">Est. value: $<span id="impactReviewUsd">0</span></p>
             </div>
-            <div>
-              <label class="form-label">Hours Contributed</label>
-              <input type="number" name="hours_contributed" class="form-input" placeholder="0" min="0" step="any">
-            </div>
-            <div>
-              <label class="form-label">USD Value</label>
-              <input type="number" name="usd_value" class="form-input" placeholder="0" min="0" step="any">
+            <div class="impact-attestation">
+              <label>
+                <input type="checkbox" id="impactAttestation" name="attestation">
+                <span>I confirm that this information is accurate to the best of my knowledge.</span>
+              </label>
             </div>
           </div>
-          <div>
-            <label class="form-label">Evidence Link</label>
-            <input type="url" name="evidence_link" class="form-input" placeholder="https://... (optional)">
-          </div>
-          <div class="flex justify-end gap-3 pt-2">
-            <button type="button" onclick="closeModal('createEntryModal')" class="btn-secondary text-sm">Cancel</button>
-            <button type="submit" class="btn-primary text-sm flex items-center gap-2" id="createEntryBtn">
-              <span>Log Impact</span>
+
+          <!-- Hidden fields for API -->
+          <input type="hidden" name="esg_category" id="impactEsgCategoryHidden" value="">
+
+          <div class="impact-wizard-actions">
+            <button type="button" onclick="closeImpactWizard()" class="btn-secondary text-sm">Cancel</button>
+            <button type="button" id="impactWizardBack" onclick="impactWizardBack()" class="btn-secondary text-sm" style="display: none;">Back</button>
+            <button type="button" id="impactWizardNext" onclick="impactWizardNext()" class="btn-primary text-sm">Next</button>
+            <button type="submit" id="impactWizardSubmit" class="btn-primary text-sm flex items-center gap-2" style="display: none;">
+              <span>Submit Impact</span>
               <div class="spinner hidden" id="createEntrySpinner"></div>
             </button>
           </div>
@@ -478,6 +965,7 @@
     let myStats = {};
     let myEvents = [];
     let myEntries = [];
+    let eventRates = [];
 
     document.addEventListener('DOMContentLoaded', function() {
       requireAuth('/signin');
@@ -504,12 +992,45 @@
 
       // Forms
       document.getElementById('createEventForm').addEventListener('submit', handleCreateEvent);
-      document.getElementById('createEntryForm').addEventListener('submit', handleCreateEntry);
+      const createEventEsgCat = document.getElementById('createEventEsgCategory');
+      const createEventActivity = document.getElementById('createEventActivityKey');
+      if (createEventEsgCat && createEventActivity) {
+        createEventEsgCat.addEventListener('change', function () { populateCreateEventActivityOptions(this.value); });
+      }
+      const createEventNextBtn = document.getElementById('createEventWizardNext');
+      const createEventBackBtn = document.getElementById('createEventWizardBack');
+      if (createEventNextBtn) createEventNextBtn.addEventListener('click', function () { createEventWizardNext(); });
+      if (createEventBackBtn) createEventBackBtn.addEventListener('click', function () { createEventWizardBack(); });
+      // createEntryForm submit is handled by submitImpactWizard (wizard modal)
+
+      // Business outcome wizard: bind category, waste, improvement pills
+      bindBusinessWizardCards();
+      const businessSendForVerification = document.getElementById('businessSendForVerification');
+      const businessVerifierFields = document.getElementById('businessVerifierFields');
+      const businessVerifierRoleRow = document.getElementById('businessVerifierRoleRow');
+      if (businessSendForVerification && businessVerifierFields && businessVerifierRoleRow) {
+        businessSendForVerification.addEventListener('change', function () {
+          const show = this.checked;
+          businessVerifierFields.style.display = show ? 'grid' : 'none';
+          businessVerifierRoleRow.style.display = show ? 'block' : 'none';
+        });
+      }
+
+      // Bulk upload
+      const bulkFileInput = document.getElementById('bulkFileInput');
+      const bulkImportBtn = document.getElementById('bulkImportBtn');
+      if (bulkFileInput) bulkFileInput.addEventListener('change', handleBulkFileChange);
+      if (bulkImportBtn) bulkImportBtn.addEventListener('click', handleBulkImport);
+
+      // Impact entry wizard: bind card/input listeners once, then reset state when opening
+      bindImpactWizardOnce();
 
       // Load data
       loadStats();
       loadEvents();
       loadEntries();
+      loadEventRates();
+      setInterval(tickEventCountdowns, 1000);
     });
 
     // ---- Modal Helpers ----
@@ -522,6 +1043,552 @@
       document.body.style.overflow = '';
     }
 
+    // ---- Business Outcome Wizard ----
+    let businessWizardStep = 'category';
+    const BUSINESS_OUTCOME_CATEGORY_LABELS = { cost_savings: 'Cost Savings', efficiency_gains: 'Efficiency Gains', revenue_growth: 'Revenue Growth' };
+    const BUSINESS_WASTE_LABELS = { DEF: 'Defects', OVR: 'Overproduction', WAI: 'Waiting', NUT: 'Non-utilised Talent', TRA: 'Transportation', INV: 'Inventory', MOT: 'Motion', EXP: 'Extra Processing' };
+    const BUSINESS_METHOD_LABELS = { automation: 'Automation', process_change: 'Process change', coaching_mentoring: 'Coaching / mentoring', kaizen_ci: 'Kaizen / CI event', policy_change: 'Policy / standard change', pilot_mvp: 'Pilot / MVP', workshop_delivered: 'Workshop delivered', training_session: 'Training session', other: 'Other' };
+
+    function bindBusinessWizardCards() {
+      document.querySelectorAll('.impact-biz-category-card').forEach(function(el) {
+        el.addEventListener('click', function() {
+          document.querySelectorAll('.impact-biz-category-card').forEach(function(c) { c.classList.remove('selected', 'cost_savings', 'efficiency_gains', 'revenue_growth'); });
+          var cat = this.getAttribute('data-category') || '';
+          this.classList.add('selected', cat);
+          document.getElementById('businessOutcomeCategory').value = cat;
+        });
+      });
+      document.querySelectorAll('.impact-waste-btn').forEach(function(el) {
+        el.addEventListener('click', function() {
+          document.querySelectorAll('.impact-waste-btn').forEach(function(b) { b.classList.remove('selected'); });
+          this.classList.add('selected');
+          document.getElementById('businessWastePrimary').value = this.getAttribute('data-waste') || '';
+        });
+      });
+      document.querySelectorAll('.impact-pill').forEach(function(el) {
+        el.addEventListener('click', function() {
+          document.querySelectorAll('.impact-pill').forEach(function(p) { p.classList.remove('selected'); });
+          this.classList.add('selected');
+          document.getElementById('businessImprovementMethod').value = this.getAttribute('data-method') || '';
+        });
+      });
+    }
+
+    function openBusinessWizard() {
+      businessWizardStep = 'category';
+      document.getElementById('createBusinessModal').classList.add('active');
+      document.body.style.overflow = 'hidden';
+      document.getElementById('createBusinessWizardForm').reset();
+      document.getElementById('businessOutcomeCategory').value = '';
+      document.getElementById('businessWastePrimary').value = '';
+      document.getElementById('businessImprovementMethod').value = '';
+      document.querySelectorAll('.impact-biz-category-card').forEach(function(c) { c.classList.remove('selected', 'cost_savings', 'efficiency_gains', 'revenue_growth'); });
+      document.querySelectorAll('.impact-waste-btn').forEach(function(b) { b.classList.remove('selected'); });
+      document.querySelectorAll('.impact-pill').forEach(function(p) { p.classList.remove('selected'); });
+      var d = document.getElementById('businessActivityDate');
+      if (d && !d.value) d.value = new Date().toISOString().slice(0, 10);
+      businessWizardShowPanel('category');
+    }
+
+    function closeBusinessWizard() {
+      document.getElementById('createBusinessModal').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function businessWizardShowPanel(step) {
+      businessWizardStep = step;
+      document.querySelectorAll('#createBusinessWizardForm .impact-wizard-panel').forEach(function(p) { p.classList.remove('active'); });
+      document.getElementById('businessPanelCategory').classList.toggle('active', step === 'category');
+      document.getElementById('businessPanelNumbers').classList.toggle('active', step === 'numbers');
+      document.getElementById('businessPanelDescribe').classList.toggle('active', step === 'describe');
+      document.getElementById('businessPanelConfirm').classList.toggle('active', step === 'confirm');
+      document.querySelectorAll('#createBusinessWizardForm .impact-wizard-step').forEach(function(s) {
+        s.classList.toggle('active', s.getAttribute('data-step') === step);
+      });
+      var progress = { category: 25, numbers: 50, describe: 75, confirm: 100 }[step];
+      document.getElementById('businessWizardProgress').style.width = progress + '%';
+      document.getElementById('businessWizardBack').style.display = step === 'category' ? 'none' : 'inline-flex';
+      document.getElementById('businessWizardNext').style.display = step === 'confirm' ? 'none' : 'inline-flex';
+      document.getElementById('businessWizardSubmit').style.display = step === 'confirm' ? 'inline-flex' : 'none';
+      if (step === 'confirm') fillBusinessReview();
+    }
+
+    function fillBusinessReview() {
+      var category = document.getElementById('businessOutcomeCategory').value;
+      var waste = document.getElementById('businessWastePrimary').value;
+      var method = document.getElementById('businessImprovementMethod').value;
+      var usd = document.getElementById('businessUsdSaved').value;
+      var date = document.getElementById('businessActivityDate').value;
+      var outcome = document.getElementById('businessOutcomeStatement').value;
+      var title = document.getElementById('businessTitle').value;
+      document.getElementById('businessReviewWaste').textContent = (category ? (BUSINESS_OUTCOME_CATEGORY_LABELS[category] || category) + ' · ' : '') + (waste ? (BUSINESS_WASTE_LABELS[waste] || waste) : '—');
+      document.getElementById('businessReviewMethod').textContent = method ? (BUSINESS_METHOD_LABELS[method] || method) : '—';
+      document.getElementById('businessReviewUsd').textContent = usd ? '$' + Number(usd).toLocaleString() : '—';
+      document.getElementById('businessReviewDate').textContent = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+      document.getElementById('businessReviewOutcome').textContent = outcome || '—';
+      document.getElementById('businessReviewTitle').textContent = title || '—';
+    }
+
+    function businessWizardNext() {
+      if (businessWizardStep === 'category') {
+        if (!document.getElementById('businessOutcomeCategory').value) { showToast('Please select a Business Outcome Category.', 'error'); return; }
+        if (!document.getElementById('businessWastePrimary').value) { showToast('Please select a primary waste (8 Wastes).', 'error'); return; }
+        if (!document.getElementById('businessImprovementMethod').value) { showToast('Please select an improvement method.', 'error'); return; }
+      }
+      if (businessWizardStep === 'numbers') {
+        var usd = document.getElementById('businessUsdSaved').value;
+        var outcome = document.getElementById('businessOutcomeStatement').value;
+        if (!usd || Number(usd) <= 0) { showToast('Please enter USD saved/created.', 'error'); return; }
+        if (!outcome.trim()) { showToast('Please enter a one-line outcome.', 'error'); return; }
+      }
+      if (businessWizardStep === 'describe') {
+        if (!document.getElementById('businessTitle').value.trim()) { showToast('Please enter a title.', 'error'); return; }
+      }
+      var order = ['category', 'numbers', 'describe', 'confirm'];
+      var idx = order.indexOf(businessWizardStep);
+      if (idx < order.length - 1) businessWizardShowPanel(order[idx + 1]);
+    }
+
+    function businessWizardBack() {
+      var order = ['category', 'numbers', 'describe', 'confirm'];
+      var idx = order.indexOf(businessWizardStep);
+      if (idx > 0) businessWizardShowPanel(order[idx - 1]);
+    }
+
+    function submitBusinessWizard(e) {
+      e.preventDefault();
+      if (!document.getElementById('businessAttestation').checked) {
+        showToast('Please confirm that the information is accurate.', 'error');
+        return false;
+      }
+      var form = document.getElementById('createBusinessWizardForm');
+      var raw = Object.fromEntries(new FormData(form));
+      var body = {
+        title: (document.getElementById('businessTitle') && document.getElementById('businessTitle').value) || raw.title || '',
+        description: (document.getElementById('businessDescription') && document.getElementById('businessDescription').value) || raw.description || '',
+        waste_primary: document.getElementById('businessWastePrimary').value || raw.waste_primary || '',
+        improvement_method: document.getElementById('businessImprovementMethod').value || raw.improvement_method || '',
+        usd_saved: document.getElementById('businessUsdSaved').value || raw.usd_saved || '',
+        outcome_statement: document.getElementById('businessOutcomeStatement').value || raw.outcome_statement || '',
+        activity_date: document.getElementById('businessActivityDate').value || raw.activity_date || '',
+        evidence_link: (document.getElementById('businessEvidenceLink') && document.getElementById('businessEvidenceLink').value) || raw.evidence_link || '',
+        send_for_verification: !!raw.send_for_verification,
+        verifier_name: raw.verifier_name || '',
+        verifier_email: raw.verifier_email || '',
+        verifier_role: raw.verifier_role || '',
+      };
+      var btn = document.getElementById('businessWizardSubmit');
+      var spinner = document.getElementById('createBusinessSpinner');
+      btn.disabled = true;
+      spinner.classList.remove('hidden');
+      fetch('/api/ambassador/impact/business-entry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (!data.error) {
+            closeBusinessWizard();
+            form.reset();
+            document.getElementById('businessOutcomeCategory').value = '';
+            document.getElementById('businessWastePrimary').value = '';
+            document.getElementById('businessImprovementMethod').value = '';
+            document.querySelectorAll('.impact-biz-category-card').forEach(function(c) { c.classList.remove('selected', 'cost_savings', 'efficiency_gains', 'revenue_growth'); });
+            document.querySelectorAll('.impact-waste-btn').forEach(function(b) { b.classList.remove('selected'); });
+            document.querySelectorAll('.impact-pill').forEach(function(p) { p.classList.remove('selected'); });
+            showToast(data.message || 'Business Outcome logged successfully!', 'success');
+            loadStats();
+            loadEntries();
+          } else {
+            showToast(data.error || 'Failed to create business outcome entry', 'error');
+          }
+        })
+        .catch(function(err) { showToast(err.message || 'Failed to create business outcome entry', 'error'); })
+        .finally(function() {
+          btn.disabled = false;
+          spinner.classList.add('hidden');
+        });
+      return false;
+    }
+
+    // ---- Bulk Upload ----
+    var BULK_HEADERS = ['impact_type','date','activity_title','description','esg_category','esg_activity_type','people_impacted','hours_contributed','waste_primary','waste_secondary','improvement_method','usd_saved','outcome_statement','evidence_url','usd_value','verification_tier'];
+    var bulkUploadState = { csvText: '', rows: [], validCount: 0, errorCount: 0 };
+
+    function downloadBulkTemplate() {
+      fetch('/api/ambassador/impact/bulk-template', { credentials: 'include' })
+        .then(function(r) { if (!r.ok) throw new Error('Failed to download template'); return r.text(); })
+        .then(function(csv) {
+          var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url; a.download = 'impactlog-bulk-template.csv'; a.click();
+          URL.revokeObjectURL(url);
+        })
+        .catch(function() { showToast('Could not download template. Try again.', 'error'); });
+    }
+
+    function parseBulkCsv(text) {
+      var lines = text.split(/\r?\n/).filter(function(l) { return l.trim().length > 0; });
+      var dataStart = lines.findIndex(function(l) { return !l.trim().startsWith('#'); });
+      if (dataStart < 0 || dataStart >= lines.length) return [];
+      var headerLine = lines[dataStart];
+      var headers = headerLine.split(',').map(function(h) { return h.replace(/^"|"$/g, '').trim(); });
+      var headerIndex = {};
+      headers.forEach(function(h, i) { headerIndex[h] = i; });
+      var dataLines = lines.slice(dataStart + 1).filter(function(l) { return !l.trim().startsWith('#'); });
+      return dataLines.map(function(line, idx) {
+        var cols = line.split(',');
+        var raw = {};
+        BULK_HEADERS.forEach(function(h) {
+          var val = cols[headerIndex[h] !== undefined ? headerIndex[h] : -1] !== undefined ? cols[headerIndex[h]] : '';
+          raw[h] = String(val).replace(/^"|"$/g, '').trim();
+        });
+        return { rowIndex: dataStart + 2 + idx, raw: raw, errors: [] };
+      });
+    }
+
+    function validateBulkRows(rows) {
+      var now = new Date();
+      now.setHours(0, 0, 0, 0);
+      var wasteCodes = ['DEF','OVR','WAI','NUT','TRA','INV','MOT','EXP'];
+      return rows.map(function(row) {
+        var errors = [];
+        var get = function(h) { return (row.raw[h] || '').trim(); };
+        var impactType = get('impact_type').toLowerCase();
+        if (impactType !== 'esg' && impactType !== 'business_outcome') errors.push('impact_type must be "esg" or "business_outcome".');
+        var dateStr = get('date');
+        var date = dateStr ? new Date(dateStr) : null;
+        if (!dateStr || !date || isNaN(date.getTime())) errors.push('date is required and must be a valid YYYY-MM-DD date.');
+        else if (new Date(dateStr).setHours(0,0,0,0) > now) errors.push('date cannot be in the future.');
+        if (!get('activity_title')) errors.push('activity_title is required.');
+        if (!get('description')) errors.push('description is required.');
+        if (impactType === 'esg') {
+          var esgCat = get('esg_category').toLowerCase();
+          if (!esgCat) errors.push('esg_category is required for ESG rows.');
+          else if (['environmental','social','governance'].indexOf(esgCat) === -1) errors.push('esg_category must be environmental, social, or governance.');
+          if (!get('esg_activity_type')) errors.push('esg_activity_type is required for ESG rows.');
+          var people = Number(get('people_impacted') || '0');
+          var hours = Number(get('hours_contributed') || '0');
+          if (!people || people <= 0) errors.push('people_impacted must be a positive number for ESG rows.');
+          if (hours < 0) errors.push('hours_contributed must be 0 or greater.');
+        }
+        if (impactType === 'business_outcome') {
+          if (!get('waste_primary')) errors.push('waste_primary is required for Business Outcome rows.');
+          if (!get('improvement_method')) errors.push('improvement_method is required for Business Outcome rows.');
+          if (!Number(get('usd_saved')) || Number(get('usd_saved')) <= 0) errors.push('usd_saved must be a positive number for Business Outcome rows.');
+          if (!get('outcome_statement')) errors.push('outcome_statement is required for Business Outcome rows.');
+          if (get('waste_primary') && wasteCodes.indexOf(get('waste_primary').toUpperCase()) === -1) errors.push('waste_primary must be one of DEF, OVR, WAI, NUT, TRA, INV, MOT, EXP.');
+        }
+        return { rowIndex: row.rowIndex, raw: row.raw, errors: errors };
+      });
+    }
+
+    function handleBulkFileChange(e) {
+      var file = e.target.files && e.target.files[0];
+      var summaryBox = document.getElementById('bulkSummaryBox');
+      var errorsBox = document.getElementById('bulkErrorsBox');
+      var errorsList = document.getElementById('bulkErrorsList');
+      var errorsTruncate = document.getElementById('bulkErrorsTruncate');
+      var fileNameEl = document.getElementById('bulkFileName');
+      var importBtn = document.getElementById('bulkImportBtn');
+      var importBtnText = document.getElementById('bulkImportBtnText');
+      var resultDiv = document.getElementById('bulkUploadResult');
+      if (!file) {
+        bulkUploadState = { csvText: '', rows: [], validCount: 0, errorCount: 0 };
+        if (summaryBox) summaryBox.classList.add('hidden');
+        if (errorsBox) errorsBox.classList.add('hidden');
+        if (fileNameEl) fileNameEl.classList.add('hidden');
+        if (importBtn) { importBtn.disabled = true; if (importBtnText) importBtnText.textContent = 'Import 0 Entries'; }
+        if (resultDiv) resultDiv.innerHTML = '';
+        return;
+      }
+      if (fileNameEl) { fileNameEl.classList.remove('hidden'); fileNameEl.querySelector('span').textContent = file.name; }
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var text = String(ev.target && ev.target.result || '');
+        var parsed = parseBulkCsv(text);
+        var validated = validateBulkRows(parsed);
+        var validCount = validated.filter(function(r) { return r.errors.length === 0; }).length;
+        var errorCount = validated.length - validCount;
+        bulkUploadState = { csvText: text, rows: validated, validCount: validCount, errorCount: errorCount };
+        document.getElementById('bulkValidCount').textContent = validCount;
+        document.getElementById('bulkErrorCount').textContent = errorCount;
+        summaryBox.classList.remove('hidden');
+        if (errorCount > 0) {
+          errorsBox.classList.remove('hidden');
+          var withErrors = validated.filter(function(r) { return r.errors.length > 0; }).slice(0, 25);
+          errorsList.innerHTML = withErrors.map(function(r) {
+            return '<div><span class="font-medium">Row ' + r.rowIndex + '</span><span class="text-gray-600"> ' + r.errors.join(' ') + '</span></div>';
+          }).join('');
+          errorsTruncate.classList.toggle('hidden', errorCount <= 25);
+        } else {
+          errorsBox.classList.add('hidden');
+          errorsTruncate.classList.add('hidden');
+        }
+        importBtn.disabled = validCount === 0;
+        if (importBtnText) importBtnText.textContent = 'Import ' + (validCount || '') + ' Entries';
+        if (resultDiv) resultDiv.innerHTML = '';
+      };
+      reader.readAsText(file);
+    }
+
+    function handleBulkImport() {
+      if (!bulkUploadState.csvText || bulkUploadState.validCount === 0) return;
+      var btn = document.getElementById('bulkImportBtn');
+      var spinner = document.getElementById('bulkImportSpinner');
+      var resultDiv = document.getElementById('bulkUploadResult');
+      btn.disabled = true;
+      if (spinner) spinner.classList.remove('hidden');
+      fetch('/api/ambassador/impact/bulk-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ csv: bulkUploadState.csvText }),
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success) {
+            showToast('Imported ' + (data.imported_count || 0) + ' entries.', 'success');
+            closeModal('bulkUploadModal');
+            document.getElementById('bulkFileInput').value = '';
+            bulkUploadState = { csvText: '', rows: [], validCount: 0, errorCount: 0 };
+            document.getElementById('bulkSummaryBox').classList.add('hidden');
+            document.getElementById('bulkErrorsBox').classList.add('hidden');
+            loadStats();
+            loadEntries();
+          } else {
+            showToast(data.error || 'Import failed.', 'error');
+          }
+          if (resultDiv) resultDiv.innerHTML = (data.errors && data.errors.length) ? 'Some rows had errors and were not imported.' : '';
+        })
+        .catch(function(err) { showToast(err.message || 'Import failed.', 'error'); })
+        .finally(function() {
+          btn.disabled = false;
+          if (spinner) spinner.classList.add('hidden');
+        });
+    }
+
+    // ---- Impact Entry Wizard ----
+    const IMPACT_ESG_ACTIVITIES = {
+      environmental: [
+        { label: 'Tree Planting', unit: 'trees' },
+        { label: 'Clean-up Drive', unit: 'kg waste' },
+        { label: 'Carbon Reduction', unit: 'tonnes CO2' },
+        { label: 'Water Conservation', unit: 'litres' },
+        { label: 'Renewable Energy', unit: 'kWh' },
+        { label: 'Other', unit: 'people' },
+      ],
+      social: [
+        { label: 'Training / Workshop', unit: 'people' },
+        { label: 'Mentorship', unit: 'people' },
+        { label: 'Community Engagement', unit: 'people' },
+        { label: 'Health Initiative', unit: 'people' },
+        { label: 'Education Access', unit: 'people' },
+        { label: 'Volunteering', unit: 'hours' },
+        { label: 'Other', unit: 'people' },
+      ],
+      governance: [
+        { label: 'Policy Development', unit: 'policies' },
+        { label: 'Compliance Training', unit: 'people' },
+        { label: 'Board Advisory', unit: 'orgs' },
+        { label: 'Digital Transformation', unit: 'orgs' },
+        { label: 'Other', unit: 'people' },
+      ],
+    };
+    const VOLUNTEER_HOURLY = 33.49;
+    const DEFAULT_UNIT_RATE = 150;
+    let impactWizardStep = 'category';
+    let impactWizardSelectedActivity = null;
+
+    function openImpactWizard() {
+      openModal('createEntryModal');
+      initImpactWizard();
+    }
+    function closeImpactWizard() {
+      closeModal('createEntryModal');
+    }
+    function initImpactWizard() {
+      impactWizardStep = 'category';
+      impactWizardSelectedActivity = null;
+      document.getElementById('impactEsgCategoryHidden').value = '';
+      document.getElementById('impactUnitHidden').value = 'people';
+      document.getElementById('impactUsdValueHidden').value = '0';
+      const today = new Date().toISOString().slice(0, 10);
+      document.getElementById('impactDateInput').value = today;
+      document.getElementById('impactAttestation').checked = false;
+      document.getElementById('impactTitleInput').value = '';
+      document.getElementById('impactDescInput').value = '';
+      document.getElementById('impactEvidenceInput').value = '';
+      document.getElementById('impactPeopleInput').value = '0';
+      document.getElementById('impactHoursInput').value = '0';
+      document.getElementById('impactTitleCount').textContent = '0';
+      document.getElementById('impactDescCount').textContent = '0';
+      document.querySelectorAll('.impact-category-card').forEach(c => c.classList.remove('selected'));
+      renderImpactActivityPills(null);
+      impactWizardShowPanel('category');
+    }
+    function bindImpactWizardOnce() {
+      document.querySelectorAll('.impact-category-card').forEach((c) => {
+        c.addEventListener('click', function () {
+          document.querySelectorAll('.impact-category-card').forEach((x) => x.classList.remove('selected'));
+          this.classList.add('selected');
+          const esg = this.getAttribute('data-esg');
+          document.getElementById('impactEsgCategoryHidden').value = esg;
+          impactWizardSelectedActivity = null;
+          renderImpactActivityPills(esg);
+        });
+      });
+      document.getElementById('impactTitleInput') && document.getElementById('impactTitleInput').addEventListener('input', function () {
+        document.getElementById('impactTitleCount').textContent = (this.value || '').length;
+      });
+      document.getElementById('impactDescInput') && document.getElementById('impactDescInput').addEventListener('input', function () {
+        document.getElementById('impactDescCount').textContent = (this.value || '').length;
+      });
+      document.getElementById('impactPeopleInput') && document.getElementById('impactPeopleInput').addEventListener('input', updateImpactUsdPreview);
+      document.getElementById('impactHoursInput') && document.getElementById('impactHoursInput').addEventListener('input', updateImpactUsdPreview);
+    }
+    function renderImpactActivityPills(esg) {
+      const container = document.getElementById('impactActivityPills');
+      const helper = document.getElementById('impactActivityHelper');
+      if (!esg) {
+        container.innerHTML = '';
+        helper.textContent = 'Select a category first.';
+        return;
+      }
+      const list = IMPACT_ESG_ACTIVITIES[esg] || IMPACT_ESG_ACTIVITIES.environmental;
+      container.innerHTML = list.map((a) =>
+        `<button type="button" class="impact-activity-pill" data-activity="${escapeHtml(a.label)}" data-unit="${escapeHtml(a.unit)}">${escapeHtml(a.label)}</button>`
+      ).join('');
+      helper.textContent = `Activities for ${esg}.`;
+      container.querySelectorAll('.impact-activity-pill').forEach((btn) => {
+        btn.addEventListener('click', function () {
+          container.querySelectorAll('.impact-activity-pill').forEach(b => b.classList.remove('selected'));
+          this.classList.add('selected');
+          document.getElementById('impactUnitHidden').value = this.getAttribute('data-unit');
+        });
+      });
+    }
+    function updateImpactUsdPreview() {
+      const people = parseFloat(document.getElementById('impactPeopleInput').value) || 0;
+      const hours = parseFloat(document.getElementById('impactHoursInput').value) || 0;
+      const impactUsd = people * DEFAULT_UNIT_RATE;
+      const hoursUsd = hours * VOLUNTEER_HOURLY;
+      const total = Math.round((impactUsd + hoursUsd) * 100) / 100;
+      document.getElementById('impactUsdValueHidden').value = total;
+      document.getElementById('impactUsdPreviewText').innerHTML =
+        `Impact: ${people} × $${DEFAULT_UNIT_RATE} = $${impactUsd.toFixed(2)} · Hours: ${hours} × $${VOLUNTEER_HOURLY.toFixed(2)} = $${hoursUsd.toFixed(2)}<br><strong>Total: $${total.toFixed(2)}</strong>`;
+    }
+    function impactWizardShowPanel(step) {
+      impactWizardStep = step;
+      document.querySelectorAll('.impact-wizard-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.impact-wizard-step').forEach(s => {
+        s.classList.toggle('active', s.getAttribute('data-step') === step);
+      });
+      const progress = { category: 25, numbers: 50, describe: 75, confirm: 100 }[step];
+      document.getElementById('impactWizardProgress').style.width = progress + '%';
+      document.getElementById('impactPanelCategory').classList.toggle('active', step === 'category');
+      document.getElementById('impactPanelNumbers').classList.toggle('active', step === 'numbers');
+      document.getElementById('impactPanelDescribe').classList.toggle('active', step === 'describe');
+      document.getElementById('impactPanelConfirm').classList.toggle('active', step === 'confirm');
+      document.getElementById('impactWizardBack').style.display = step === 'category' ? 'none' : 'inline-flex';
+      document.getElementById('impactWizardNext').style.display = step === 'confirm' ? 'none' : 'inline-flex';
+      document.getElementById('impactWizardSubmit').style.display = step === 'confirm' ? 'inline-flex' : 'none';
+      if (step === 'numbers') updateImpactUsdPreview();
+      if (step === 'confirm') fillImpactReview();
+    }
+    function fillImpactReview() {
+      const esg = document.getElementById('impactEsgCategoryHidden').value;
+      const unit = document.getElementById('impactUnitHidden').value;
+      const people = document.getElementById('impactPeopleInput').value || '0';
+      const hours = document.getElementById('impactHoursInput').value || '0';
+      const title = document.getElementById('impactTitleInput').value || '—';
+      const date = document.getElementById('impactDateInput').value;
+      const desc = document.getElementById('impactDescInput').value || '';
+      const usd = document.getElementById('impactUsdValueHidden').value || '0';
+      document.getElementById('impactReviewCategory').textContent = (esg || '—').charAt(0).toUpperCase() + (esg || '').slice(1);
+      document.getElementById('impactReviewActivity').textContent = unit || 'people';
+      document.getElementById('impactReviewPeople').textContent = people;
+      document.getElementById('impactReviewHours').textContent = hours;
+      document.getElementById('impactReviewTitle').textContent = title;
+      document.getElementById('impactReviewDate').textContent = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+      document.getElementById('impactReviewDesc').textContent = desc || '—';
+      document.getElementById('impactReviewUsd').textContent = Number(usd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function impactWizardNext() {
+      if (impactWizardStep === 'category') {
+        const esg = document.getElementById('impactEsgCategoryHidden').value;
+        if (!esg) { showToast('Please select an ESG category.', 'error'); return; }
+      }
+      if (impactWizardStep === 'numbers') {
+        const people = parseFloat(document.getElementById('impactPeopleInput').value) || 0;
+        const hours = parseFloat(document.getElementById('impactHoursInput').value) || 0;
+        if (!people && !hours) { showToast('Please enter people impacted or hours contributed.', 'error'); return; }
+      }
+      if (impactWizardStep === 'describe') {
+        const title = (document.getElementById('impactTitleInput').value || '').trim();
+        const desc = (document.getElementById('impactDescInput').value || '').trim();
+        if (!title) { showToast('Please enter an activity title.', 'error'); return; }
+        if (!desc) { showToast('Please enter a description.', 'error'); return; }
+      }
+      const order = ['category', 'numbers', 'describe', 'confirm'];
+      const idx = order.indexOf(impactWizardStep);
+      if (idx < order.length - 1) impactWizardShowPanel(order[idx + 1]);
+    }
+    function impactWizardBack() {
+      const order = ['category', 'numbers', 'describe', 'confirm'];
+      const idx = order.indexOf(impactWizardStep);
+      if (idx > 0) impactWizardShowPanel(order[idx - 1]);
+    }
+    function submitImpactWizard(e) {
+      e.preventDefault();
+      if (!document.getElementById('impactAttestation').checked) {
+        showToast('Please confirm that the information is accurate.', 'error');
+        return false;
+      }
+      const btn = document.getElementById('impactWizardSubmit');
+      const spinner = document.getElementById('createEntrySpinner');
+      btn.disabled = true;
+      spinner.classList.remove('hidden');
+      const form = document.getElementById('createEntryForm');
+      const body = {
+        title: (form.querySelector('[name="title"]').value || '').trim(),
+        description: (form.querySelector('[name="description"]').value || '').trim(),
+        esg_category: form.querySelector('[name="esg_category"]').value,
+        people_impacted: parseFloat(form.querySelector('[name="people_impacted"]').value) || 0,
+        hours_contributed: parseFloat(form.querySelector('[name="hours_contributed"]').value) || 0,
+        usd_value: parseFloat(form.querySelector('[name="usd_value"]').value) || 0,
+        impact_unit: (form.querySelector('[name="impact_unit"]').value || 'people').trim(),
+        activity_date: form.querySelector('[name="activity_date"]').value || new Date().toISOString().split('T')[0],
+        evidence_link: (form.querySelector('[name="evidence_link"]').value || '').trim() || undefined,
+      };
+      fetch('/api/impact/entries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (!data.error) {
+            closeImpactWizard();
+            showToast('Impact entry logged successfully!', 'success');
+            loadStats();
+            loadEntries();
+          } else {
+            showToast(data.error || 'Failed to create entry', 'error');
+          }
+        })
+        .catch((err) => showToast(err.message || 'Failed to create entry', 'error'))
+        .finally(() => {
+          btn.disabled = false;
+          spinner.classList.add('hidden');
+        });
+      return false;
+    }
+
     // ---- Load Stats ----
     async function loadStats() {
       try {
@@ -531,8 +1598,20 @@
           myStats = data.stats;
           document.getElementById('statPeople').textContent = formatNumber(myStats.total_people_impacted);
           document.getElementById('statHours').textContent = formatNumber(myStats.total_hours);
-          document.getElementById('statUsd').textContent = '$' + formatNumber(myStats.total_usd_value);
-          document.getElementById('statScp').textContent = formatNumber(myStats.total_scp);
+          const esgHoursThisYear = myStats.esg_hours_this_year || 0;
+          const pct = Math.max(0, Math.min(100, (esgHoursThisYear / 25) * 100));
+          const bar = document.getElementById('hoursProgressBar');
+          const txt = document.getElementById('hoursProgressText');
+          if (bar) bar.style.width = pct + '%';
+          if (txt) txt.textContent = formatNumber(esgHoursThisYear) + ' / 25h this year';
+          const esgUsd = myStats.esg_usd_value || 0;
+          const bizUsd = myStats.business_usd_value || 0;
+          const combined = esgUsd + bizUsd;
+          document.getElementById('statUsd').textContent = '$' + formatNumber(combined);
+          const breakdownEl = document.getElementById('statUsdBreakdown');
+          if (breakdownEl) breakdownEl.textContent = 'ESG (benchmark-based): $' + formatNumber(esgUsd) + ' · Business (user-reported): $' + formatNumber(bizUsd);
+          const statScpEl = document.getElementById('statScp');
+          if (statScpEl) statScpEl.textContent = formatNumber(myStats.total_scp);
           document.getElementById('statEvents').textContent = myStats.events_created || 0;
         }
       } catch (err) {
@@ -569,7 +1648,10 @@
         const catBadge = event.esg_category === 'environmental' ? 'badge-env' :
                          event.esg_category === 'social' ? 'badge-social' : 'badge-gov';
         const statusBadge = event.status === 'open' ? 'badge-open' : 'badge-closed';
-        const eventDate = new Date(event.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const eventDateFormatted = new Date(event.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const dateStr = (event.event_date && (event.event_date.slice && event.event_date.slice(0, 10))) || '';
+        const timeStr = (event.start_time && String(event.start_time).trim()) || '';
+        const initialCountdown = getCountdownText(dateStr, timeStr, eventDateFormatted);
 
         return `
           <div class="event-card">
@@ -582,7 +1664,7 @@
                 <h3 class="text-lg font-semibold text-gray-900 mb-1">${escapeHtml(event.title)}</h3>
                 <p class="text-sm text-gray-500 mb-3 line-clamp-2">${escapeHtml(event.description)}</p>
                 <div class="flex items-center gap-4 text-xs text-gray-500 flex-wrap">
-                  <span><i class="bx bx-calendar mr-1"></i>${eventDate}</span>
+                  <span><i class="bx bx-calendar mr-1"></i><span data-event-countdown data-event-date="${escapeHtml(dateStr)}" data-event-time="${escapeHtml(timeStr)}" data-event-fallback="${escapeHtml(eventDateFormatted)}">${escapeHtml(initialCountdown)}</span></span>
                   <span><i class="bx bx-time mr-1"></i>${event.start_time?.slice(0,5)} - ${event.end_time?.slice(0,5)}</span>
                   <span><i class="bx bx-group mr-1"></i>${event.participant_count || 0} participants</span>
                   <span><i class="bx bx-target-lock mr-1"></i>${formatNumber(event.total_impact_value)} ${escapeHtml(event.impact_unit)}</span>
@@ -614,7 +1696,7 @@
     // ---- Load Entries ----
     async function loadEntries() {
       try {
-        const res = await fetch('/api/impact/entries', { credentials: 'include' });
+        const res = await fetch('/api/ambassador/impact/entries', { credentials: 'include' });
         const data = await res.json();
         myEntries = data.entries || [];
 
@@ -665,13 +1747,309 @@
       }).join('');
     }
 
+    async function loadEventRates() {
+      try {
+        const res = await fetch('/api/impact/rates', { credentials: 'include' });
+        const data = await res.json();
+        eventRates = data.rates || [];
+      } catch (err) { console.error('Failed to load event rates:', err); }
+    }
+
+    function populateCreateEventActivityOptions(esgCategory) {
+      const sel = document.getElementById('createEventActivityKey');
+      const hint = document.getElementById('createEventActivityUnitHint');
+      if (!sel) return;
+      const filtered = (eventRates || []).filter(r => !esgCategory || r.esg_category === esgCategory);
+      sel.innerHTML = '<option value="">Select (filtered by category above)</option>' + filtered.map(r => {
+        const label = r.activity_label || r.activity_key;
+        const unit = r.impact_unit || r.unit_label || '';
+        return `<option value="${escapeHtml(r.activity_key)}" data-unit="${escapeHtml(unit)}">${escapeHtml(label)}</option>`;
+      }).join('');
+      if (hint) hint.textContent = 'e.g. Training / Workshop, Tree Planting, Clean-up Drive, Mentorship (filtered by category)';
+      sel.removeEventListener('change', updateCreateEventActivityUnitHint);
+      sel.addEventListener('change', updateCreateEventActivityUnitHint);
+    }
+
+    function updateCreateEventActivityUnitHint() {
+      const sel = document.getElementById('createEventActivityKey');
+      const hint = document.getElementById('createEventActivityUnitHint');
+      if (!sel || !hint) return;
+      const opt = sel.options[sel.selectedIndex];
+      const unit = opt && opt.getAttribute('data-unit');
+      hint.textContent = unit ? `Impact unit: ${unit}` : 'e.g. Training / Workshop, Tree Planting, Clean-up Drive, Mentorship (filtered by category)';
+    }
+
+    let createEventWizardStep = 'title';
+    const CREATE_EVENT_STEPS = ['title', 'category', 'date', 'optional', 'deadline', 'confirm'];
+    function goToCreateEventStep(step) {
+      createEventWizardStep = step;
+      const form = document.getElementById('createEventForm');
+      if (!form) return;
+      form.querySelectorAll('.impact-wizard-panel').forEach((p) => p.classList.remove('active'));
+      const panels = {
+        title: document.getElementById('createEventPanelTitle'),
+        category: document.getElementById('createEventPanelCategory'),
+        date: document.getElementById('createEventPanelDate'),
+        optional: document.getElementById('createEventPanelOptional'),
+        deadline: document.getElementById('createEventPanelDeadline'),
+        confirm: document.getElementById('createEventPanelConfirm'),
+      };
+      Object.keys(panels).forEach((k) => { if (panels[k]) panels[k].classList.toggle('active', step === k); });
+      form.querySelectorAll('.impact-wizard-step').forEach((s) => {
+        s.classList.toggle('active', s.getAttribute('data-step') === step);
+      });
+      const progress = { title: 17, category: 33, date: 50, optional: 67, deadline: 83, confirm: 100 }[step];
+      const progressEl = document.getElementById('createEventWizardProgress');
+      if (progressEl) progressEl.style.width = (progress || 0) + '%';
+      const backBtn = document.getElementById('createEventWizardBack');
+      const nextBtn = document.getElementById('createEventWizardNext');
+      const submitBtn = document.getElementById('createEventWizardSubmit');
+      if (backBtn) backBtn.style.display = step === 'title' ? 'none' : 'inline-flex';
+      if (nextBtn) nextBtn.style.display = step === 'confirm' ? 'none' : 'inline-flex';
+      if (submitBtn) submitBtn.style.display = step === 'confirm' ? 'inline-flex' : 'none';
+      if (step === 'confirm') fillCreateEventReview();
+    }
+
+    function fillCreateEventReview() {
+      const form = document.getElementById('createEventForm');
+      const title = form.querySelector('[name="title"]').value.trim();
+      const description = form.querySelector('[name="description"]').value.trim();
+      const cat = form.querySelector('[name="esg_category"]').value;
+      const activitySel = document.getElementById('createEventActivityKey');
+      const activityText = activitySel && activitySel.options[activitySel.selectedIndex] ? activitySel.options[activitySel.selectedIndex].text : '';
+      const date = form.querySelector('[name="event_date"]').value;
+      const hours = form.querySelector('[name="estimated_hours_per_participant"]').value;
+      const expected = form.querySelector('[name="expected_participants"]').value;
+      const location = form.querySelector('[name="location"]').value.trim();
+      const regDeadline = form.querySelector('[name="registration_deadline"]').value;
+      document.getElementById('createEventReviewTitle').textContent = title || '—';
+      document.getElementById('createEventReviewDescription').textContent = description || '—';
+      document.getElementById('createEventReviewCategory').textContent = cat ? cat.charAt(0).toUpperCase() + cat.slice(1) : '—';
+      document.getElementById('createEventReviewActivity').textContent = activityText || '—';
+      const dateStr = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+      document.getElementById('createEventReviewDateHours').textContent = `${dateStr} · ${hours || '—'} h/participant · ${expected || '—'} expected`;
+      document.getElementById('createEventReviewLocation').textContent = [location, regDeadline ? 'Register by ' + new Date(regDeadline).toLocaleDateString('en-US') : ''].filter(Boolean).join(' · ') || '—';
+    }
+
+    function createEventWizardNext() {
+      if (createEventWizardStep === 'title') {
+        const title = document.getElementById('createEventForm').querySelector('[name="title"]').value.trim();
+        const desc = document.getElementById('createEventForm').querySelector('[name="description"]').value.trim();
+        if (!title) { showToast('Please enter an event title.', 'error'); return; }
+        if (!desc) { showToast('Please enter a description.', 'error'); return; }
+      }
+      if (createEventWizardStep === 'category') {
+        const cat = document.getElementById('createEventEsgCategory').value;
+        const activity = document.getElementById('createEventActivityKey').value;
+        if (!cat) { showToast('Please select an ESG category.', 'error'); return; }
+        if (!activity) { showToast('Please select an activity type.', 'error'); return; }
+      }
+      if (createEventWizardStep === 'date') {
+        const date = document.getElementById('createEventForm').querySelector('[name="event_date"]').value;
+        const hours = document.getElementById('createEventForm').querySelector('[name="estimated_hours_per_participant"]').value;
+        if (!date) { showToast('Please select the event date.', 'error'); return; }
+        if (!hours || Number(hours) <= 0) { showToast('Please enter estimated hours per participant.', 'error'); return; }
+      }
+      const idx = CREATE_EVENT_STEPS.indexOf(createEventWizardStep);
+      if (idx < CREATE_EVENT_STEPS.length - 1) goToCreateEventStep(CREATE_EVENT_STEPS[idx + 1]);
+    }
+
+    function createEventWizardBack() {
+      const idx = CREATE_EVENT_STEPS.indexOf(createEventWizardStep);
+      if (idx > 0) goToCreateEventStep(CREATE_EVENT_STEPS[idx - 1]);
+    }
+
+    function openCreateEventModal() {
+      document.getElementById('createEventFormPanel').classList.remove('hidden');
+      document.getElementById('createEventSuccessPanel').classList.add('hidden');
+      document.getElementById('createEventForm').reset();
+      createEventWizardStep = 'title';
+      goToCreateEventStep('title');
+      const catSel = document.getElementById('createEventEsgCategory');
+      if (catSel && catSel.value) populateCreateEventActivityOptions(catSel.value);
+      openModal('createEventModal');
+    }
+
+    function closeCreateEventModal() {
+      closeModal('createEventModal');
+    }
+
+    // ---- Scan Event QR ----
+    let scanEventQrScanner = null;
+    let pendingScannedEvent = null; // { eventId, event }
+
+    function extractEventId(data) {
+      if (!data || typeof data !== 'string') return null;
+      const s = data.trim();
+      console.log('[QR] Raw scanned value:', s);
+      console.log('[QR] Length:', s.length, '| Char codes (first 20):', Array.from(s.slice(0,20)).map(c => c.charCodeAt(0)));
+
+      // Pattern: /event/{id}
+      const pathMatch = s.match(/\/event\/([a-zA-Z0-9_-]+)/);
+      console.log('[QR] pathMatch (/event/id):', pathMatch ? pathMatch[1] : 'no match');
+      if (pathMatch) return pathMatch[1];
+
+      // Pattern: ?event={id} or &event={id}
+      const queryMatch = s.match(/[?&]event=([a-zA-Z0-9_-]+)/);
+      console.log('[QR] queryMatch (?event=id):', queryMatch ? queryMatch[1] : 'no match');
+      if (queryMatch) return queryMatch[1];
+
+      // JSON fallback
+      try {
+        const json = JSON.parse(s);
+        console.log('[QR] JSON parsed eventId:', json.eventId || 'not found');
+        if (typeof json.eventId === 'string' && json.eventId.trim()) return json.eventId.trim();
+      } catch (_) {
+        console.log('[QR] Not JSON');
+      }
+
+      // Plain ID fallback (8+ alphanumeric chars)
+      const plainMatch = /^[a-zA-Z0-9_-]{8,}$/.test(s);
+      console.log('[QR] Plain ID test (8+ alphanum):', plainMatch ? 'MATCH → using as ID' : 'no match');
+      if (plainMatch) return s;
+
+      console.warn('[QR] No pattern matched — returning null. Full value was:', JSON.stringify(s));
+      return null;
+    }
+
+    function openScanEventQrModal() {
+      document.getElementById('scanEventQrError').classList.add('hidden');
+      document.getElementById('scanEventQrError').textContent = '';
+      document.getElementById('scanEventQrFetching').classList.add('hidden');
+      document.getElementById('scanEventQrReader').innerHTML = '';
+      openModal('scanEventQrModal');
+      if (typeof Html5Qrcode !== 'undefined') {
+        scanEventQrScanner = new Html5Qrcode('scanEventQrReader');
+        scanEventQrScanner.start(
+          { facingMode: 'environment' },
+          { fps: 10 },
+          function (decodedText) {
+            const eventId = extractEventId(decodedText);
+            console.log('[QR] extractEventId result:', eventId);
+            if (!eventId) {
+              document.getElementById('scanEventQrError').textContent = 'Invalid QR code. Please scan a valid Shared Impact Event code.';
+              document.getElementById('scanEventQrError').classList.remove('hidden');
+              return;
+            }
+            scanEventQrScanner.stop().then(function () {
+              document.getElementById('scanEventQrFetching').classList.remove('hidden');
+              fetch('/api/impact/events/' + encodeURIComponent(eventId) + '/public', { credentials: 'include' })
+                .then(function (res) { return res.json().then(function (j) { return { ok: res.ok, json: j }; }); })
+                .then(function (r) {
+                  document.getElementById('scanEventQrFetching').classList.add('hidden');
+                  if (!r.ok) {
+                    if (r.json.error === 'Event not found') {
+                      document.getElementById('scanEventQrError').textContent = 'Event not found. Please check with the event organiser.';
+                    } else {
+                      document.getElementById('scanEventQrError').textContent = r.json.error || 'Could not load event.';
+                    }
+                    document.getElementById('scanEventQrError').classList.remove('hidden');
+                    scanEventQrScanner.start({ facingMode: 'environment' }, { fps: 10 }, function () {}, function () {});
+                    return;
+                  }
+                  const ev = r.json.event || r.json;
+                  pendingScannedEvent = { eventId: eventId, event: ev };
+                  closeScanEventQrModal();
+                  showConfirmEventParticipationModal(ev, eventId);
+                })
+                .catch(function (err) {
+                  document.getElementById('scanEventQrFetching').classList.add('hidden');
+                  document.getElementById('scanEventQrError').textContent = 'Failed to load event. Please try again.';
+                  document.getElementById('scanEventQrError').classList.remove('hidden');
+                  if (scanEventQrScanner) scanEventQrScanner.start({ facingMode: 'environment' }, { fps: 10 }, function () {}, function () {});
+                });
+            }).catch(function () {});
+          },
+          function () {}
+        ).catch(function (err) {
+          document.getElementById('scanEventQrError').textContent = 'Unable to access camera. Please allow camera access and try again.';
+          document.getElementById('scanEventQrError').classList.remove('hidden');
+        });
+      } else {
+        document.getElementById('scanEventQrError').textContent = 'QR scanner library not loaded. Please refresh the page.';
+        document.getElementById('scanEventQrError').classList.remove('hidden');
+      }
+    }
+
+    function closeScanEventQrModal() {
+      try {
+        if (scanEventQrScanner) {
+          scanEventQrScanner.stop().catch(function () {});
+          try {
+            if (typeof scanEventQrScanner.clear === 'function') scanEventQrScanner.clear();
+          } catch (e) { /* ignore */ }
+          scanEventQrScanner = null;
+        }
+        var readerEl = document.getElementById('scanEventQrReader');
+        if (readerEl) readerEl.innerHTML = '';
+      } catch (e) { /* ensure we still close */ }
+      closeModal('scanEventQrModal');
+    }
+
+    function showConfirmEventParticipationModal(ev, eventId) {
+      document.getElementById('confirmEventTitle').textContent = ev.title || 'Shared Impact Event';
+      document.getElementById('confirmEventDescription').textContent = ev.description || '';
+      document.getElementById('confirmEventPartner').textContent = ev.creator_name || 'Shared Impact Partner';
+      const eventDate = ev.event_date || ev.eventDate;
+      document.getElementById('confirmEventDate').textContent = eventDate ? new Date(eventDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBC';
+      document.getElementById('confirmEventCategory').textContent = (ev.esg_category || ev.categoryGroup || 'ESG').toString().replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+      document.getElementById('confirmEventActivity').textContent = ev.activity_type || ev.activityType || 'Shared Impact Event';
+      document.getElementById('confirmEventParticipationBtn').onclick = function () { confirmEventParticipation(eventId); };
+      openModal('confirmEventParticipationModal');
+    }
+
+    function closeConfirmEventParticipationModal() {
+      pendingScannedEvent = null;
+      closeModal('confirmEventParticipationModal');
+    }
+
+    function confirmEventParticipation(eventId) {
+      const btn = document.getElementById('confirmEventParticipationBtn');
+      btn.disabled = true;
+      fetch('/api/impact/events/' + encodeURIComponent(eventId) + '/participate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({}),
+      })
+        .then(function (res) { return res.json().then(function (j) { return { ok: res.ok, status: res.status, json: j }; }); })
+        .then(function (r) {
+          if (r.ok) {
+            showToast('Participation recorded. You\'ll receive credit after the event is processed.', 'success');
+            closeConfirmEventParticipationModal();
+            if (typeof loadImpactEntries === 'function') loadImpactEntries();
+            if (typeof loadEvents === 'function') loadEvents();
+          } else {
+            if (r.status === 409) {
+              showToast('You have already participated in this event.', 'info');
+              closeConfirmEventParticipationModal();
+            } else {
+              showToast(r.json.error || 'Could not record participation.', 'error');
+            }
+          }
+        })
+        .catch(function () { showToast('Failed to record participation. Please try again.', 'error'); })
+        .finally(function () { btn.disabled = false; });
+    }
+
+    function resetCreateEventModal() {
+      document.getElementById('createEventSuccessPanel').classList.add('hidden');
+      document.getElementById('createEventFormPanel').classList.remove('hidden');
+      document.getElementById('createEventForm').reset();
+      createEventWizardStep = 'title';
+      goToCreateEventStep('title');
+      const qrEl = document.getElementById('createEventQrContainer');
+      if (qrEl) qrEl.innerHTML = '';
+      const catSel = document.getElementById('createEventEsgCategory');
+      if (catSel && catSel.value) populateCreateEventActivityOptions(catSel.value);
+    }
+
     // ---- Create Event ----
     async function handleCreateEvent(e) {
       e.preventDefault();
       const form = e.target;
-      const btn = document.getElementById('createEventBtn');
+      const btn = document.getElementById('createEventWizardSubmit') || document.getElementById('createEventBtn');
       const spinner = document.getElementById('createEventSpinner');
-
       const formData = new FormData(form);
       const body = Object.fromEntries(formData.entries());
 
@@ -689,15 +2067,30 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to create event');
 
-        closeModal('createEventModal');
-        form.reset();
-        showToast('Event created successfully! Share the link to invite participants.', 'success');
-
-        // Show share panel immediately
-        if (data.event) {
-          viewEventDetail(data.event.event_id);
+        const event = data.event;
+        const shareUrl = event.participation_link || (window.location.origin + '/event-participate.html?event=' + event.event_id);
+        document.getElementById('createEventShareUrl').value = shareUrl;
+        document.getElementById('createEventIdDisplay').value = event.event_id;
+        const qrContainer = document.getElementById('createEventQrContainer');
+        if (qrContainer) {
+          qrContainer.innerHTML = '';
+          try {
+            if (typeof QRCode !== 'undefined') {
+              const wrap = document.createElement('div');
+              wrap.setAttribute('aria-label', 'QR code');
+              qrContainer.appendChild(wrap);
+              new QRCode(wrap, { text: shareUrl, width: 200, height: 200, colorDark: '#4b0d7f' });
+            } else {
+              qrContainer.innerHTML = '<p class="text-sm text-amber-600">QR library not loaded. Use the link below to share.</p>';
+            }
+          } catch (e) {
+            console.error('QRCode error:', e);
+            qrContainer.innerHTML = '<p class="text-sm text-amber-600">QR could not be generated. Use the link below.</p>';
+          }
         }
-
+        document.getElementById('createEventFormPanel').classList.add('hidden');
+        document.getElementById('createEventSuccessPanel').classList.remove('hidden');
+        showToast('Event created. Share the QR code or link with participants.', 'success');
         loadStats();
         loadEvents();
       } catch (err) {
@@ -760,7 +2153,10 @@
         const event = data.event;
         document.getElementById('detailEventTitle').textContent = event.title;
 
-        const eventDate = new Date(event.event_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        const eventDateFormatted = new Date(event.event_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        const detailDateStr = (event.event_date && (event.event_date.slice && event.event_date.slice(0, 10))) || '';
+        const detailTimeStr = (event.start_time && String(event.start_time).trim()) || '';
+        const detailCountdownInitial = getCountdownText(detailDateStr, detailTimeStr, eventDateFormatted);
         const catBadge = event.esg_category === 'environmental' ? 'badge-env' :
                          event.esg_category === 'social' ? 'badge-social' : 'badge-gov';
         const statusBadge = event.status === 'open' ? 'badge-open' : 'badge-closed';
@@ -778,30 +2174,15 @@
             <!-- Description -->
             <p class="text-sm text-gray-600">${escapeHtml(event.description)}</p>
 
-            <!-- Metrics -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <!-- Metrics: countdown + participants -->
+            <div class="grid grid-cols-2 gap-3">
               <div class="bg-purple-50 rounded-lg p-3 text-center">
-                <p class="text-lg font-bold text-purple-700">${formatNumber(event.total_impact_value)}</p>
-                <p class="text-xs text-purple-500">${escapeHtml(event.impact_unit)}</p>
+                <p class="text-sm font-bold text-purple-700 leading-tight"><span data-event-countdown data-event-date="${escapeHtml(detailDateStr)}" data-event-time="${escapeHtml(detailTimeStr)}" data-event-fallback="${escapeHtml(eventDateFormatted)}">${escapeHtml(detailCountdownInitial)}</span></p>
               </div>
               <div class="bg-blue-50 rounded-lg p-3 text-center">
                 <p class="text-lg font-bold text-blue-700">${event.participant_count || 0}</p>
                 <p class="text-xs text-blue-500">Participants</p>
               </div>
-              <div class="bg-green-50 rounded-lg p-3 text-center">
-                <p class="text-lg font-bold text-green-700">${formatNumber(event.hours_contributed || 0)}</p>
-                <p class="text-xs text-green-500">Hours</p>
-              </div>
-              <div class="bg-amber-50 rounded-lg p-3 text-center">
-                <p class="text-lg font-bold text-amber-700">$${formatNumber(event.usd_value || 0)}</p>
-                <p class="text-xs text-amber-500">USD Value</p>
-              </div>
-            </div>
-
-            <!-- Date & Time -->
-            <div class="bg-gray-50 rounded-lg p-3">
-              <p class="text-sm text-gray-700"><i class="bx bx-calendar mr-1"></i> ${eventDate}</p>
-              <p class="text-sm text-gray-700"><i class="bx bx-time mr-1"></i> ${event.start_time?.slice(0,5)} - ${event.end_time?.slice(0,5)}</p>
             </div>
 
             ${event.status === 'open' ? `
@@ -811,6 +2192,10 @@
               <div class="flex items-center gap-2 mb-4">
                 <input type="text" value="${participationUrl}" class="form-input text-xs flex-1" readonly id="participationUrl_${eventId}">
                 <button onclick="copyToClipboard('participationUrl_${eventId}')" class="share-btn share-copy"><i class="bx bx-copy"></i> Copy</button>
+              </div>
+              <div class="mb-2">
+                <h5 class="text-sm font-semibold text-gray-700">QR code</h5>
+                <p class="text-xs text-gray-500">Scan to open the participation link</p>
               </div>
               <div class="qr-container mb-4" id="qrContainer_${eventId}"></div>
               <div class="flex flex-wrap gap-2">
@@ -850,10 +2235,21 @@
         // Generate QR code
         if (event.status === 'open') {
           const qrContainer = document.getElementById(`qrContainer_${eventId}`);
-          if (qrContainer && typeof QRCode !== 'undefined') {
-            const canvas = document.createElement('canvas');
-            qrContainer.appendChild(canvas);
-            QRCode.toCanvas(canvas, participationUrl, { width: 180, margin: 2, color: { dark: '#4b0d7f' } });
+          if (qrContainer) {
+            qrContainer.innerHTML = '';
+            try {
+              if (typeof QRCode !== 'undefined') {
+                const wrap = document.createElement('div');
+                wrap.setAttribute('aria-label', 'QR code');
+                qrContainer.appendChild(wrap);
+                new QRCode(wrap, { text: participationUrl, width: 200, height: 200, colorDark: '#4b0d7f' });
+              } else {
+                qrContainer.innerHTML = '<p class="text-sm text-amber-600">QR code library not loaded. Use the link above to share.</p>';
+              }
+            } catch (e) {
+              console.error('QRCode error:', e);
+              qrContainer.innerHTML = '<p class="text-sm text-amber-600">QR code could not be generated. Use the link above.</p>';
+            }
           }
         }
       } catch (err) {
@@ -1012,6 +2408,40 @@
       return div.innerHTML;
     }
 
+    function getEventTargetDate(dateStr, timeStr) {
+      if (!dateStr) return null;
+      const t = (timeStr || '').trim().slice(0, 8) || '00:00:00';
+      const iso = dateStr.includes('T') ? dateStr : dateStr + 'T' + (t.length >= 5 ? t : '00:00:00');
+      const d = new Date(iso);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    function getCountdownText(dateStr, timeStr, fallbackDateFormatted) {
+      const target = getEventTargetDate(dateStr, timeStr);
+      if (!target) return fallbackDateFormatted || '';
+      const now = new Date();
+      const ms = target.getTime() - now.getTime();
+      if (ms <= 0) return fallbackDateFormatted || target.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+      const totalS = Math.floor(ms / 1000);
+      const days = Math.floor(totalS / (24 * 3600));
+      const hours = Math.floor((totalS % (24 * 3600)) / 3600);
+      const minutes = Math.floor((totalS % 3600) / 60);
+      const seconds = totalS % 60;
+      const parts = [];
+      if (days > 0) parts.push(days + ' day' + (days !== 1 ? 's' : ''));
+      parts.push(hours + ' hr' + (hours !== 1 ? 's' : ''));
+      parts.push(minutes + ' min');
+      parts.push(seconds + ' sec');
+      return parts.join(', ') + ' remaining';
+    }
+    function tickEventCountdowns() {
+      document.querySelectorAll('[data-event-countdown]').forEach(el => {
+        const dateStr = el.getAttribute('data-event-date');
+        const timeStr = el.getAttribute('data-event-time') || '';
+        const fallback = el.getAttribute('data-event-fallback') || '';
+        el.textContent = getCountdownText(dateStr, timeStr, fallback);
+      });
+    }
+
     function showToast(message, type = 'info') {
       const toast = document.createElement('div');
       const bgColor = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-purple-600';
@@ -1022,171 +2452,28 @@
       setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3500);
     }
 
-    // ---- Export Impact Report ----
+    // ---- Export Impact Report (PDF in new tab) ----
     function exportImpactReport() {
-      if (!myStats || !myStats.category_breakdown) {
-        showToast('Loading stats... please try again in a moment.', 'error');
-        loadStats();
-        return;
-      }
-
-      const s = myStats;
-      const cat = s.category_breakdown || { environmental: {people:0,hours:0,usd:0}, social: {people:0,hours:0,usd:0}, governance: {people:0,hours:0,usd:0} };
-      const ver = s.verification_breakdown || { tier_1: 0, tier_2: 0, tier_3: 0, tier_4: 0 };
-      const totalEntries = s.total_entries || 0;
-      const t1Pct = totalEntries > 0 ? ((ver.tier_1 / totalEntries) * 100).toFixed(1) : '0.0';
-      const t2Pct = totalEntries > 0 ? ((ver.tier_2 / totalEntries) * 100).toFixed(1) : '0.0';
-      const t3Pct = totalEntries > 0 ? ((ver.tier_3 / totalEntries) * 100).toFixed(1) : '0.0';
-      const t4Pct = totalEntries > 0 ? ((ver.tier_4 / totalEntries) * 100).toFixed(1) : '0.0';
-      const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-
-      const fmtNum = (n) => { const v = parseFloat(n) || 0; return v.toLocaleString('en-US', { maximumFractionDigits: 0 }); };
-      const fmtUsd = (n) => { const v = parseFloat(n) || 0; return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-
-      const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Impact Report | Transformation Leader</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #fff; color: #1a1a2e; padding: 48px; max-width: 900px; margin: 0 auto; }
-    .header-bar { height: 4px; background: linear-gradient(90deg, #4b0d7f, #7c3aed, #f59e0b); border-radius: 2px; margin-bottom: 32px; }
-    h1 { font-size: 32px; font-weight: 800; color: #4b0d7f; margin-bottom: 4px; }
-    .subtitle { color: #6b7280; font-size: 14px; margin-bottom: 4px; }
-    .period { color: #374151; font-size: 14px; font-weight: 600; margin-bottom: 32px; }
-    .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 40px; }
-    .kpi-card { border: 2px solid #e9d5ff; border-radius: 12px; padding: 24px; text-align: center; }
-    .kpi-value { font-size: 40px; font-weight: 800; color: #4b0d7f; }
-    .kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #6b7280; margin-top: 4px; }
-    h2 { font-size: 22px; font-weight: 700; color: #4b0d7f; margin-bottom: 16px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
-    th { background: #4b0d7f; color: #fff; padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-    th:first-child { border-radius: 8px 0 0 0; }
-    th:last-child { border-radius: 0 8px 0 0; }
-    td { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; font-size: 14px; color: #374151; }
-    tr:last-child td { border-bottom: none; }
-    .disclosure { margin-top: 40px; padding-top: 24px; border-top: 2px solid #e9d5ff; }
-    .disclosure h2 { font-size: 20px; margin-bottom: 12px; }
-    .disclosure p { font-size: 13px; color: #6b7280; line-height: 1.7; margin-bottom: 8px; }
-    .footer { margin-top: 40px; text-align: center; color: #9ca3af; font-size: 12px; }
-    .footer .logo-text { font-weight: 700; color: #4b0d7f; }
-    @media print {
-      body { padding: 24px; }
-      .no-print { display: none !important; }
+      const start = new Date(new Date().getFullYear(), 0, 1);
+      const end = new Date();
+      const from = start.toISOString().slice(0, 10);
+      const to = end.toISOString().slice(0, 10);
+      const url = '/api/ambassador/impact/export-pdf?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to);
+      showToast('Generating PDF...', 'info');
+      fetch(url, { credentials: 'include' })
+        .then(function(res) {
+          if (!res.ok) return res.json().then(function(j) { return Promise.reject(new Error(j.error || res.statusText)); });
+          return res.blob();
+        })
+        .then(function(blob) {
+          const u = URL.createObjectURL(blob);
+          window.open(u, '_blank');
+          setTimeout(function() { URL.revokeObjectURL(u); }, 5000);
+          showToast('Report opened in new tab.', 'success');
+        })
+        .catch(function(err) { showToast(err.message || 'Failed to generate PDF.', 'error'); });
     }
-    .print-actions { position: fixed; top: 16px; right: 16px; display: flex; gap: 8px; }
-    .print-actions button { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; }
-    .btn-print { background: #4b0d7f; color: #fff; }
-    .btn-print:hover { background: #6b21a8; }
-    .btn-close { background: #f3f4f6; color: #374151; }
-    .btn-close:hover { background: #e5e7eb; }
-  </style>
-</head>
-<body>
-  <div class="print-actions no-print">
-    <button class="btn-print" onclick="window.print()">&#128438; Print / Save PDF</button>
-    <button class="btn-close" onclick="window.close()">Close</button>
-  </div>
 
-  <div class="header-bar"></div>
-
-  <h1>Personal Impact Report</h1>
-  <p class="subtitle">Positive Impact | Sustainable Change</p>
-  <p class="period">Reporting Period: All time to Present &mdash; Generated ${today}</p>
-
-  <div class="kpi-grid">
-    <div class="kpi-card">
-      <div class="kpi-value">${fmtNum(s.total_people_impacted)}</div>
-      <div class="kpi-label">People Impacted</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-value">${fmtNum(s.total_hours)}</div>
-      <div class="kpi-label">Hours Contributed</div>
-    </div>
-    <div class="kpi-card">
-      <div class="kpi-value">${fmtUsd(s.total_usd_value)}</div>
-      <div class="kpi-label">Social Value Created</div>
-    </div>
-  </div>
-
-  <h2>ESG Breakdown</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Category</th>
-        <th>People</th>
-        <th>Hours</th>
-        <th>USD Value</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Environmental</td>
-        <td>${fmtNum(cat.environmental?.people)}</td>
-        <td>${fmtNum(cat.environmental?.hours)}</td>
-        <td>${fmtUsd(cat.environmental?.usd)}</td>
-      </tr>
-      <tr>
-        <td>Social</td>
-        <td>${fmtNum(cat.social?.people)}</td>
-        <td>${fmtNum(cat.social?.hours)}</td>
-        <td>${fmtUsd(cat.social?.usd)}</td>
-      </tr>
-      <tr>
-        <td>Governance</td>
-        <td>${fmtNum(cat.governance?.people)}</td>
-        <td>${fmtNum(cat.governance?.hours)}</td>
-        <td>${fmtUsd(cat.governance?.usd)}</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <h2>Verification Transparency</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Tier</th>
-        <th>% of Entries</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Tier 1 &ndash; Self-Reported</td>
-        <td>${t1Pct}%</td>
-      </tr>
-      <tr>
-        <td>Tier 2 &ndash; Partner Verified</td>
-        <td>${t2Pct}%</td>
-      </tr>
-      <tr>
-        <td>Tier 3 &ndash; Externally Audited</td>
-        <td>${t3Pct}%</td>
-      </tr>
-      <tr>
-        <td>Tier 4 &ndash; Certified</td>
-        <td>${t4Pct}%</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <div class="disclosure">
-    <h2>Methodology &amp; Disclosure</h2>
-    <p>Impact entries may be self-reported (Tier 1) or supported by partner validation and/or evidence (Tier 2+). USD social value figures are estimated by the reporting user and are not independently audited. "People Impacted" reflects the cumulative reach of activities logged by this individual through the Transformation Leader platform.</p>
-    <p>This report is generated for personal reference and transparent impact tracking. It is not an audited ESG performance document. Social sharing of this report is promotional in nature and must not be used as evidence of ESG performance or verification.</p>
-  </div>
-
-  <div class="footer">
-    <p><span class="logo-text">Transformation Leader</span> &mdash; Positive Impact | Sustainable Change</p>
-    <p style="margin-top:4px;">Report generated on ${today}</p>
-  </div>
-</body>
-</html>`;
-
-      const reportWindow = window.open('', '_blank');
-      reportWindow.document.write(html);
-      reportWindow.document.close();
-    }
     </script>
 </body>
 </html>
