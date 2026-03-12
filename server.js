@@ -10,7 +10,6 @@ const { v4: uuidv4 } = require("uuid");
 const cors = require("cors");
 const PDFDocument = require("pdfkit");
 const ExcelJS = require("exceljs");
-const { Resend } = require("resend");
 const firebaseAdmin = require("firebase-admin");
 const impactSync = require("./services/impact-sync");
 
@@ -58,17 +57,15 @@ app.use(cors({
 }));
 
 
-// ========== EMAIL SERVICE (NODEMAILER) ==========
+// ========== EMAIL SERVICE (NODEMAILER / RESEND) ==========
 const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
 // Gmail SMTP Configuration (from environment variables)
 const SMTP_CONFIG = {
   host: process.env.SMTP_HOST || "smtp.gmail.com",
-  port: parseInt(process.env.SMTP_PORT, 10) || 465,
-  // Allow overriding TLS mode via env; default true for 465-style SSL
-  secure: process.env.SMTP_SECURE
-    ? process.env.SMTP_SECURE === "true"
-    : true,
+  port: parseInt(process.env.SMTP_PORT) || 587,
+  secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
   auth: {
     user: process.env.SMTP_USER || process.env.EMAIL_USER,
     pass: process.env.SMTP_PASS || process.env.EMAIL_PASSWORD || "", // Gmail App Password
@@ -85,14 +82,13 @@ class EmailService {
     this.nodemailerTransporter = null;
     this.etherealAccount = null;
 
-    // When RESEND_API_KEY is present, use Resend for all emails — skip SMTP/Ethereal entirely
+    // Prefer Resend when API key is present – no SMTP required
     this.resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
     if (this.resend) {
       console.log("✅ Resend email client initialized — SMTP/Ethereal disabled");
-      return; // do not touch nodemailer at all
+      return; // Skip SMTP/Ethereal setup entirely
     }
 
-    // No Resend key — fall back to SMTP or Ethereal
     const hasSmtpCreds = SMTP_CONFIG.auth.user && SMTP_CONFIG.auth.pass && SMTP_CONFIG.auth.pass.trim().length > 0;
 
     if (process.env.USE_ETHEREAL === "true" || !hasSmtpCreds) {
@@ -107,10 +103,13 @@ class EmailService {
           host: SMTP_CONFIG.host,
           port: SMTP_CONFIG.port,
           secure: SMTP_CONFIG.secure,
-          auth: { user: SMTP_CONFIG.auth.user, pass: smtpPass },
+          auth: {
+            user: SMTP_CONFIG.auth.user,
+            pass: smtpPass,
+          },
         });
 
-        this.nodemailerTransporter.verify((error) => {
+        this.nodemailerTransporter.verify((error, success) => {
           if (error) {
             console.error("❌ SMTP connection verification failed:", error.message);
             console.error("   Falling back to Ethereal test email service...");
@@ -118,6 +117,8 @@ class EmailService {
             this.initializeEthereal();
           } else {
             log("✅ Nodemailer email service initialized (Gmail SMTP)");
+            log(`   Connected to: ${SMTP_CONFIG.host}:${SMTP_CONFIG.port}`);
+            log(`   From: ${SMTP_CONFIG.auth.user}`);
           }
         });
       } catch (error) {
@@ -152,69 +153,92 @@ class EmailService {
     }
   }
 
-  // Internal helper — send via Resend if available, else nodemailer
-  async _sendMail({ to, subject, html, replyTo }) {
-    if (this.resend) {
-      const payload = {
-        from: "Transformation Leader <onboarding@resend.dev>",
-        to: Array.isArray(to) ? to : [to],
-        reply_to: replyTo || undefined,
-        subject,
-        html,
-      };
-      console.log("[resend] Sending email to:", payload.to, "| subject:", subject);
-      const { data, error } = await this.resend.emails.send(payload);
-      console.log("[resend] Response — data:", JSON.stringify(data), "| error:", JSON.stringify(error));
-      if (error) throw new Error(`Resend error: ${error.message || JSON.stringify(error)}`);
-      return { method: "resend", messageId: data?.id };
-    }
-
-    if (!this.nodemailerTransporter) {
-      throw new Error("No email transport available (set RESEND_API_KEY)");
-    }
-
-    const info = await this.nodemailerTransporter.sendMail({
-      from: `"Transformation Leader" <${this.etherealAccount?.user || SMTP_FROM}>`,
-      to,
-      replyTo: replyTo || undefined,
-      subject,
-      html,
-    });
-
-    if (this.etherealAccount) {
-      return { method: "ethereal", messageId: info.messageId, previewUrl: nodemailer.getTestMessageUrl(info) };
-    }
-    return { method: "nodemailer", messageId: info.messageId };
-  }
-
-  // Send ambassador welcome email
+  // Send ambassador welcome email using Nodemailer
   async sendAmbassadorWelcome(ambassadorData) {
+    if (!this.nodemailerTransporter) {
+      log("⚠️  Nodemailer not available - skipping email");
+      return { success: false, error: "Email service not configured" };
+    }
+
     try {
-      const result = await this._sendMail({
+      const mailOptions = {
+        from: this.etherealAccount?.user || SMTP_FROM,
         to: ambassadorData.email,
         subject: `🎉 Welcome ${ambassadorData.name} to T4LA Ambassador Program!`,
         html: this.createAmbassadorEmailBody(ambassadorData),
-      });
-      log(`✅ Ambassador welcome email sent via ${result.method} to`, ambassadorData.email);
-      return { success: true, ...result };
+      };
+
+      const info = await this.nodemailerTransporter.sendMail(mailOptions);
+
+      // If using Ethereal, get the preview URL
+      if (this.etherealAccount) {
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        log("✅ Ambassador email sent via Ethereal to", ambassadorData.email);
+        return {
+          success: true,
+          method: "ethereal",
+          messageId: info.messageId,
+          previewUrl: previewUrl,
+          etherealAccount: {
+            user: this.etherealAccount.user,
+            pass: this.etherealAccount.pass,
+          },
+        };
+      } else {
+        log("✅ Ambassador email sent via Nodemailer to", ambassadorData.email);
+        return {
+          success: true,
+          method: "nodemailer",
+          messageId: info.messageId,
+        };
+      }
     } catch (error) {
-      console.error("❌ Ambassador welcome email failed:", error.message);
+      console.error(`❌ Nodemailer failed:`, error.message);
       return { success: false, error: error.message };
     }
   }
 
-  // Send partner welcome email
+  // Send partner welcome email using Nodemailer
   async sendPartnerWelcome(partnerData) {
+    if (!this.nodemailerTransporter) {
+      log("⚠️  Nodemailer not available - skipping email");
+      return { success: false, error: "Email service not configured" };
+    }
+
     try {
-      const result = await this._sendMail({
+      const mailOptions = {
+        from: this.etherealAccount?.user || SMTP_FROM,
         to: partnerData.email,
         subject: `🤝 Welcome ${partnerData.name} to T4LA Partner Network!`,
         html: this.createPartnerEmailBody(partnerData),
-      });
-      log(`✅ Partner welcome email sent via ${result.method} to`, partnerData.email);
-      return { success: true, ...result };
+      };
+
+      const info = await this.nodemailerTransporter.sendMail(mailOptions);
+
+      // If using Ethereal, get the preview URL
+      if (this.etherealAccount) {
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        log("✅ Partner email sent via Ethereal to", partnerData.email);
+        return {
+          success: true,
+          method: "ethereal",
+          messageId: info.messageId,
+          previewUrl: previewUrl,
+          etherealAccount: {
+            user: this.etherealAccount.user,
+            pass: this.etherealAccount.pass,
+          },
+        };
+      } else {
+        log("✅ Partner email sent via Nodemailer to", partnerData.email);
+        return {
+          success: true,
+          method: "nodemailer",
+          messageId: info.messageId,
+        };
+      }
     } catch (error) {
-      console.error("❌ Partner welcome email failed:", error.message);
+      console.error(`❌ Nodemailer failed:`, error.message);
       return { success: false, error: error.message };
     }
   }
@@ -505,24 +529,77 @@ class EmailService {
 </body>
 </html>`;
 
-    const toAddress = data.verifier_name
-      ? `${data.verifier_name} <${data.verifier_email}>`
-      : data.verifier_email;
+    // If Resend is configured, send via Resend and skip SMTP / Ethereal
+    if (this.resend) {
+      const toAddress = data.verifier_name
+        ? `${data.verifier_name} <${data.verifier_email}>`
+        : data.verifier_email;
 
-    const result = await this._sendMail({
-      to: toAddress,
+      const payload = {
+        from: "Transformation Leader <onboarding@resend.dev>",
+        to: [toAddress],
+        subject,
+        html,
+        reply_to: data.partner_email || undefined,
+      };
+
+      console.log("[resend] Sending ESG auditor email to:", payload.to);
+      const { data: result, error } = await this.resend.emails.send(payload);
+      if (error) {
+        console.error("[resend] Error sending ESG auditor email:", error);
+        throw new Error(error.message || "Resend ESG auditor email failed");
+      }
+
+      console.log("[resend] ESG auditor email sent. id:", result?.id);
+      return {
+        success: true,
+        method: "resend",
+        messageId: result?.id,
+      };
+    }
+
+    // Fallback: SMTP / Ethereal via Nodemailer
+    // Ensure transporter is ready
+    if (!this.nodemailerTransporter) {
+      if (!this.etherealAccount) {
+        await this.initializeEthereal();
+      }
+      if (!this.nodemailerTransporter) {
+        throw new Error("Email transporter not configured for ESG auditor emails");
+      }
+    }
+
+    const mailOptions = {
+      from: this.etherealAccount?.user || process.env.EMAIL_FROM || process.env.EMAIL_USER || SMTP_FROM,
+      to: data.verifier_email,
+      replyTo: data.partner_email || undefined,
       subject,
       html,
-      replyTo: data.partner_email || undefined,
-    });
+    };
 
-    console.log(`✅ ESG auditor email sent via ${result.method} to`, data.verifier_email, result.messageId ? `| id: ${result.messageId}` : "");
-    if (result.previewUrl) console.log("📧 Ethereal preview URL:", result.previewUrl);
-    return { success: true, ...result };
+    const info = await this.nodemailerTransporter.sendMail(mailOptions);
+    if (this.etherealAccount) {
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      log("✅ ESG auditor email sent via Ethereal to", data.verifier_email);
+      console.log("📧 Ethereal preview URL:", previewUrl);
+      return {
+        success: true,
+        method: "ethereal",
+        messageId: info.messageId,
+        previewUrl,
+      };
+    }
+    log("✅ ESG auditor email sent via Nodemailer to", data.verifier_email);
+    return {
+      success: true,
+      method: "nodemailer",
+      messageId: info.messageId,
+    };
   }
 
   async sendBusinessVerificationRequestEmail(data) {
     // data: { verifier_name, verifier_email, partner_name, entry_title, usd_value, outcome_statement, review_url }
+
     const subject = `Please verify Business Outcome impact entry from ${data.partner_name || "T4L Partner"}`;
     const html = `
       <!DOCTYPE html>
@@ -581,10 +658,68 @@ class EmailService {
       </html>
     `;
 
-    const result = await this._sendMail({ to: data.verifier_email, subject, html });
-    log(`✅ Business verification email sent via ${result.method} to`, data.verifier_email);
-    if (result.previewUrl) log("📧 Ethereal preview URL:", result.previewUrl);
-    return { success: true, ...result };
+    // If Resend is configured, send via Resend first
+    if (this.resend) {
+      const toAddress = data.verifier_name
+        ? `${data.verifier_name} <${data.verifier_email}>`
+        : data.verifier_email;
+
+      const payload = {
+        from: "Transformation Leader <onboarding@resend.dev>",
+        to: [toAddress],
+        subject,
+        html,
+      };
+
+      console.log("[resend] Sending Business Outcome verification email to:", payload.to);
+      const { data: result, error } = await this.resend.emails.send(payload);
+      if (error) {
+        console.error("[resend] Error sending Business Outcome verification email:", error);
+        throw new Error(error.message || "Resend Business Outcome email failed");
+      }
+
+      console.log("[resend] Business Outcome verification email sent. id:", result?.id);
+      return {
+        success: true,
+        method: "resend",
+        messageId: result?.id,
+      };
+    }
+
+    // Fallback: SMTP / Ethereal via Nodemailer
+    if (!this.nodemailerTransporter) {
+      if (!this.etherealAccount) {
+        await this.initializeEthereal();
+      }
+      if (!this.nodemailerTransporter) {
+        throw new Error("Email transporter not configured for verification emails");
+      }
+    }
+
+    const mailOptions = {
+      from: this.etherealAccount?.user || process.env.EMAIL_FROM || process.env.EMAIL_USER || SMTP_FROM,
+      to: data.verifier_email,
+      subject,
+      html,
+    };
+
+    const info = await this.nodemailerTransporter.sendMail(mailOptions);
+    if (this.etherealAccount) {
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      log("✅ Business verification email sent via Ethereal to", data.verifier_email);
+      return {
+        success: true,
+        method: "ethereal",
+        messageId: info.messageId,
+        previewUrl,
+      };
+    }
+    log("✅ Business verification email sent via Nodemailer to", data.verifier_email);
+    return {
+      success: true,
+      method: "nodemailer",
+      messageId: info.messageId,
+    };
   }
 }
 
