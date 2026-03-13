@@ -59,7 +59,16 @@
       /* Cards */
       .event-card { background: white; border-radius: 1rem; padding: 1.5rem; border: 1px solid #f3f4f6; transition: all 0.3s; }
       .event-card:hover { box-shadow: 0 8px 25px rgba(75,13,127,0.08); }
-      .entry-card { background: white; border-radius: 0.75rem; padding: 1.25rem; border: 1px solid #f3f4f6; transition: all 0.2s; }
+      .entry-card {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        border: 1px solid #f3f4f6;
+        transition: all 0.2s;
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+        word-break: break-word;
+      }
       .entry-card:hover { border-color: #e9d5ff; }
 
       /* Badges */
@@ -1581,11 +1590,16 @@
           ? 'Tier 2 • Verified'
           : 'Tier 1 • Self-Reported';
         const tierBadgeClass = entry.verification_level === 'tier_3' ? 'badge-gov' : entry.verification_level === 'tier_2' ? 'badge-open' : 'text-gray-500';
-        const hasVerifierFeedback = (entry.verification_level === 'tier_2' || entry.verification_level === 'tier_3') && (entry.verifier_name || entry.verifier_comment);
+        const hasVerifierFeedback = !!(entry.verifier_name || entry.verifier_comment);
+        const isPositiveFeedback = entry.verification_level === 'tier_2' || entry.verification_level === 'tier_3';
+        const feedbackBoxClass = isPositiveFeedback
+          ? 'bg-green-50 border-green-100 text-green-800'
+          : 'bg-red-50 border-red-100 text-red-800';
+        const feedbackTextClass = isPositiveFeedback ? 'text-green-700' : 'text-red-700';
         const verifierFeedbackHtml = hasVerifierFeedback
-          ? `<div class="mt-2 p-2 bg-green-50 border border-green-100 rounded text-xs text-green-800">
+          ? `<div class="mt-2 p-2 ${feedbackBoxClass} border rounded text-xs">
               <span class="font-medium">Verifier${entry.verifier_name ? ': ' + escapeHtml(entry.verifier_name) : ''}</span>
-              ${entry.verifier_comment ? `<p class="mt-1 text-green-700">"${escapeHtml(entry.verifier_comment)}"</p>` : ''}
+              ${entry.verifier_comment ? `<p class="mt-1 ${feedbackTextClass}">"${escapeHtml(entry.verifier_comment)}"</p>` : ''}
             </div>`
           : '';
 

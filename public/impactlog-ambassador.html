@@ -37,7 +37,16 @@
       /* Cards */
       .event-card { background: white; border-radius: 1rem; padding: 1.5rem; border: 1px solid #f3f4f6; transition: all 0.3s; }
       .event-card:hover { box-shadow: 0 8px 25px rgba(75,13,127,0.08); }
-      .entry-card { background: white; border-radius: 0.75rem; padding: 1.25rem; border: 1px solid #f3f4f6; transition: all 0.2s; }
+      .entry-card {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        border: 1px solid #f3f4f6;
+        transition: all 0.2s;
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+        word-break: break-word;
+      }
       .entry-card:hover { border-color: #e9d5ff; }
 
       /* Badges */
@@ -156,7 +165,7 @@
       .impact-biz-category-card .card-icon { margin-bottom: 0.5rem; }
       .impact-biz-category-card .card-title { font-weight: 700; color: #111827; font-size: 1rem; }
       .impact-biz-category-card .card-desc { font-size: 0.8125rem; color: #6b7280; margin-top: 0.25rem; line-height: 1.4; }
-      .impact-waste-btns { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+      .impact-waste-btns { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-left: 0.75rem; }
       .impact-waste-btn {
         padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 600; cursor: pointer;
         border: 2px solid #e5e7eb; background: white; color: #374151; transition: all 0.2s; position: relative;
@@ -164,8 +173,11 @@
       .impact-waste-btn:hover { border-color: #a78bfa; background: #f5f3ff; color: var(--primary); }
       .impact-waste-btn.selected { border-color: var(--primary); background: var(--primary); color: white; }
       .impact-waste-btn[data-tooltip]:hover::after {
-        content: attr(data-tooltip); position: absolute; bottom: 100%; margin-bottom: 6px; left: 50%; transform: translateX(-50%);
-        padding: 0.625rem 1rem; width: 380px; max-width: 90vw; box-sizing: border-box;
+        content: attr(data-tooltip); position: absolute; bottom: 100%; margin-bottom: 6px;
+        left: 50%; transform: translateX(-50%);
+        padding: 0.625rem 1rem;
+        max-width: min(280px, calc(100vw - 48px));
+        box-sizing: border-box;
         background: #1f2937; color: #f9fafb; font-size: 0.8125rem; line-height: 1.5; border-radius: 0.5rem; box-shadow: 0 4px 16px rgba(0,0,0,0.25);
         z-index: 9999; pointer-events: none; white-space: normal; text-align: left;
       }
@@ -263,7 +275,7 @@
         </div>
 
         <!-- Stats Grid -->
-        <div class="stats-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+        <div class="stats-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
           <div class="impact-stat-card">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -289,18 +301,6 @@
                   </div>
                   <p class="text-[11px] text-gray-400 mt-1" id="hoursProgressText">0 / 25h this year</p>
                 </div>
-              </div>
-            </div>
-          </div>
-          <div class="impact-stat-card">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <i class="bx bx-dollar text-green-600 text-xl"></i>
-              </div>
-              <div>
-                <p class="text-xs text-gray-500 font-medium">Total Impact Value (USD)</p>
-                <p class="text-xl font-bold text-gray-900" id="statUsd">$0</p>
-                <p class="text-[11px] text-gray-400 mt-1" id="statUsdBreakdown"></p>
               </div>
             </div>
           </div>
@@ -767,8 +767,8 @@
           </div>
           <div class="impact-wizard-actions">
             <button type="button" onclick="closeBusinessWizard()" class="btn-secondary text-sm">Cancel</button>
-            <button type="button" id="businessWizardBack" onclick="businessWizardBack()" class="btn-secondary text-sm" style="display: none;">Back</button>
-            <button type="button" id="businessWizardNext" onclick="businessWizardNext()" class="btn-primary text-sm">Next</button>
+            <button type="button" id="businessWizardBack" onclick="handleBusinessWizardBack()" class="btn-secondary text-sm" style="display: none;">Back</button>
+            <button type="button" id="businessWizardNext" onclick="handleBusinessWizardNext()" class="btn-primary text-sm">Next</button>
             <button type="submit" id="businessWizardSubmit" class="btn-primary text-sm flex items-center gap-2" style="display: none;">
               <span>Log Business Outcome</span>
               <div class="spinner hidden" id="createBusinessSpinner"></div>
@@ -910,8 +910,8 @@
 
           <div class="impact-wizard-actions">
             <button type="button" onclick="closeImpactWizard()" class="btn-secondary text-sm">Cancel</button>
-            <button type="button" id="impactWizardBack" onclick="impactWizardBack()" class="btn-secondary text-sm" style="display: none;">Back</button>
-            <button type="button" id="impactWizardNext" onclick="impactWizardNext()" class="btn-primary text-sm">Next</button>
+            <button type="button" id="impactWizardBack" onclick="handleImpactWizardBack()" class="btn-secondary text-sm" style="display: none;">Back</button>
+            <button type="button" id="impactWizardNext" onclick="handleImpactWizardNext()" class="btn-primary text-sm">Next</button>
             <button type="submit" id="impactWizardSubmit" class="btn-primary text-sm flex items-center gap-2" style="display: none;">
               <span>Submit Impact</span>
               <div class="spinner hidden" id="createEntrySpinner"></div>
@@ -1155,15 +1155,15 @@
       if (idx > 0) businessWizardShowPanel(order[idx - 1]);
     }
 
-    function submitBusinessWizard(e) {
+    async function submitBusinessWizard(e) {
       e.preventDefault();
       if (!document.getElementById('businessAttestation').checked) {
         showToast('Please confirm that the information is accurate.', 'error');
         return false;
       }
-      var form = document.getElementById('createBusinessWizardForm');
-      var raw = Object.fromEntries(new FormData(form));
-      var body = {
+      const form = document.getElementById('createBusinessWizardForm');
+      const raw = Object.fromEntries(new FormData(form));
+      const body = {
         title: (document.getElementById('businessTitle') && document.getElementById('businessTitle').value) || raw.title || '',
         description: (document.getElementById('businessDescription') && document.getElementById('businessDescription').value) || raw.description || '',
         waste_primary: document.getElementById('businessWastePrimary').value || raw.waste_primary || '',
@@ -1177,41 +1177,70 @@
         verifier_email: raw.verifier_email || '',
         verifier_role: raw.verifier_role || '',
       };
-      var btn = document.getElementById('businessWizardSubmit');
-      var spinner = document.getElementById('createBusinessSpinner');
+      const btn = document.getElementById('businessWizardSubmit');
+      const spinner = document.getElementById('createBusinessSpinner');
       btn.disabled = true;
       spinner.classList.remove('hidden');
-      fetch('/api/ambassador/impact/business-entry', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(body),
-      })
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-          if (!data.error) {
-            closeBusinessWizard();
-            form.reset();
-            document.getElementById('businessOutcomeCategory').value = '';
-            document.getElementById('businessWastePrimary').value = '';
-            document.getElementById('businessImprovementMethod').value = '';
-            document.querySelectorAll('.impact-biz-category-card').forEach(function(c) { c.classList.remove('selected', 'cost_savings', 'efficiency_gains', 'revenue_growth'); });
-            document.querySelectorAll('.impact-waste-btn').forEach(function(b) { b.classList.remove('selected'); });
-            document.querySelectorAll('.impact-pill').forEach(function(p) { p.classList.remove('selected'); });
-            showToast(data.message || 'Business Outcome logged successfully!', 'success');
-            loadStats();
-            loadEntries();
-          } else {
-            showToast(data.error || 'Failed to create business outcome entry', 'error');
-          }
-        })
-        .catch(function(err) { showToast(err.message || 'Failed to create business outcome entry', 'error'); })
-        .finally(function() {
-          btn.disabled = false;
-          spinner.classList.add('hidden');
+      try {
+        const res = await fetch('/api/ambassador/impact/business-entry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(body),
         });
+
+        let data = null;
+        try {
+          data = await res.json();
+        } catch (parseErr) {
+          console.error('Failed to parse business-entry response as JSON:', parseErr);
+        }
+
+        if (!res.ok) {
+          const msg = (data && (data.error || data.message)) || ('Failed to create business outcome entry (status ' + res.status + ')');
+          showToast(msg, 'error');
+          // Even on error, close the wizard so the user is not stuck
+          closeBusinessWizard();
+          return false;
+        }
+
+        console.log('Business Outcome entry created:', data);
+
+        closeBusinessWizard();
+        form.reset();
+        document.getElementById('businessOutcomeCategory').value = '';
+        document.getElementById('businessWastePrimary').value = '';
+        document.getElementById('businessImprovementMethod').value = '';
+        document.querySelectorAll('.impact-biz-category-card').forEach(function(c) { c.classList.remove('selected', 'cost_savings', 'efficiency_gains', 'revenue_growth'); });
+        document.querySelectorAll('.impact-waste-btn').forEach(function(b) { b.classList.remove('selected'); });
+        document.querySelectorAll('.impact-pill').forEach(function(p) { p.classList.remove('selected'); });
+        showToast((data && data.message) || 'Business Outcome logged successfully!', 'success');
+        loadStats();
+        loadEntries();
+      } catch (err) {
+        console.error('Business Outcome submit failed:', err);
+        showToast(err.message || 'Failed to create business outcome entry', 'error');
+      } finally {
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+      }
       return false;
     }
+
+    // Wrapper functions used by inline onclick handlers (avoid name collision with element IDs)
+    function handleBusinessWizardNext() {
+      businessWizardNext();
+    }
+    function handleBusinessWizardBack() {
+      businessWizardBack();
+    }
+
+    // Expose wizard helpers to inline onclick handlers
+    window.openBusinessWizard = openBusinessWizard;
+    window.closeBusinessWizard = closeBusinessWizard;
+    window.handleBusinessWizardNext = handleBusinessWizardNext;
+    window.handleBusinessWizardBack = handleBusinessWizardBack;
+    window.submitBusinessWizard = submitBusinessWizard;
 
     // ---- Bulk Upload ----
     var BULK_HEADERS = ['impact_type','date','activity_title','description','esg_category','esg_activity_type','people_impacted','hours_contributed','waste_primary','waste_secondary','improvement_method','usd_saved','outcome_statement','evidence_url','usd_value','verification_tier'];
@@ -1517,7 +1546,7 @@
       document.getElementById('impactReviewDesc').textContent = desc || '—';
       document.getElementById('impactReviewUsd').textContent = Number(usd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
-    function impactWizardNext() {
+    function handleImpactWizardNext() {
       if (impactWizardStep === 'category') {
         const esg = document.getElementById('impactEsgCategoryHidden').value;
         if (!esg) { showToast('Please select an ESG category.', 'error'); return; }
@@ -1537,7 +1566,7 @@
       const idx = order.indexOf(impactWizardStep);
       if (idx < order.length - 1) impactWizardShowPanel(order[idx + 1]);
     }
-    function impactWizardBack() {
+    function handleImpactWizardBack() {
       const order = ['category', 'numbers', 'describe', 'confirm'];
       const idx = order.indexOf(impactWizardStep);
       if (idx > 0) impactWizardShowPanel(order[idx - 1]);
@@ -1596,8 +1625,10 @@
         const data = await res.json();
         if (data.stats) {
           myStats = data.stats;
-          document.getElementById('statPeople').textContent = formatNumber(myStats.total_people_impacted);
-          document.getElementById('statHours').textContent = formatNumber(myStats.total_hours);
+          const peopleEl = document.getElementById('statPeople');
+          if (peopleEl) peopleEl.textContent = formatNumber(myStats.total_people_impacted);
+          const hoursEl = document.getElementById('statHours');
+          if (hoursEl) hoursEl.textContent = formatNumber(myStats.total_hours);
           const esgHoursThisYear = myStats.esg_hours_this_year || 0;
           const pct = Math.max(0, Math.min(100, (esgHoursThisYear / 25) * 100));
           const bar = document.getElementById('hoursProgressBar');
@@ -1607,12 +1638,14 @@
           const esgUsd = myStats.esg_usd_value || 0;
           const bizUsd = myStats.business_usd_value || 0;
           const combined = esgUsd + bizUsd;
-          document.getElementById('statUsd').textContent = '$' + formatNumber(combined);
+          const usdEl = document.getElementById('statUsd');
+          if (usdEl) usdEl.textContent = '$' + formatNumber(combined);
           const breakdownEl = document.getElementById('statUsdBreakdown');
           if (breakdownEl) breakdownEl.textContent = 'ESG (benchmark-based): $' + formatNumber(esgUsd) + ' · Business (user-reported): $' + formatNumber(bizUsd);
           const statScpEl = document.getElementById('statScp');
           if (statScpEl) statScpEl.textContent = formatNumber(myStats.total_scp);
-          document.getElementById('statEvents').textContent = myStats.events_created || 0;
+          const eventsEl = document.getElementById('statEvents');
+          if (eventsEl) eventsEl.textContent = myStats.events_created || 0;
         }
       } catch (err) {
         console.error('Failed to load stats:', err);

@@ -7450,14 +7450,12 @@ app.post("/api/impact/entries", requireAuth, async (req, res) => {
       user_role: userRole,
       entry_type: "individual",
       impact_type: "esg",
-      impact_type: "esg",
       title: title.trim(),
       description: (description || "").trim(),
       esg_category,
       people_impacted: impactValue,
       hours_contributed: parseFloat(hours_contributed) || 0,
       usd_value: parseFloat(usd_value) || 0,
-      usd_value_source: "auto",
       usd_value_source: "auto",
       impact_unit: (impact_unit || "people").trim(),
       verification_level: verificationLevel,
@@ -8290,6 +8288,8 @@ app.post("/api/impact/business-verification", async (req, res) => {
       console.error("❌ Failed to update verification token:", updateVerError);
     }
 
+    // Always persist verifier feedback onto the impact entry so partners can see it,
+    // even when the Business Outcome is not confirmed.
     if (decision === "confirmed") {
       // Upgrade impact entry to Tier 2 with verifier info (works for both Business Outcome and ESG entries)
       const { error: updateEntryError } = await supabase
@@ -8305,6 +8305,21 @@ app.post("/api/impact/business-verification", async (req, res) => {
 
       if (updateEntryError) {
         console.error("❌ Failed to upgrade impact entry to Tier 2:", updateEntryError);
+      }
+    } else if (decision === "rejected") {
+      // Record negative feedback without changing verification level (remains self-reported)
+      const { error: updateEntryError } = await supabase
+        .from("impact_entries")
+        .update({
+          verifier_name: verifier_name || ver.verifier_name,
+          verifier_role: verifier_role || ver.verifier_role,
+          verifier_comment: verifier_comment || null,
+          verified_at: nowIso,
+        })
+        .eq("entry_id", ver.entry_id);
+
+      if (updateEntryError) {
+        console.error("❌ Failed to record rejection feedback on impact entry:", updateEntryError);
       }
     }
 
@@ -8718,40 +8733,67 @@ app.post("/api/ambassador/impact/business-entry", requireAuth, requireRole("amba
       updated_at: todayIso,
     };
 
-    const { data: entry, error } = await supabase.from("impact_entries").insert([entryData]).select().single();
+    const { data: entry, error } = await supabase
+      .from("impact_entries")
+      .insert([entryData])
+      .select()
+      .single();
     if (error) throw error;
 
-    let emailResult = null;
+    // Fire-and-forget email + token creation so the user is not blocked
     if (send_for_verification && verifier_email) {
-      const token = uuidv4();
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 14);
-      const { error: tokenError } = await supabase.from("business_verification_tokens").insert([{
-        token, entry_id: entryId, verifier_name: verifier_name || null, verifier_email, verifier_role: verifier_role || null,
-        status: "pending", expires_at: expiresAt.toISOString(),
-      }]);
-      if (!tokenError) {
-        const baseUrl = `${req.protocol}://${req.get("host")}`;
-        const reviewUrl = `${baseUrl}/business-verification.html?token=${encodeURIComponent(token)}`;
+      setImmediate(async () => {
         try {
-          emailResult = await emailService.sendBusinessVerificationRequestEmail({
-            verifier_name, verifier_email, verifier_role, partner_name: null,
-            entry_title: entry.title, usd_value: entry.usd_value, outcome_statement: entry.outcome_statement, review_url: reviewUrl,
-          });
-          emailResult = { sent: true };
-        } catch (e) {
-          emailResult = { sent: false, reason: e.message };
+          const token = uuidv4();
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + 14);
+          const { error: tokenError } = await supabase
+            .from("business_verification_tokens")
+            .insert([{
+              token,
+              entry_id: entryId,
+              verifier_name: verifier_name || null,
+              verifier_email,
+              verifier_role: verifier_role || null,
+              status: "pending",
+              expires_at: expiresAt.toISOString(),
+            }]);
+
+          if (tokenError) {
+            console.warn("[biz-entry] ⚠️ Token insert failed (email may still send):", tokenError.message || JSON.stringify(tokenError));
+          }
+
+          const baseUrl = `${req.protocol}://${req.get("host")}`;
+          const reviewUrl = `${baseUrl}/business-verification.html?token=${encodeURIComponent(token)}`;
+          try {
+            await emailService.sendBusinessVerificationRequestEmail({
+              verifier_name,
+              verifier_email,
+              verifier_role,
+              partner_name: null,
+              entry_title: entry.title,
+              usd_value: entry.usd_value,
+              outcome_statement: entry.outcome_statement,
+              review_url: reviewUrl,
+            });
+            console.log("[biz-entry] Verification email queued for", verifier_email);
+          } catch (e) {
+            console.error("[biz-entry] Verification email failed:", e.message || e);
+          }
+        } catch (bgErr) {
+          console.error("❌ [biz-entry] Background verification flow failed:", bgErr.message || bgErr);
         }
-      }
+      });
     }
 
     return res.json({
       success: true,
       entry,
-      email: emailResult,
-      message: send_for_verification && verifier_email
-        ? (emailResult?.sent ? "Business Outcome logged and verification email sent." : "Business Outcome logged but email failed.")
-        : "Business Outcome entry logged successfully",
+      email: send_for_verification && verifier_email ? { queued: true } : null,
+      message:
+        send_for_verification && verifier_email
+          ? "Business Outcome logged! Verification email will be sent shortly."
+          : "Business Outcome entry logged successfully",
     });
   } catch (error) {
     console.error("❌ Ambassador business-entry:", error);

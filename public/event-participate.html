@@ -391,9 +391,9 @@
         document.getElementById('loadingState').style.display = 'none';
         document.getElementById('eventState').style.display = 'block';
 
-        // If open, decide whether to show the guest form or the quick confirm button
+        // If open, always show the guest form for external participants
         if (currentEvent.status === 'open') {
-          checkSessionAndRender();
+          showGuestForm();
         }
 
       } catch (err) {
