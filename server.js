@@ -7999,7 +7999,7 @@ app.post("/api/partner/impact/esg-entry", requireAuth, requireRole("partner"), a
             if (tokenError) {
               console.warn("[esg-email] ⚠️ Token insert failed (email will still send):", tokenError.message || JSON.stringify(tokenError));
             } else {
-              const baseUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
+              const baseUrl = `${req.protocol}://${req.get("host")}`;
               reviewUrl = `${baseUrl}/business-verification.html?token=${encodeURIComponent(token)}`;
               console.log("[esg-email] Token created. Review URL:", reviewUrl);
             }
