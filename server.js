@@ -8818,9 +8818,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
 
 /* PAGE BREAKS */
 .cover { page-break-after: auto; }
-.section { page-break-inside: auto; }
+.section { page-break-inside: avoid; }
 .hero-stats, .ver-box, .esg-grid, .narrative, .integrity, .footer { page-break-inside: avoid; }
 .dark-header { page-break-inside: avoid; page-break-after: avoid; }
+.hero-stat, .esg-card { page-break-inside: avoid; }
+.biz-summary-grid, .biz-summary-card { page-break-inside: avoid; }
+.biz-ver-box, .biz-ver-row { page-break-inside: avoid; }
+.waste-section, .waste-grid, .waste-card { page-break-inside: avoid; }
+.top-outcomes-section, .top-outcome { page-break-inside: avoid; }
+.ver-row { page-break-inside: avoid; }
 </style>
 </head>
 <body>
@@ -8835,8 +8841,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
       <div class="cover-badge"><div class="dot"></div>Board-Ready Report</div>
     </div>
     <div class="cover-headline">
-      <h1>ESG &amp; Business<br><span>Impact Report</span></h1>
-      <p class="cover-sub">A comprehensive record of ESG social impact and operational business outcomes — structured for board reporting, ESG disclosures, and stakeholder communication.</p>
+      <h1>Business &amp; ESG<br><span>Impact Report</span></h1>
+      <p class="cover-sub">A comprehensive record of operational business outcomes and ESG social impact — structured for board reporting, ESG disclosures, and stakeholder communication.</p>
     </div>
     <div class="org-strip">
       <div class="org-avatar">${escHtml(orgInitials)}</div>
@@ -8857,24 +8863,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
     <div class="section-label">Executive Summary</div>
     <div class="section-title">Period at a Glance</div>
     <div class="narrative">
-      <div class="narrative-text">In ${escHtml(reportPeriod)}, ${escHtml(orgName)} delivered <strong>${fmtUsd(totalCombined)} in total impact value</strong> — comprising ${fmtUsd(totalEsgValue)} in ESG social value and ${fmtUsd(totalBusinessValue)} in verified business outcomes across ${list.length} logged activities.</div>
+      <div class="narrative-text">In ${escHtml(reportPeriod)}, ${escHtml(orgName)} delivered <strong>${fmtUsd(totalCombined)} in total impact value</strong> — comprising ${fmtUsd(totalBusinessValue)} in verified business outcomes and ${fmtUsd(totalEsgValue)} in ESG social value across ${list.length} logged activities.</div>
       <div class="narrative-sub">${tier3} externally audited (Level 3) · ${tier2} manager verified (Level 2) · ${tier1} self-reported (Level 1).</div>
     </div>
     <div class="hero-stats">
       <div class="hero-stat primary">
         <div class="hero-stat-label">Total Impact Value</div>
         <div class="hero-stat-value">${fmtUsd(totalCombined)}</div>
-        <div class="hero-stat-sub">ESG + Business</div>
-      </div>
-      <div class="hero-stat">
-        <div class="hero-stat-label">ESG Social Value</div>
-        <div class="hero-stat-value">${fmtUsd(totalEsgValue)}</div>
-        <div class="hero-stat-sub">Benchmark-rated</div>
+        <div class="hero-stat-sub">Business + ESG</div>
       </div>
       <div class="hero-stat green">
         <div class="hero-stat-label">Business Outcomes</div>
         <div class="hero-stat-value">${fmtUsd(totalBusinessValue)}</div>
         <div class="hero-stat-sub">Operational savings</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">ESG Social Value</div>
+        <div class="hero-stat-value">${fmtUsd(totalEsgValue)}</div>
+        <div class="hero-stat-sub">Benchmark-rated</div>
       </div>
       <div class="hero-stat">
         <div class="hero-stat-label">People Reached</div>
@@ -8902,7 +8908,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
     </div>
   </div>
 
-  <!-- BUSINESS OUTCOMES - FULL COMPREHENSIVE SECTION (FIRST) -->
+  <!-- BUSINESS OUTCOMES SECTION -->
   ${businessEntries.length > 0 ? `
   <div class="dark-header">
     <div class="dark-header-label">Business Outcomes</div>
@@ -8977,7 +8983,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
   </div>
   ` : ""}
 
-  <!-- ESG BREAKDOWN (AFTER BUSINESS) -->
+  <!-- ESG BREAKDOWN -->
   <div style="page-break-before: always;"></div>
   <div class="section">
     <div class="section-label">ESG Breakdown</div>
@@ -9014,9 +9020,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
   <!-- INTEGRITY & METHODOLOGY -->
   <div class="integrity">
     <h3>Data Integrity &amp; Methodology</h3>
-    <p><strong>ESG Social Value:</strong> USD social value figures are calculated using published benchmark rates applied to verified impact quantities. Impact-based values use sector-specific cost proxies (e.g., training cost per participant from ATD, social cost of carbon from US EPA IWG, tree planting costs from One Tree Planted). Volunteer time is valued at the Independent Sector's nationally recognised rate ($33.49/hour, 2024). All rates are reviewed annually and stored at the time of entry for audit purposes.</p>
-    <p style="margin-top: 8px;"><strong>Business Outcomes:</strong> Business outcome values are entered directly by users and represent actual operational savings or revenue created. Where a manager or finance contact has verified the figure, this is noted in the verification status (L2: Manager Verified, L3: Externally Audited). Self-reported values (L1) are subject to internal review.</p>
-    <p style="margin-top: 8px;"><em>These figures represent estimated social value created or costs avoided. They do not represent cash transactions, revenue, or audited financial outcomes. This report aligns with SASB and IFRS ISSB frameworks for board reporting and ESG disclosures.</em></p>
+    <p><strong>Business Outcomes:</strong> Business outcome values are entered directly by users and represent actual operational savings or revenue created. Where a manager or finance contact has verified the figure, this is noted in the verification status (L2: Manager Verified, L3: Externally Audited). Self-reported values (L1) are subject to internal review.</p>
+    <p style="margin-top: 8px;"><strong>ESG Social Value:</strong> USD social value figures are calculated using published benchmark rates applied to verified impact quantities. Impact-based values use sector-specific cost proxies (e.g., training cost per participant from ATD, social cost of carbon from US EPA IWG, tree planting costs from One Tree Planted). Volunteer time is valued at the Independent Sector's nationally recognised rate ($33.49/hour, 2024). All rates are reviewed annually and stored at the time of entry for audit purposes.</p>
+    <p style="margin-top: 8px;"><em>These figures represent estimated value created or costs avoided. They do not represent cash transactions, revenue, or audited financial outcomes. This report aligns with SASB and IFRS ISSB frameworks for board reporting and ESG disclosures.</em></p>
   </div>
 
   <!-- FOOTER -->
@@ -9492,9 +9498,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
 
 /* PAGE BREAKS */
 .cover { page-break-after: auto; }
-.section { page-break-inside: auto; }
+.section { page-break-inside: avoid; }
 .hero-stats, .ver-box, .esg-grid, .narrative, .integrity, .footer { page-break-inside: avoid; }
 .dark-header { page-break-inside: avoid; page-break-after: avoid; }
+.hero-stat, .esg-card { page-break-inside: avoid; }
+.biz-summary-grid, .biz-summary-card { page-break-inside: avoid; }
+.biz-ver-box, .biz-ver-row { page-break-inside: avoid; }
+.waste-section, .waste-grid, .waste-card { page-break-inside: avoid; }
+.top-outcomes-section, .top-outcome { page-break-inside: avoid; }
+.ver-row { page-break-inside: avoid; }
 </style>
 </head>
 <body>
