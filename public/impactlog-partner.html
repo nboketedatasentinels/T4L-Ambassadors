@@ -453,22 +453,27 @@
 
             <!-- Step 3: Event Date, Estimated Hours, Registration Link (3 fields) -->
             <div id="createEventPanelDate" class="impact-wizard-panel">
-              <p class="text-sm font-semibold text-gray-600 mb-4">Date & hours per participant</p>
+              <p class="text-sm font-semibold text-gray-600 mb-4">Date, time & estimated hours</p>
               <div class="space-y-5">
             <div>
               <label class="form-label">Event Date *</label>
               <input type="date" name="event_date" class="form-input" required>
             </div>
-                <div>
-                  <label class="form-label">Estimated Hours per Participant *</label>
-                  <input type="number" name="estimated_hours_per_participant" class="form-input" placeholder="e.g. 4" min="0" step="0.5" required>
-                  <p class="text-xs text-gray-500 mt-1">(Impact auto-calculated: participants × hours)</p>
-          </div>
-                <div>
-                  <label class="form-label">Registration link (optional)</label>
-                  <input type="url" name="registration_link" class="form-input" placeholder="e.g. https://example.com/register">
-                  <p class="text-xs text-gray-500 mt-1">If provided, this link will be shown to learners along with the QR code.</p>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="form-label">Start Time *</label>
+                    <input type="time" name="start_time" id="createEventStartTime" class="form-input" value="09:00" required onchange="autoCalcEventHours()">
+                  </div>
+                  <div>
+                    <label class="form-label">End Time *</label>
+                    <input type="time" name="end_time" id="createEventEndTime" class="form-input" value="17:00" required onchange="autoCalcEventHours()">
+                  </div>
                 </div>
+                <div>
+                  <label class="form-label">Estimated Hours *</label>
+                  <input type="number" name="estimated_hours_per_participant" id="createEventEstimatedHours" class="form-input" placeholder="Auto-calculated from time" min="0" step="0.5" required>
+                  <p class="text-xs text-gray-500 mt-1">(Auto-filled from start/end time, editable if needed)</p>
+          </div>
           </div>
           </div>
 
@@ -487,18 +492,7 @@
               </div>
             </div>
 
-            <!-- Step 5: Registration deadline (1 field) -->
-            <div id="createEventPanelDeadline" class="impact-wizard-panel">
-              <p class="text-sm font-semibold text-gray-600 mb-4">Registration (optional)</p>
-              <div class="space-y-5">
-                <div>
-                  <label class="form-label">Registration deadline (optional)</label>
-                  <input type="date" name="registration_deadline" class="form-input">
-                </div>
-              </div>
-            </div>
-
-            <!-- Step 6: Confirm -->
+            <!-- Step 5: Confirm -->
             <div id="createEventPanelConfirm" class="impact-wizard-panel">
               <p class="text-sm font-semibold text-gray-600 mb-3">Review and generate QR code</p>
               <div class="impact-review-box mb-4">
@@ -1699,7 +1693,7 @@
     }
 
     let createEventWizardStep = 'title';
-    const CREATE_EVENT_STEPS = ['title', 'category', 'date', 'optional', 'deadline', 'confirm'];
+    const CREATE_EVENT_STEPS = ['title', 'category', 'date', 'optional', 'confirm'];
     function goToCreateEventStep(step) {
       createEventWizardStep = step;
       const form = document.getElementById('createEventForm');
@@ -1710,14 +1704,13 @@
         category: document.getElementById('createEventPanelCategory'),
         date: document.getElementById('createEventPanelDate'),
         optional: document.getElementById('createEventPanelOptional'),
-        deadline: document.getElementById('createEventPanelDeadline'),
         confirm: document.getElementById('createEventPanelConfirm'),
       };
       Object.keys(panels).forEach((k) => { if (panels[k]) panels[k].classList.toggle('active', step === k); });
       form.querySelectorAll('.impact-wizard-step').forEach((s) => {
         s.classList.toggle('active', s.getAttribute('data-step') === step);
       });
-      const progress = { title: 17, category: 33, date: 50, optional: 67, deadline: 83, confirm: 100 }[step];
+      const progress = { title: 20, category: 40, date: 60, optional: 80, confirm: 100 }[step];
       const progressEl = document.getElementById('createEventWizardProgress');
       if (progressEl) progressEl.style.width = (progress || 0) + '%';
       const backBtn = document.getElementById('createEventWizardBack');
@@ -1739,20 +1732,16 @@
       const date = form.querySelector('[name="event_date"]').value;
       const hours = form.querySelector('[name="estimated_hours_per_participant"]').value;
       const expected = form.querySelector('[name="expected_participants"]').value;
+      const startTime = form.querySelector('[name="start_time"]').value || '09:00';
+      const endTime = form.querySelector('[name="end_time"]').value || '17:00';
       const location = form.querySelector('[name="location"]').value.trim();
-      const regDeadline = form.querySelector('[name="registration_deadline"]').value;
-      const regLink = form.querySelector('[name="registration_link"]').value.trim();
       document.getElementById('createEventReviewTitle').textContent = title || '—';
       document.getElementById('createEventReviewDescription').textContent = description || '—';
       document.getElementById('createEventReviewCategory').textContent = cat ? cat.charAt(0).toUpperCase() + cat.slice(1) : '—';
       document.getElementById('createEventReviewActivity').textContent = activityText || '—';
       const dateStr = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
-      document.getElementById('createEventReviewDateHours').textContent = `${dateStr} · ${hours || '—'} h/participant · ${expected || '—'} expected`;
-      document.getElementById('createEventReviewLocation').textContent = [
-        location,
-        regDeadline ? 'Register by ' + new Date(regDeadline).toLocaleDateString('en-US') : '',
-        regLink ? 'Registration link: ' + regLink : '',
-      ].filter(Boolean).join(' · ') || '—';
+      document.getElementById('createEventReviewDateHours').textContent = `${dateStr} · ${startTime} - ${endTime} · ${hours || '—'} hours`;
+      document.getElementById('createEventReviewLocation').textContent = location || '—';
     }
 
     function createEventWizardNext() {
@@ -1783,6 +1772,21 @@
       if (idx > 0) goToCreateEventStep(CREATE_EVENT_STEPS[idx - 1]);
     }
 
+    function autoCalcEventHours() {
+      const startTime = document.getElementById('createEventStartTime').value;
+      const endTime = document.getElementById('createEventEndTime').value;
+      if (startTime && endTime) {
+        const [startH, startM] = startTime.split(':').map(Number);
+        const [endH, endM] = endTime.split(':').map(Number);
+        const startMins = startH * 60 + startM;
+        const endMins = endH * 60 + endM;
+        let diffMins = endMins - startMins;
+        if (diffMins < 0) diffMins += 24 * 60; // handle overnight events
+        const hours = Math.round(diffMins / 30) / 2; // round to nearest 0.5
+        document.getElementById('createEventEstimatedHours').value = hours > 0 ? hours : '';
+      }
+    }
+
     function openCreateEventModal() {
       document.getElementById('createEventFormPanel').classList.remove('hidden');
       document.getElementById('createEventSuccessPanel').classList.add('hidden');
@@ -1791,6 +1795,8 @@
       goToCreateEventStep('title');
       const catSel = document.getElementById('createEventEsgCategory');
       if (catSel && catSel.value) populateCreateEventActivityOptions(catSel.value);
+      // Auto-calculate hours with default times
+      setTimeout(autoCalcEventHours, 50);
       openModal('createEventModal');
     }
 
@@ -2291,9 +2297,14 @@
         })
         .then(blob => {
           const u = URL.createObjectURL(blob);
-          window.open(u, '_blank');
+          const a = document.createElement('a');
+          a.href = u;
+          a.download = `t4l-impact-report-${new Date().toISOString().slice(0, 7)}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
           setTimeout(() => URL.revokeObjectURL(u), 5000);
-          showToast('Report opened in new tab.', 'success');
+          showToast('Report downloaded successfully.', 'success');
         })
         .catch(err => showToast(err.message || 'Failed to generate PDF.', 'error'));
     }

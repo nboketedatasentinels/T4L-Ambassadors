@@ -10,6 +10,7 @@ const { v4: uuidv4 } = require("uuid");
 const cors = require("cors");
 const PDFDocument = require("pdfkit");
 const ExcelJS = require("exceljs");
+const puppeteer = require("puppeteer");
 const firebaseAdmin = require("firebase-admin");
 const impactSync = require("./services/impact-sync");
 
@@ -107,6 +108,15 @@ class EmailService {
             user: SMTP_CONFIG.auth.user,
             pass: smtpPass,
           },
+          // Connection timeouts to fail faster if Gmail is unreachable
+          connectionTimeout: 10000, // 10 seconds
+          greetingTimeout: 10000,
+          socketTimeout: 15000,
+          // TLS options for Gmail
+          tls: {
+            rejectUnauthorized: false,
+            minVersion: 'TLSv1.2'
+          }
         });
 
         this.nodemailerTransporter.verify((error, success) => {
@@ -6798,11 +6808,11 @@ app.post("/api/impact/events/:id/close", requireAuth, async (req, res) => {
 
     const participantCount = (participants || []).length;
 
-    // Calculate per-participant impact
+    // Calculate per-participant impact (people_impacted must be integer, others can be decimal)
     const totalImpact = parseFloat(event.total_impact_value) || 0;
-    const perParticipantImpact = participantCount > 0 ? totalImpact / participantCount : 0;
-    const perParticipantHours = participantCount > 0 ? (parseFloat(event.hours_contributed) || 0) / participantCount : 0;
-    const perParticipantUsd = participantCount > 0 ? (parseFloat(event.usd_value) || 0) / participantCount : 0;
+    const perParticipantImpact = participantCount > 0 ? Math.round(totalImpact / participantCount) : 0;
+    const perParticipantHours = participantCount > 0 ? parseFloat(((parseFloat(event.hours_contributed) || 0) / participantCount).toFixed(2)) : 0;
+    const perParticipantUsd = participantCount > 0 ? parseFloat(((parseFloat(event.usd_value) || 0) / participantCount).toFixed(2)) : 0;
 
     // Create derived impact entries for each participant
     if (participantCount > 0) {
@@ -8457,7 +8467,7 @@ app.get("/api/partner/impact/export-pdf", requireAuth, requireRole("partner"), a
     const now = new Date();
     if (!to) to = now.toISOString().slice(0, 10);
     if (!from) {
-      const start = new Date(now.getFullYear(), 0, 1);
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
       from = start.toISOString().slice(0, 10);
     }
 
@@ -8475,9 +8485,15 @@ app.get("/api/partner/impact/export-pdf", requireAuth, requireRole("partner"), a
       return res.status(400).json({ error: "No entries to include in report for the selected date range." });
     }
 
-    const { data: userRow } = await supabase.from("users").select("email").eq("user_id", userId).single();
-    const orgName = userRow?.email || "Partner";
+    // Fetch partner profile
+    const { data: partner } = await supabase
+      .from("partners")
+      .select("organization_name, contact_person")
+      .eq("user_id", userId)
+      .single();
+    const orgName = partner?.organization_name || partner?.contact_person || "Partner";
 
+    // Calculate stats
     const esgEntries = list.filter((e) => (e.impact_type || "esg") === "esg");
     const businessEntries = list.filter((e) => e.impact_type === "business_outcome");
     const totalPeople = esgEntries.reduce((s, e) => s + (parseFloat(e.people_impacted) || 0), 0);
@@ -8489,173 +8505,550 @@ app.get("/api/partner/impact/export-pdf", requireAuth, requireRole("partner"), a
     const tier1 = list.filter((e) => (e.verification_level || "tier_1") === "tier_1").length;
     const tier2 = list.filter((e) => e.verification_level === "tier_2").length;
     const tier3 = list.filter((e) => e.verification_level === "tier_3").length;
-    const totalT = list.length || 1;
 
     const environmental = esgEntries.filter((e) => e.esg_category === "environmental");
     const social = esgEntries.filter((e) => e.esg_category === "social");
     const governance = esgEntries.filter((e) => e.esg_category === "governance");
 
+    const envValue = environmental.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+    const socValue = social.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+    const govValue = governance.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+
+    // BUSINESS OUTCOMES - Waste Category Breakdown (8 Wastes)
+    const wasteCategories = ['DEF', 'OVR', 'WAI', 'NUT', 'TRA', 'INV', 'MOT', 'EXP'];
     const wasteBreakdown = {};
-    businessEntries.forEach((e) => {
-      const w = e.waste_primary || e.business_activity || "Unknown";
-      wasteBreakdown[w] = (wasteBreakdown[w] || 0) + (parseFloat(e.usd_value) || 0);
+    const wasteTotals = {};
+    wasteCategories.forEach(waste => {
+      wasteBreakdown[waste] = businessEntries.filter(e => e.waste_primary === waste);
+      wasteTotals[waste] = wasteBreakdown[waste].reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
     });
 
-    const topActivities = esgEntries
-      .filter((e) => e.title && e.usd_value)
-      .map((e) => ({ title: e.title, value: parseFloat(e.usd_value) || 0 }))
-      .sort((a, b) => b.value - a.value)
+    // Business Verification Breakdown
+    const bizTier1 = businessEntries.filter(e => (e.verification_level || "tier_1") === "tier_1");
+    const bizTier2 = businessEntries.filter(e => e.verification_level === "tier_2");
+    const bizTier3 = businessEntries.filter(e => e.verification_level === "tier_3");
+    const bizTier1Value = bizTier1.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+    const bizTier2Value = bizTier2.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+    const bizTier3Value = bizTier3.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+
+    // Top 5 Business Outcomes by value
+    const topBusinessOutcomes = [...businessEntries]
+      .sort((a, b) => (parseFloat(b.usd_value) || 0) - (parseFloat(a.usd_value) || 0))
       .slice(0, 5);
 
-    const topOutcomes = businessEntries
-      .filter((e) => e.outcome_statement && e.usd_value)
-      .map((e) => ({
-        outcome: e.outcome_statement,
-        value: parseFloat(e.usd_value) || 0,
-        verification: e.verification_level === "tier_1" ? "Self-Reported" : e.verification_level === "tier_2" ? "Partner/Manager Verified" : "Externally Audited",
-      }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5);
+    // Format dates
+    const reportPeriod = new Date(from).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    const generatedDate = now.toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" });
+    const orgInitials = orgName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "PT";
+    const reportId = `T4L-PTR-${orgInitials}-${now.toISOString().slice(0, 7).replace("-", "")}-001`;
 
-    const filename = `impact-report-${now.toISOString().slice(0, 7)}.pdf`;
+    // Helper functions
+    const fmtUsd = (n) => "$" + Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    const fmtNum = (n) => Number(n || 0).toLocaleString("en-US");
+    const escHtml = (s) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "";
+    const getVerLabel = (level) => level === "tier_3" ? "L3 · Externally Audited" : level === "tier_2" ? "L2 · Manager Verified" : "L1 · Self-Reported";
+    const getVerClass = (level) => level === "tier_3" ? "l3" : level === "tier_2" ? "l2" : "l1";
+    const getEsgTag = (cat) => cat === "environmental" ? "env" : cat === "governance" ? "gov" : "soc";
+    const getEsgLabel = (cat) => (cat || "").charAt(0).toUpperCase() + (cat || "").slice(1);
+
+    // Build activity cards HTML
+    const activitiesHtml = esgEntries.slice(0, 12).map((e, idx) => {
+      const verLevel = e.verification_level || "tier_1";
+      return `
+      <div class="activity-row">
+        <div class="activity-inner">
+          <div class="activity-header">
+            <div class="activity-left">
+              <div class="activity-num">${String(idx + 1).padStart(2, "0")}</div>
+              <div class="activity-info">
+                <div class="activity-title">${escHtml(e.title || "Activity")}</div>
+                <div class="activity-tags">
+                  <span class="esg-tag ${getEsgTag(e.esg_category)}">${getEsgLabel(e.esg_category)}</span>
+                  <span class="ver-pill ${getVerClass(verLevel)}">${getVerLabel(verLevel)}</span>
+                </div>
+              </div>
+            </div>
+            <div class="activity-value-box">
+              <div class="activity-value-label">Social Value</div>
+              <div class="activity-value">${fmtUsd(e.usd_value)}</div>
+            </div>
+          </div>
+          <div class="activity-meta">
+            <div class="meta-item"><span class="meta-label">Date</span><span class="meta-value">${fmtDate(e.activity_date)}</span></div>
+            <div class="meta-item"><span class="meta-label">People</span><span class="meta-value">${fmtNum(e.people_impacted)}</span></div>
+            <div class="meta-item"><span class="meta-label">Hours</span><span class="meta-value">${fmtNum(e.hours_contributed)}</span></div>
+            <div class="meta-item"><span class="meta-label">Type</span><span class="meta-value">${escHtml(e.esg_activity_type || "General")}</span></div>
+          </div>
+          ${e.description ? `<div class="activity-desc"><span class="desc-label">Description</span><p>${escHtml(e.description)}</p></div>` : ""}
+        </div>
+      </div>`;
+    }).join("");
+
+    // Build business outcomes HTML - comprehensive section
+    const businessHtml = businessEntries.slice(0, 6).map((e) => {
+      const verLevel = e.verification_level || "tier_1";
+      return `
+      <div class="biz-row">
+        <div class="biz-left">
+          <div class="biz-title">${escHtml(e.outcome_statement || e.title || "Business Outcome")}</div>
+          <span class="ver-pill ${getVerClass(verLevel)}">${getVerLabel(verLevel)}</span>
+        </div>
+        <div class="biz-value">${fmtUsd(e.usd_value)}</div>
+      </div>`;
+    }).join("");
+
+    // Build waste category breakdown HTML
+    const wasteBreakdownHtml = wasteCategories
+      .filter(waste => wasteTotals[waste] > 0)
+      .sort((a, b) => wasteTotals[b] - wasteTotals[a])
+      .map(waste => {
+        const pct = totalBusinessValue > 0 ? Math.round((wasteTotals[waste] / totalBusinessValue) * 100) : 0;
+        return `
+        <div class="waste-row">
+          <div class="waste-info">
+            <div class="waste-name">${getWasteLabel(waste)}</div>
+            <div class="waste-code">${waste}</div>
+          </div>
+          <div class="waste-bar-container">
+            <div class="waste-bar" style="width: ${pct}%;"></div>
+          </div>
+          <div class="waste-stats">
+            <div class="waste-value">${fmtUsd(wasteTotals[waste])}</div>
+            <div class="waste-count">${wasteBreakdown[waste].length} ${wasteBreakdown[waste].length === 1 ? 'entry' : 'entries'}</div>
+          </div>
+        </div>`;
+      }).join("");
+
+    // Build top 5 business outcomes HTML
+    const topOutcomesHtml = topBusinessOutcomes.map((e, idx) => {
+      const verLevel = e.verification_level || "tier_1";
+      return `
+      <div class="top-outcome">
+        <div class="outcome-rank">#${idx + 1}</div>
+        <div class="outcome-content">
+          <div class="outcome-title">${escHtml(e.title || "Business Outcome")}</div>
+          <div class="outcome-statement">"${escHtml(e.outcome_statement || "Operational improvement")}"</div>
+          <div class="outcome-meta">
+            <span class="outcome-value">${fmtUsd(e.usd_value)}</span>
+            <span class="ver-pill ${getVerClass(verLevel)}">${getVerLabel(verLevel)}</span>
+            ${e.waste_primary ? `<span class="outcome-waste">${getWasteLabel(e.waste_primary)}</span>` : ''}
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+
+    // Generate full HTML
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Partner Impact Report - ${escHtml(orgName)}</title>
+<style>
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 11px; line-height: 1.4; color: #271b48; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.page { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; }
+
+/* COVER */
+.cover { background: linear-gradient(135deg, #271b48 0%, #271b48 100%); color: #fff; padding: 28px 32px 24px; }
+.cover-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+.cover-brand { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 3px; }
+.cover-type { font-size: 14px; font-weight: 700; color: #D4A017; }
+.cover-badge { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 100px; padding: 4px 10px; font-size: 9px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+.cover-badge .dot { width: 5px; height: 5px; border-radius: 50%; background: #681fa5; }
+.cover-headline h1 { font-size: 32px; font-weight: 700; line-height: 1.1; margin-bottom: 8px; }
+.cover-headline h1 span { color: #681fa5; }
+.cover-sub { font-size: 11px; color: rgba(255,255,255,0.6); max-width: 380px; line-height: 1.5; }
+.org-strip { display: flex; align-items: center; gap: 14px; margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); }
+.org-avatar { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #681fa5, #271b48); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; }
+.org-name { font-size: 14px; font-weight: 700; }
+.org-role { font-size: 10px; color: rgba(255,255,255,0.5); }
+.org-meta { display: flex; gap: 18px; margin-left: auto; }
+.org-meta-item label { display: block; font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 2px; }
+.org-meta-item span { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.85); }
+
+/* SECTIONS */
+.section { padding: 20px 32px; border-bottom: 1px solid #e2e8f0; }
+.section-label { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #681fa5; margin-bottom: 4px; background: #f5f3ff; display: inline-block; padding: 2px 6px; border-radius: 3px; }
+.section-title { font-size: 18px; font-weight: 700; color: #271b48; margin-bottom: 12px; }
+.section-intro { font-size: 10px; color: #64748b; max-width: 500px; margin-bottom: 14px; line-height: 1.5; }
+
+/* NARRATIVE */
+.narrative { background: linear-gradient(135deg, #f5f3ff, #faf5ff); border-left: 3px solid #681fa5; border-radius: 0 8px 8px 0; padding: 12px 16px; margin-bottom: 14px; }
+.narrative-text { font-size: 11px; font-weight: 500; color: #271b48; line-height: 1.55; margin-bottom: 4px; }
+.narrative-text strong { color: #681fa5; }
+.narrative-sub { font-size: 9px; color: #64748b; }
+
+/* HERO STATS */
+.hero-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #e2e8f0; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+.hero-stat { background: #fff; padding: 14px 12px; text-align: center; }
+.hero-stat.primary { background: #271b48; }
+.hero-stat-label { font-size: 8px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b; margin-bottom: 4px; }
+.hero-stat.primary .hero-stat-label { color: rgba(255,255,255,0.7); }
+.hero-stat-value { font-size: 18px; font-weight: 700; color: #271b48; }
+.hero-stat.primary .hero-stat-value { color: #ffffff; }
+.hero-stat.green .hero-stat-value { color: #681fa5; }
+.hero-stat-sub { font-size: 8px; color: #94a3b8; margin-top: 2px; }
+.hero-stat.primary .hero-stat-sub { color: rgba(255,255,255,0.7); }
+
+/* VERIFICATION BOX */
+.ver-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+.ver-box-title { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #681fa5; margin-bottom: 10px; }
+.ver-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+.ver-row:last-child { border-bottom: none; padding-bottom: 0; }
+.ver-badge { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; flex-shrink: 0; }
+.ver-l1 { background: #fef2f2; color: #dc2626; }
+.ver-l2 { background: #eff6ff; color: #2563eb; }
+.ver-l3 { background: #f0fdf4; color: #16a34a; }
+.ver-info { flex: 1; }
+.ver-name { font-weight: 600; font-size: 10px; margin-bottom: 1px; }
+.ver-desc { font-size: 9px; color: #64748b; }
+.ver-count { font-size: 12px; font-weight: 700; min-width: 30px; text-align: right; }
+
+/* ESG GRID */
+.esg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.esg-card { border-radius: 10px; padding: 14px; position: relative; overflow: hidden; }
+.esg-card::after { content: attr(data-letter); position: absolute; bottom: -6px; right: 2px; font-size: 44px; font-weight: 700; opacity: 0.08; }
+.esg-env { background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #bfdbfe; color: #1d4ed8; }
+.esg-soc { background: linear-gradient(135deg, #ecfeff, #cffafe); border: 1px solid #a5f3fc; color: #0891b2; }
+.esg-gov { background: linear-gradient(135deg, #faf5ff, #f3e8ff); border: 1px solid #e9d5ff; color: #681fa5; }
+.esg-type { font-size: 8px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+.esg-value { font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+.esg-count { font-size: 9px; opacity: 0.7; }
+
+/* DARK HEADER */
+.dark-header { background: #271b48; color: #fff; padding: 18px 32px 14px; }
+.dark-header-label { font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #D4A017; margin-bottom: 4px; }
+.dark-header-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.dark-header-sub { font-size: 10px; color: rgba(255,255,255,0.5); max-width: 420px; }
+
+/* ACTIVITY ROWS */
+.activity-row { border-bottom: 1px solid #e2e8f0; page-break-inside: avoid; }
+.activity-inner { padding: 14px 32px; }
+.activity-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+.activity-left { display: flex; align-items: flex-start; gap: 10px; flex: 1; }
+.activity-num { width: 28px; height: 28px; border-radius: 6px; background: #271b48; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+.activity-info { flex: 1; }
+.activity-title { font-size: 13px; font-weight: 700; color: #271b48; margin-bottom: 4px; }
+.activity-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+.esg-tag { font-size: 8px; font-weight: 600; padding: 2px 6px; border-radius: 100px; }
+.esg-tag.env { background: #eff6ff; color: #1d4ed8; }
+.esg-tag.soc { background: #ecfeff; color: #0891b2; }
+.esg-tag.gov { background: #faf5ff; color: #681fa5; }
+.ver-pill { font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 100px; }
+.ver-pill.l1 { background: #fef2f2; color: #dc2626; }
+.ver-pill.l2 { background: #eff6ff; color: #2563eb; }
+.ver-pill.l3 { background: #f0fdf4; color: #16a34a; }
+.activity-value-box { text-align: right; }
+.activity-value-label { font-size: 8px; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b; margin-bottom: 2px; }
+.activity-value { font-size: 16px; font-weight: 700; color: #271b48; }
+.activity-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 8px; }
+.meta-item { background: #f8fafc; border-radius: 5px; padding: 8px; }
+.meta-label { display: block; font-size: 7px; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b; margin-bottom: 2px; }
+.meta-value { font-size: 10px; font-weight: 600; color: #271b48; }
+.activity-desc { background: #f8fafc; border-radius: 5px; padding: 8px 10px; }
+.desc-label { display: block; font-size: 7px; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b; margin-bottom: 3px; }
+.activity-desc p { font-size: 9px; color: #475569; line-height: 1.5; }
+
+/* BUSINESS ROWS */
+.biz-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 32px; border-bottom: 1px solid #e2e8f0; page-break-inside: avoid; }
+.biz-left { flex: 1; }
+.biz-title { font-size: 11px; font-weight: 600; color: #271b48; margin-bottom: 3px; }
+.biz-value { font-size: 16px; font-weight: 700; color: #681fa5; }
+
+/* BUSINESS OUTCOMES DETAILED SECTION */
+.biz-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.biz-summary-card { background: linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; text-align: center; }
+.biz-summary-card.highlight { background: linear-gradient(135deg, #681fa5, #271b48); border-color: #681fa5; }
+.biz-summary-label { font-size: 8px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #475569; margin-bottom: 4px; }
+.biz-summary-card.highlight .biz-summary-label { color: rgba(255,255,255,0.7); }
+.biz-summary-value { font-size: 22px; font-weight: 700; color: #271b48; }
+.biz-summary-card.highlight .biz-summary-value { color: #fff; }
+.biz-summary-sub { font-size: 9px; color: #64748b; margin-top: 2px; }
+.biz-summary-card.highlight .biz-summary-sub { color: rgba(255,255,255,0.6); }
+
+/* WASTE BREAKDOWN */
+.waste-section { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.waste-section-title { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #681fa5; margin-bottom: 12px; }
+.waste-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+.waste-row:last-child { border-bottom: none; }
+.waste-info { min-width: 120px; }
+.waste-name { font-size: 10px; font-weight: 600; color: #271b48; }
+.waste-code { font-size: 8px; color: #64748b; font-weight: 500; }
+.waste-bar-container { flex: 1; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+.waste-bar { height: 100%; background: linear-gradient(90deg, #681fa5, #271b48); border-radius: 4px; }
+.waste-stats { text-align: right; min-width: 90px; }
+.waste-value { font-size: 11px; font-weight: 700; color: #681fa5; }
+.waste-count { font-size: 8px; color: #64748b; }
+
+/* TOP OUTCOMES */
+.top-outcomes-section { margin-bottom: 16px; }
+.top-outcomes-title { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #681fa5; margin-bottom: 12px; }
+.top-outcome { display: flex; gap: 12px; padding: 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; page-break-inside: avoid; }
+.outcome-rank { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #681fa5, #271b48); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.outcome-content { flex: 1; }
+.outcome-title { font-size: 12px; font-weight: 700; color: #271b48; margin-bottom: 3px; }
+.outcome-statement { font-size: 10px; color: #475569; font-style: italic; margin-bottom: 6px; line-height: 1.4; }
+.outcome-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.outcome-value { font-size: 12px; font-weight: 700; color: #681fa5; }
+.outcome-waste { font-size: 8px; font-weight: 600; padding: 2px 6px; border-radius: 100px; background: #f5f3ff; color: #681fa5; }
+
+/* BUSINESS VERIFICATION BOX */
+.biz-ver-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+.biz-ver-title { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #475569; margin-bottom: 10px; }
+.biz-ver-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+.biz-ver-row:last-child { border-bottom: none; }
+.biz-ver-count { font-size: 12px; font-weight: 700; min-width: 30px; }
+.biz-ver-value { font-size: 11px; font-weight: 600; color: #271b48; min-width: 80px; text-align: right; }
+
+/* FOOTER */
+.footer { background: linear-gradient(135deg, #271b48, #271b48); border-radius: 10px; padding: 16px 20px; margin: 14px 32px; display: flex; justify-content: space-between; align-items: center; }
+.footer-brand { font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+.footer-tagline { font-size: 8px; color: rgba(255,255,255,0.4); letter-spacing: 0.05em; text-transform: uppercase; }
+.footer-meta { display: flex; gap: 16px; }
+.footer-meta-item label { display: block; font-size: 7px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 1px; }
+.footer-meta-item span { font-size: 9px; font-weight: 600; color: #fff; }
+.footer-meta-item span.gold { color: #D4A017; }
+
+/* INTEGRITY */
+.integrity { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 3px solid #681fa5; border-radius: 0 8px 8px 0; padding: 12px 14px; margin: 0 32px 14px; }
+.integrity h3 { font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #681fa5; margin-bottom: 6px; }
+.integrity p { font-size: 9px; color: #475569; line-height: 1.55; }
+
+/* PAGE BREAKS */
+.cover { page-break-after: auto; }
+.section { page-break-inside: auto; }
+.hero-stats, .ver-box, .esg-grid, .narrative, .integrity, .footer { page-break-inside: avoid; }
+.dark-header { page-break-inside: avoid; page-break-after: avoid; }
+</style>
+</head>
+<body>
+<div class="page">
+  <!-- COVER -->
+  <div class="cover">
+    <div class="cover-top">
+      <div>
+        <div class="cover-brand">Transformation Leader</div>
+        <div class="cover-type">Partner Impact Report</div>
+      </div>
+      <div class="cover-badge"><div class="dot"></div>Board-Ready Report</div>
+    </div>
+    <div class="cover-headline">
+      <h1>ESG &amp; Business<br><span>Impact Report</span></h1>
+      <p class="cover-sub">A comprehensive record of ESG social impact and operational business outcomes — structured for board reporting, ESG disclosures, and stakeholder communication.</p>
+    </div>
+    <div class="org-strip">
+      <div class="org-avatar">${escHtml(orgInitials)}</div>
+      <div>
+        <div class="org-name">${escHtml(orgName)}</div>
+        <div class="org-role">T4L Partner Organization</div>
+      </div>
+      <div class="org-meta">
+        <div class="org-meta-item"><label>Report Period</label><span>${escHtml(reportPeriod)}</span></div>
+        <div class="org-meta-item"><label>Generated</label><span>${escHtml(generatedDate)}</span></div>
+        <div class="org-meta-item"><label>Report ID</label><span style="color:#D4A017;">${escHtml(reportId)}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXECUTIVE SUMMARY -->
+  <div class="section">
+    <div class="section-label">Executive Summary</div>
+    <div class="section-title">Period at a Glance</div>
+    <div class="narrative">
+      <div class="narrative-text">In ${escHtml(reportPeriod)}, ${escHtml(orgName)} delivered <strong>${fmtUsd(totalCombined)} in total impact value</strong> — comprising ${fmtUsd(totalEsgValue)} in ESG social value and ${fmtUsd(totalBusinessValue)} in verified business outcomes across ${list.length} logged activities.</div>
+      <div class="narrative-sub">${tier3} externally audited (Level 3) · ${tier2} manager verified (Level 2) · ${tier1} self-reported (Level 1).</div>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat primary">
+        <div class="hero-stat-label">Total Impact Value</div>
+        <div class="hero-stat-value">${fmtUsd(totalCombined)}</div>
+        <div class="hero-stat-sub">ESG + Business</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">ESG Social Value</div>
+        <div class="hero-stat-value">${fmtUsd(totalEsgValue)}</div>
+        <div class="hero-stat-sub">Benchmark-rated</div>
+      </div>
+      <div class="hero-stat green">
+        <div class="hero-stat-label">Business Outcomes</div>
+        <div class="hero-stat-value">${fmtUsd(totalBusinessValue)}</div>
+        <div class="hero-stat-sub">Operational savings</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">People Reached</div>
+        <div class="hero-stat-value">${fmtNum(totalPeople)}</div>
+        <div class="hero-stat-sub">${fmtNum(totalHours)} hours</div>
+      </div>
+    </div>
+    <div class="ver-box">
+      <div class="ver-box-title">Verification Framework</div>
+      <div class="ver-row">
+        <div class="ver-badge ver-l1">L1</div>
+        <div class="ver-info"><div class="ver-name">Self-Reported</div><div class="ver-desc">Logged via T4L Platform. Suitable for internal monitoring.</div></div>
+        <div class="ver-count" style="color:#dc2626;">${tier1}</div>
+      </div>
+      <div class="ver-row">
+        <div class="ver-badge ver-l2">L2</div>
+        <div class="ver-info"><div class="ver-name">Manager Verified</div><div class="ver-desc">Verified by internal manager or finance contact.</div></div>
+        <div class="ver-count" style="color:#2563eb;">${tier2}</div>
+      </div>
+      <div class="ver-row">
+        <div class="ver-badge ver-l3">L3</div>
+        <div class="ver-info"><div class="ver-name">Externally Audited</div><div class="ver-desc">Independent third-party verification. Required for ESG disclosures.</div></div>
+        <div class="ver-count" style="color:#16a34a;">${tier3}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESG BREAKDOWN -->
+  <div class="section">
+    <div class="section-label">ESG Breakdown</div>
+    <div class="section-title">Impact by ESG Category</div>
+    <div class="section-intro">ESG social value is estimated using validated benchmark rates aligned to SASB and IFRS ISSB frameworks.</div>
+    <div class="esg-grid">
+      <div class="esg-card esg-env" data-letter="E">
+        <div class="esg-type">Environmental</div>
+        <div class="esg-value">${fmtUsd(envValue)}</div>
+        <div class="esg-count">${environmental.length} activities</div>
+      </div>
+      <div class="esg-card esg-soc" data-letter="S">
+        <div class="esg-type">Social</div>
+        <div class="esg-value">${fmtUsd(socValue)}</div>
+        <div class="esg-count">${social.length} activities</div>
+      </div>
+      <div class="esg-card esg-gov" data-letter="G">
+        <div class="esg-type">Governance</div>
+        <div class="esg-value">${fmtUsd(govValue)}</div>
+        <div class="esg-count">${governance.length} activities</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESG ACTIVITIES -->
+  ${esgEntries.length > 0 ? `
+  <div class="dark-header">
+    <div class="dark-header-label">ESG Activity Detail</div>
+    <div class="dark-header-title">ESG Activities — ${escHtml(orgName)} · ${reportPeriod}</div>
+    <div class="dark-header-sub">Full records for ESG impact activities including description, people reached, and verification level.</div>
+  </div>
+  ${activitiesHtml}` : ""}
+
+  <!-- BUSINESS OUTCOMES - FULL COMPREHENSIVE SECTION -->
+  ${businessEntries.length > 0 ? `
+  <div style="page-break-before: always;"></div>
+  <div class="dark-header">
+    <div class="dark-header-label">Business Outcomes</div>
+    <div class="dark-header-title">8 Wastes Elimination · Operational Value Created</div>
+    <div class="dark-header-sub">Verified operational savings and revenue outcomes — ${reportPeriod}</div>
+  </div>
+
+  <div class="section">
+    <!-- Business Summary Stats -->
+    <div class="biz-summary-grid">
+      <div class="biz-summary-card highlight">
+        <div class="biz-summary-label">Total Operational Savings</div>
+        <div class="biz-summary-value">${fmtUsd(totalBusinessValue)}</div>
+        <div class="biz-summary-sub">Verified value created</div>
+      </div>
+      <div class="biz-summary-card">
+        <div class="biz-summary-label">Number of Improvements</div>
+        <div class="biz-summary-value">${businessEntries.length}</div>
+        <div class="biz-summary-sub">Logged outcomes</div>
+      </div>
+      <div class="biz-summary-card">
+        <div class="biz-summary-label">Average per Outcome</div>
+        <div class="biz-summary-value">${businessEntries.length > 0 ? fmtUsd(totalBusinessValue / businessEntries.length) : '$0'}</div>
+        <div class="biz-summary-sub">Mean savings value</div>
+      </div>
+    </div>
+
+    <!-- Waste Category Breakdown -->
+    ${wasteBreakdownHtml ? `
+    <div class="waste-section">
+      <div class="waste-section-title">By Waste Category (8 Wastes)</div>
+      ${wasteBreakdownHtml}
+    </div>
+    ` : ''}
+
+    <!-- Business Verification Breakdown -->
+    <div class="biz-ver-box">
+      <div class="biz-ver-title">Business Outcomes Verification Status</div>
+      <div class="biz-ver-row">
+        <div class="ver-badge ver-l3">L3</div>
+        <div class="ver-info"><div class="ver-name">Externally Audited</div><div class="ver-desc">Third-party verified. Required for financial reporting.</div></div>
+        <div class="biz-ver-count" style="color:#16a34a;">${bizTier3.length}</div>
+        <div class="biz-ver-value">${fmtUsd(bizTier3Value)}</div>
+      </div>
+      <div class="biz-ver-row">
+        <div class="ver-badge ver-l2">L2</div>
+        <div class="ver-info"><div class="ver-name">Manager Verified</div><div class="ver-desc">Verified by internal manager or finance contact.</div></div>
+        <div class="biz-ver-count" style="color:#2563eb;">${bizTier2.length}</div>
+        <div class="biz-ver-value">${fmtUsd(bizTier2Value)}</div>
+      </div>
+      <div class="biz-ver-row">
+        <div class="ver-badge ver-l1">L1</div>
+        <div class="ver-info"><div class="ver-name">Self-Reported</div><div class="ver-desc">Logged via T4L Platform. Subject to verification.</div></div>
+        <div class="biz-ver-count" style="color:#dc2626;">${bizTier1.length}</div>
+        <div class="biz-ver-value">${fmtUsd(bizTier1Value)}</div>
+      </div>
+    </div>
+
+    <!-- Top 5 Business Outcomes -->
+    ${topOutcomesHtml ? `
+    <div class="top-outcomes-section">
+      <div class="top-outcomes-title">Top Outcomes by Value</div>
+      ${topOutcomesHtml}
+    </div>
+    ` : ''}
+
+    <!-- All Business Entries List -->
+    <div style="margin-top: 16px;">
+      <div class="waste-section-title" style="margin-bottom: 10px;">All Business Outcomes</div>
+      ${businessHtml}
+    </div>
+  </div>
+  ` : ""}
+
+  <!-- INTEGRITY & METHODOLOGY -->
+  <div class="integrity">
+    <h3>Data Integrity &amp; Methodology</h3>
+    <p><strong>ESG Social Value:</strong> USD social value figures are calculated using published benchmark rates applied to verified impact quantities. Impact-based values use sector-specific cost proxies (e.g., training cost per participant from ATD, social cost of carbon from US EPA IWG, tree planting costs from One Tree Planted). Volunteer time is valued at the Independent Sector's nationally recognised rate ($33.49/hour, 2024). All rates are reviewed annually and stored at the time of entry for audit purposes.</p>
+    <p style="margin-top: 8px;"><strong>Business Outcomes:</strong> Business outcome values are entered directly by users and represent actual operational savings or revenue created. Where a manager or finance contact has verified the figure, this is noted in the verification status (L2: Manager Verified, L3: Externally Audited). Self-reported values (L1) are subject to internal review.</p>
+    <p style="margin-top: 8px;"><em>These figures represent estimated social value created or costs avoided. They do not represent cash transactions, revenue, or audited financial outcomes. This report aligns with SASB and IFRS ISSB frameworks for board reporting and ESG disclosures.</em></p>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div>
+      <div class="footer-brand">Transformation Leader</div>
+      <div class="footer-tagline">Positive Impact &amp; Sustainable Change</div>
+    </div>
+    <div class="footer-meta">
+      <div class="footer-meta-item"><label>Organization</label><span>${escHtml(orgName)}</span></div>
+      <div class="footer-meta-item"><label>Report Period</label><span>${escHtml(reportPeriod)}</span></div>
+      <div class="footer-meta-item"><label>Generated</label><span>${escHtml(generatedDate)}</span></div>
+      <div class="footer-meta-item"><label>Report ID</label><span class="gold">${escHtml(reportId)}</span></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
+
+    // Generate PDF with Puppeteer
+    const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '0', right: '0', bottom: '0', left: '0' } });
+    await browser.close();
+
+    const filename = `t4l-partner-impact-${now.toISOString().slice(0, 7)}.pdf`;
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
-
-    const doc = new PDFDocument({ margin: 40, size: "A4" });
-    doc.pipe(res);
-
-    const primaryColor = "#3B0F7A";
-    const labelColor = "#555";
-    const sectionBg = "#F3F0FF";
-    const PAGE_H = 762;
-    const MARGIN = 40;
-    const ROW = 12;
-    const SECTION_H = 18;
-
-    const addFooter = (pageNum, totalPages) => {
-      const footerY = PAGE_H + MARGIN - 16;
-      doc.fontSize(7).fillColor("#999").text(
-        `Page ${pageNum} of ${totalPages} • ${orgName} • Generated from Tier Platform`,
-        40, footerY, { width: 515, align: "center" }
-      );
-    };
-
-    // ----- Page 1: Cover (vertically centered) -----
-    const coverBlockHeight = 100;
-    doc.y = MARGIN + (PAGE_H - coverBlockHeight) / 2;
-    doc.fontSize(26).fillColor(primaryColor).text("Impact Report", { align: "center" });
-    doc.moveDown(0.4);
-    doc.fontSize(13).fillColor("#555").text(orgName, { align: "center" });
-    doc.moveDown(0.2);
-    doc.fontSize(11).text(`${formatPdfDate(from)} - ${formatPdfDate(to)}`, { align: "center" });
-    doc.moveDown(1.2);
-    doc.fontSize(10).fillColor("#999").text(`Generated on ${formatPdfDateFull(now.toISOString())}`, { align: "center" });
-    addFooter(1, 3);
-    doc.addPage();
-
-    // ----- Page 2: Summary + Verification + ESG + Top Activities -----
-    doc.fontSize(9).fillColor(primaryColor).text("Impact Report", 40, 36);
-    doc.fontSize(7).fillColor("#777").text(orgName, 40, 47);
-
-    let y = 62;
-    const section = (title) => {
-      doc.rect(40, y, 515, SECTION_H).fill(sectionBg).stroke();
-      doc.fontSize(11).fillColor(primaryColor).text(title, 46, y + 4);
-      y += SECTION_H + 4;
-    };
-    const row = (label, value) => {
-      doc.fontSize(9).fillColor(labelColor).text(label, 40, y);
-      doc.fontSize(9).fillColor("#000").text(String(value), 40, y, { width: 515, align: "right" });
-      y += ROW;
-    };
-    const box = (fn) => {
-      y += 2;
-      fn();
-      y += 4;
-    };
-
-    section("Executive Summary");
-    box(() => {
-      row("Total People Impacted:", totalPeople.toLocaleString());
-      row("Total Hours Contributed:", totalHours.toLocaleString());
-      row("ESG Social Value (estimated):", "$" + totalEsgValue.toLocaleString());
-      row("Business Outcomes (verified savings):", "$" + totalBusinessValue.toLocaleString());
-      y += 2;
-      doc.moveTo(40, y).lineTo(555, y).stroke("#CCC");
-      y += 10;
-      doc.fontSize(9).fillColor(labelColor).text("Total Combined Impact Value:", 40, y);
-      doc.fontSize(11).fillColor(primaryColor).text("$" + totalCombined.toLocaleString(), 40, y, { width: 515, align: "right" });
-      y += ROW + 4;
-    });
-
-    section("Verification Summary");
-    box(() => {
-      row("Tier 1 (Self-Reported):", `${tier1} (${Math.round((tier1 / totalT) * 100)}%)`);
-      row("Tier 2 (Partner/Manager Verified):", `${tier2} (${Math.round((tier2 / totalT) * 100)}%)`);
-      row("Tier 3 (Externally Audited):", `${tier3} (${Math.round((tier3 / totalT) * 100)}%)`);
-      y += 6;
-    });
-
-    section("ESG Impact Breakdown");
-    box(() => {
-      row("Environmental:", `${environmental.length} activities | $${environmental.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0).toLocaleString()}`);
-      row("Social:", `${social.length} activities | $${social.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0).toLocaleString()}`);
-      row("Governance:", `${governance.length} activities | $${governance.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0).toLocaleString()}`);
-      y += 6;
-    });
-
-    section("Top ESG Activities by Impact");
-    box(() => {
-      if (!topActivities.length) doc.fontSize(9).fillColor(labelColor).text("No ESG activities in this period.", 40, y);
-      else topActivities.forEach((a, i) => { row(`${i + 1}. ${(a.title || "").slice(0, 45)}`, "$" + a.value.toLocaleString()); });
-      y += 6;
-    });
-
-    addFooter(2, 3);
-    doc.addPage();
-
-    // ----- Page 3: Business Outcomes + Total Impact + Methodology -----
-    doc.fontSize(9).fillColor(primaryColor).text("Impact Report", 40, 36);
-    doc.fontSize(7).fillColor("#777").text(orgName, 40, 47);
-    y = 62;
-
-    section("Business Outcomes Breakdown");
-    box(() => {
-      row("Total Operational Savings:", "$" + totalBusinessValue.toLocaleString());
-      doc.fontSize(9).fillColor("#000").text("By Waste Category:", 40, y + 1);
-      y += 12;
-      if (!Object.keys(wasteBreakdown).length) doc.fontSize(9).fillColor(labelColor).text("No business outcome entries in this period.", 40, y);
-      else Object.entries(wasteBreakdown).forEach(([w, v]) => { row(getWasteLabel(w), "$" + Number(v).toLocaleString()); });
-      y += 6;
-    });
-
-    section("Top Business Outcomes");
-    box(() => {
-      if (!topOutcomes.length) doc.fontSize(9).fillColor(labelColor).text("No business outcome entries in this period.", 40, y);
-      else topOutcomes.forEach((o, i) => {
-        doc.fontSize(9).fillColor(labelColor).text(`${i + 1}. ${(o.outcome || "").slice(0, 55)}`, 40, y);
-        doc.fontSize(9).fillColor("#000").text("$" + o.value.toLocaleString(), 40, y, { width: 515, align: "right" });
-        y += 11;
-        doc.fontSize(7).fillColor("#777").text(`Verification: ${o.verification}`, 48, y);
-        y += 10;
-      });
-      y += 4;
-    });
-
-    section("Total Impact Value");
-    doc.rect(40, y, 515, 28).fill("#EEF9F7").stroke("#B6E2DA");
-    doc.fontSize(11).fillColor("#2A9D8F").text("Total impact value: $" + totalCombined.toLocaleString(), 46, y + 5);
-    doc.fontSize(8).fillColor("#333").text(`(of which $${totalEsgValue.toLocaleString()} estimated social value and $${totalBusinessValue.toLocaleString()} verified operational savings)`, 46, y + 18, { width: 503 });
-    y += 36;
-
-    section("Methodology & Assurance Notes");
-    const methodologyText = "USD social value is calculated using published benchmark rates and sector cost proxies (e.g. ATD, US EPA IWG, One Tree Planted). Volunteer time is valued at the Independent Sector rate ($33.49/hour, 2024). Figures are estimated social value or costs avoided, not cash or audited outcomes. Business outcome values are user-entered; verification tier indicates validation level. This report aligns with SASB and IFRS ISSB for board reporting and ESG disclosures.";
-    doc.fontSize(7).fillColor(labelColor).text(methodologyText, 40, y, { width: 515, lineGap: 1.5 });
-
-    addFooter(3, 3);
-    doc.end();
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(pdfBuffer);
   } catch (err) {
-    console.error("❌ Error generating impact PDF:", err);
+    console.error("❌ Error generating partner impact PDF:", err);
     if (!res.headersSent) res.status(500).json({ error: "Failed to generate PDF", details: err.message });
   }
 });
@@ -8853,6 +9246,7 @@ app.get("/api/ambassador/impact/entries", requireAuth, requireRole("ambassador")
 });
 
 // --- GET /api/ambassador/impact/export-pdf ---
+// Professional HTML-based PDF with Puppeteer
 app.get("/api/ambassador/impact/export-pdf", requireAuth, requireRole("ambassador"), async (req, res) => {
   try {
     const userId = req.auth.userId;
@@ -8860,10 +9254,11 @@ app.get("/api/ambassador/impact/export-pdf", requireAuth, requireRole("ambassado
     const now = new Date();
     if (!to) to = now.toISOString().slice(0, 10);
     if (!from) {
-      const start = new Date(now.getFullYear(), 0, 1);
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
       from = start.toISOString().slice(0, 10);
     }
 
+    // Fetch entries
     let query = supabase
       .from("impact_entries")
       .select("*")
@@ -8878,167 +9273,370 @@ app.get("/api/ambassador/impact/export-pdf", requireAuth, requireRole("ambassado
       return res.status(400).json({ error: "No entries to include in report for the selected date range." });
     }
 
-    const { data: userRow } = await supabase.from("users").select("email").eq("user_id", userId).single();
-    const orgName = userRow?.email || "Ambassador";
+    // Fetch ambassador profile
+    const { data: ambassador } = await supabase
+      .from("ambassadors")
+      .select("first_name, last_name, email, professional_headline")
+      .eq("user_id", userId)
+      .single();
 
+    const ambassadorName = ambassador
+      ? `${ambassador.first_name || ""} ${ambassador.last_name || ""}`.trim() || ambassador.email
+      : "Ambassador";
+    const ambassadorInitials = ambassador
+      ? `${(ambassador.first_name || "A")[0]}${(ambassador.last_name || "M")[0]}`.toUpperCase()
+      : "AM";
+    const ambassadorRole = ambassador?.professional_headline || "T4L Ambassador";
+
+    // Calculate stats
     const esgEntries = list.filter((e) => (e.impact_type || "esg") === "esg");
-    const businessEntries = list.filter((e) => e.impact_type === "business_outcome");
     const totalPeople = esgEntries.reduce((s, e) => s + (parseFloat(e.people_impacted) || 0), 0);
     const totalHours = list.reduce((s, e) => s + (parseFloat(e.hours_contributed) || 0), 0);
     const totalEsgValue = esgEntries.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
-    const totalBusinessValue = businessEntries.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
-    const totalCombined = totalEsgValue + totalBusinessValue;
 
     const tier1 = list.filter((e) => (e.verification_level || "tier_1") === "tier_1").length;
     const tier2 = list.filter((e) => e.verification_level === "tier_2").length;
     const tier3 = list.filter((e) => e.verification_level === "tier_3").length;
-    const totalT = list.length || 1;
 
     const environmental = esgEntries.filter((e) => e.esg_category === "environmental");
     const social = esgEntries.filter((e) => e.esg_category === "social");
     const governance = esgEntries.filter((e) => e.esg_category === "governance");
 
-    const wasteBreakdown = {};
-    businessEntries.forEach((e) => {
-      const w = e.waste_primary || e.business_activity || "Unknown";
-      wasteBreakdown[w] = (wasteBreakdown[w] || 0) + (parseFloat(e.usd_value) || 0);
-    });
+    const envValue = environmental.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+    const socValue = social.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+    const govValue = governance.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
 
-    const topActivities = esgEntries
-      .filter((e) => e.title && e.usd_value)
-      .map((e) => ({ title: e.title, value: parseFloat(e.usd_value) || 0 }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5);
+    // Format dates
+    const reportPeriod = new Date(from).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    const generatedDate = now.toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" });
+    const reportId = `T4L-AMB-${ambassadorInitials}-${now.toISOString().slice(0, 7).replace("-", "")}-001`;
 
-    const topOutcomes = businessEntries
-      .filter((e) => e.outcome_statement && e.usd_value)
-      .map((e) => ({
-        outcome: e.outcome_statement,
-        value: parseFloat(e.usd_value) || 0,
-        verification: e.verification_level === "tier_1" ? "Self-Reported" : e.verification_level === "tier_2" ? "Partner/Manager Verified" : "Externally Audited",
-      }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5);
+    // Helper functions
+    const fmtUsd = (n) => "$" + Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    const fmtNum = (n) => Number(n || 0).toLocaleString("en-US");
+    const escHtml = (s) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "";
+    const getVerLabel = (level) => level === "tier_3" ? "L3 · Externally Audited" : level === "tier_2" ? "L2 · T4L Verified" : "L1 · Self-Reported";
+    const getVerClass = (level) => level === "tier_3" ? "l3" : level === "tier_2" ? "l2" : "l1";
+    const getVerContext = (level) => level === "tier_3" ? "external_auditor" : level === "tier_2" ? "t4l_team" : "ambassador_self";
+    const getEsgTag = (cat) => cat === "environmental" ? "env" : cat === "governance" ? "gov" : "soc";
+    const getEsgLabel = (cat) => (cat || "").charAt(0).toUpperCase() + (cat || "").slice(1);
 
-    const filename = `impact-report-${now.toISOString().slice(0, 7)}.pdf`;
+    // Build activity cards HTML
+    const activitiesHtml = esgEntries.slice(0, 12).map((e, idx) => {
+      const verLevel = e.verification_level || "tier_1";
+      return `
+      <div class="activity-row">
+        <div class="activity-inner">
+          <div class="activity-header">
+            <div class="activity-left">
+              <div class="activity-num">${String(idx + 1).padStart(2, "0")}</div>
+              <div class="activity-info">
+                <div class="activity-title">${escHtml(e.title || "Activity")}</div>
+                <div class="activity-tags">
+                  <span class="esg-tag ${getEsgTag(e.esg_category)}">${getEsgLabel(e.esg_category)}</span>
+                  <span class="ver-pill ${getVerClass(verLevel)}">${getVerLabel(verLevel)}</span>
+                </div>
+              </div>
+            </div>
+            <div class="activity-value-box">
+              <div class="activity-value-label">Social Value</div>
+              <div class="activity-value">${fmtUsd(e.usd_value)}</div>
+            </div>
+          </div>
+          <div class="activity-meta">
+            <div class="meta-item"><span class="meta-label">Date</span><span class="meta-value">${fmtDate(e.activity_date)}</span></div>
+            <div class="meta-item"><span class="meta-label">People</span><span class="meta-value">${fmtNum(e.people_impacted)}</span></div>
+            <div class="meta-item"><span class="meta-label">Hours</span><span class="meta-value">${fmtNum(e.hours_contributed)}</span></div>
+            <div class="meta-item"><span class="meta-label">Type</span><span class="meta-value">${escHtml(e.esg_activity_type || "General")}</span></div>
+          </div>
+          ${e.description ? `<div class="activity-desc"><span class="desc-label">Description</span><p>${escHtml(e.description)}</p></div>` : ""}
+          <div class="activity-footer">
+            <span class="footer-logged">Logged by: <strong>${escHtml(ambassadorName)}</strong></span>
+            ${e.evidence_url ? `<a href="${escHtml(e.evidence_url)}" class="footer-link">View evidence</a>` : ""}
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+
+    // Generate full HTML
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ambassador Impact Log - ${escHtml(ambassadorName)}</title>
+<style>
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 11px; line-height: 1.4; color: #1B1B3A; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.page { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; }
+
+/* COVER */
+.cover { background: linear-gradient(135deg, #1B1B3A 0%, #2d1b4e 100%); color: #fff; padding: 28px 32px 24px; }
+.cover-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+.cover-brand { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 3px; }
+.cover-type { font-size: 14px; font-weight: 700; color: #D4A017; }
+.cover-badge { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 100px; padding: 4px 10px; font-size: 9px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+.cover-badge .dot { width: 5px; height: 5px; border-radius: 50%; background: #F4801A; }
+.cover-headline h1 { font-size: 32px; font-weight: 700; line-height: 1.1; margin-bottom: 8px; }
+.cover-headline h1 span { color: #F4801A; }
+.cover-sub { font-size: 11px; color: rgba(255,255,255,0.6); max-width: 380px; line-height: 1.5; }
+.amb-strip { display: flex; align-items: center; gap: 14px; margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); }
+.amb-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #F4801A, #C8620A); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; }
+.amb-name { font-size: 14px; font-weight: 700; }
+.amb-role { font-size: 10px; color: rgba(255,255,255,0.5); }
+.amb-meta { display: flex; gap: 18px; margin-left: auto; }
+.amb-meta-item label { display: block; font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 2px; }
+.amb-meta-item span { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.85); }
+
+/* SECTIONS */
+.section { padding: 20px 32px; border-bottom: 1px solid #e2e8f0; }
+.section-label { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #F4801A; margin-bottom: 4px; background: #FDF0E6; display: inline-block; padding: 2px 6px; border-radius: 3px; }
+.section-title { font-size: 18px; font-weight: 700; color: #1B1B3A; margin-bottom: 12px; }
+.section-intro { font-size: 10px; color: #64748b; max-width: 500px; margin-bottom: 14px; line-height: 1.5; }
+
+/* NARRATIVE */
+.narrative { background: linear-gradient(135deg, #FDF0E6, #fff5eb); border-left: 3px solid #F4801A; border-radius: 0 8px 8px 0; padding: 12px 16px; margin-bottom: 14px; }
+.narrative-text { font-size: 11px; font-weight: 500; color: #1B1B3A; line-height: 1.55; margin-bottom: 4px; }
+.narrative-text strong { color: #F4801A; }
+.narrative-sub { font-size: 9px; color: #64748b; }
+
+/* HERO STATS */
+.hero-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #e2e8f0; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+.hero-stat { background: #fff; padding: 14px 12px; text-align: center; }
+.hero-stat.primary { background: #1B1B3A; }
+.hero-stat-label { font-size: 8px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b; margin-bottom: 4px; }
+.hero-stat.primary .hero-stat-label { color: rgba(255,255,255,0.5); }
+.hero-stat-value { font-size: 18px; font-weight: 700; color: #1B1B3A; }
+.hero-stat.primary .hero-stat-value { color: #F4801A; }
+.hero-stat-sub { font-size: 8px; color: #94a3b8; margin-top: 2px; }
+.hero-stat.primary .hero-stat-sub { color: rgba(255,255,255,0.4); }
+
+/* VERIFICATION BOX */
+.ver-box { background: #FDF0E6; border: 1px solid #fde68a; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+.ver-box-title { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #C8620A; margin-bottom: 10px; }
+.ver-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(200,98,10,0.15); }
+.ver-row:last-child { border-bottom: none; padding-bottom: 0; }
+.ver-badge { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; flex-shrink: 0; }
+.ver-l1 { background: #fef2f2; color: #dc2626; }
+.ver-l2 { background: #eff6ff; color: #2563eb; }
+.ver-l3 { background: #f0fdf4; color: #16a34a; }
+.ver-info { flex: 1; }
+.ver-name { font-weight: 600; font-size: 10px; margin-bottom: 1px; }
+.ver-ctx { font-size: 8px; color: #64748b; background: rgba(0,0,0,0.04); padding: 1px 5px; border-radius: 3px; margin-left: 4px; }
+.ver-desc { font-size: 9px; color: #64748b; }
+.ver-count { font-size: 12px; font-weight: 700; min-width: 30px; text-align: right; }
+
+/* ESG GRID */
+.esg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.esg-card { border-radius: 10px; padding: 14px; position: relative; overflow: hidden; }
+.esg-card::after { content: attr(data-letter); position: absolute; bottom: -6px; right: 2px; font-size: 44px; font-weight: 700; opacity: 0.08; }
+.esg-env { background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #bfdbfe; color: #1d4ed8; }
+.esg-soc { background: linear-gradient(135deg, #ecfeff, #cffafe); border: 1px solid #a5f3fc; color: #0891b2; }
+.esg-gov { background: linear-gradient(135deg, #faf5ff, #f3e8ff); border: 1px solid #e9d5ff; color: #7c3aed; }
+.esg-type { font-size: 8px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+.esg-value { font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+.esg-count { font-size: 9px; opacity: 0.7; }
+
+/* DARK HEADER */
+.dark-header { background: #1B1B3A; color: #fff; padding: 18px 32px 14px; }
+.dark-header-label { font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #D4A017; margin-bottom: 4px; }
+.dark-header-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.dark-header-sub { font-size: 10px; color: rgba(255,255,255,0.5); max-width: 420px; }
+
+/* ACTIVITY ROWS */
+.activity-row { border-bottom: 1px solid #e2e8f0; page-break-inside: avoid; }
+.activity-inner { padding: 14px 32px; }
+.activity-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+.activity-left { display: flex; align-items: flex-start; gap: 10px; flex: 1; }
+.activity-num { width: 28px; height: 28px; border-radius: 6px; background: #1B1B3A; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+.activity-info { flex: 1; }
+.activity-title { font-size: 13px; font-weight: 700; color: #1B1B3A; margin-bottom: 4px; }
+.activity-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+.esg-tag { font-size: 8px; font-weight: 600; padding: 2px 6px; border-radius: 100px; }
+.esg-tag.env { background: #eff6ff; color: #1d4ed8; }
+.esg-tag.soc { background: #ecfeff; color: #0891b2; }
+.esg-tag.gov { background: #faf5ff; color: #7c3aed; }
+.ver-pill { font-size: 8px; font-weight: 700; padding: 2px 6px; border-radius: 100px; }
+.ver-pill.l1 { background: #fef2f2; color: #dc2626; }
+.ver-pill.l2 { background: #eff6ff; color: #2563eb; }
+.ver-pill.l3 { background: #f0fdf4; color: #16a34a; }
+.activity-value-box { text-align: right; }
+.activity-value-label { font-size: 8px; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b; margin-bottom: 2px; }
+.activity-value { font-size: 16px; font-weight: 700; color: #1B1B3A; }
+.activity-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 8px; }
+.meta-item { background: #f8fafc; border-radius: 5px; padding: 8px; }
+.meta-label { display: block; font-size: 7px; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b; margin-bottom: 2px; }
+.meta-value { font-size: 10px; font-weight: 600; color: #1B1B3A; }
+.activity-desc { background: #f8fafc; border-radius: 5px; padding: 8px 10px; margin-bottom: 8px; }
+.desc-label { display: block; font-size: 7px; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b; margin-bottom: 3px; }
+.activity-desc p { font-size: 9px; color: #475569; line-height: 1.5; }
+.activity-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid #e2e8f0; }
+.footer-logged { font-size: 9px; color: #64748b; }
+.footer-logged strong { color: #1B1B3A; }
+.footer-link { font-size: 9px; font-weight: 600; color: #1B1B3A; text-decoration: none; }
+
+/* FOOTER */
+.footer { background: linear-gradient(135deg, #1B1B3A, #2d1b4e); border-radius: 10px; padding: 16px 20px; margin: 14px 32px; display: flex; justify-content: space-between; align-items: center; }
+.footer-brand { font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+.footer-tagline { font-size: 8px; color: rgba(255,255,255,0.4); letter-spacing: 0.05em; text-transform: uppercase; }
+.footer-meta { display: flex; gap: 16px; }
+.footer-meta-item label { display: block; font-size: 7px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 1px; }
+.footer-meta-item span { font-size: 9px; font-weight: 600; color: #fff; }
+.footer-meta-item span.gold { color: #D4A017; }
+
+/* INTEGRITY */
+.integrity { background: #FDF0E6; border: 1px solid #fde68a; border-left: 3px solid #F4801A; border-radius: 0 8px 8px 0; padding: 12px 14px; margin: 0 32px 14px; }
+.integrity h3 { font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #C8620A; margin-bottom: 6px; }
+.integrity p { font-size: 9px; color: #475569; line-height: 1.55; }
+
+/* PAGE BREAKS */
+.cover { page-break-after: auto; }
+.section { page-break-inside: auto; }
+.hero-stats, .ver-box, .esg-grid, .narrative, .integrity, .footer { page-break-inside: avoid; }
+.dark-header { page-break-inside: avoid; page-break-after: avoid; }
+</style>
+</head>
+<body>
+<div class="page">
+  <!-- COVER -->
+  <div class="cover">
+    <div class="cover-top">
+      <div>
+        <div class="cover-brand">Transformation Leader</div>
+        <div class="cover-type">Ambassador Impact Log</div>
+      </div>
+      <div class="cover-badge"><div class="dot"></div>Funder-Ready Report</div>
+    </div>
+    <div class="cover-headline">
+      <h1>Social &amp; ESG<br><span>Impact Log</span></h1>
+      <p class="cover-sub">A traceable record of community and social impact delivered by a Transformation Leader Ambassador — structured for submission to external funders and institutional partners.</p>
+    </div>
+    <div class="amb-strip">
+      <div class="amb-avatar">${escHtml(ambassadorInitials)}</div>
+      <div>
+        <div class="amb-name">${escHtml(ambassadorName)}</div>
+        <div class="amb-role">${escHtml(ambassadorRole)} · T4L Ambassador</div>
+      </div>
+      <div class="amb-meta">
+        <div class="amb-meta-item"><label>Report Period</label><span>${escHtml(reportPeriod)}</span></div>
+        <div class="amb-meta-item"><label>Generated</label><span>${escHtml(generatedDate)}</span></div>
+        <div class="amb-meta-item"><label>Report ID</label><span style="color:#D4A017;">${escHtml(reportId)}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXECUTIVE SUMMARY -->
+  <div class="section">
+    <div class="section-label">Summary</div>
+    <div class="section-title">Period at a Glance</div>
+    <div class="narrative">
+      <div class="narrative-text">In ${escHtml(reportPeriod)}, ${escHtml(ambassadorName)} delivered <strong>${fmtUsd(totalEsgValue)} in estimated ESG social value</strong> across ${list.length} activities — reaching ${fmtNum(totalPeople)} people through ${fmtNum(totalHours)} hours of work spanning Environmental, Social, and Governance initiatives.</div>
+      <div class="narrative-sub">${tier3} externally audited (Level 3) · ${tier2} T4L verified (Level 2) · ${tier1} self-reported (Level 1).</div>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat primary">
+        <div class="hero-stat-label">Total ESG Social Value</div>
+        <div class="hero-stat-value">${fmtUsd(totalEsgValue)}</div>
+        <div class="hero-stat-sub">Benchmark-rated</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">People Reached</div>
+        <div class="hero-stat-value">${fmtNum(totalPeople)}</div>
+        <div class="hero-stat-sub">Community reach</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">Hours Contributed</div>
+        <div class="hero-stat-value">${fmtNum(totalHours)}</div>
+        <div class="hero-stat-sub">${list.length} activities</div>
+      </div>
+    </div>
+    <div class="ver-box">
+      <div class="ver-box-title">Verification Framework — Ambassador Context</div>
+      <div class="ver-row">
+        <div class="ver-badge ver-l1">L1</div>
+        <div class="ver-info"><div class="ver-name">Self-Reported<span class="ver-ctx">ambassador_self</span></div><div class="ver-desc">Logged via T4L Platform. Suitable for internal monitoring.</div></div>
+        <div class="ver-count" style="color:#dc2626;">${tier1}</div>
+      </div>
+      <div class="ver-row">
+        <div class="ver-badge ver-l2">L2</div>
+        <div class="ver-info"><div class="ver-name">T4L Verified<span class="ver-ctx">t4l_team</span></div><div class="ver-desc">T4L team member attended or confirmed. Suitable for institutional partners.</div></div>
+        <div class="ver-count" style="color:#2563eb;">${tier2}</div>
+      </div>
+      <div class="ver-row">
+        <div class="ver-badge ver-l3">L3</div>
+        <div class="ver-info"><div class="ver-name">Externally Audited<span class="ver-ctx">external_auditor</span></div><div class="ver-desc">Independent third-party verification. Required for funder submissions.</div></div>
+        <div class="ver-count" style="color:#16a34a;">${tier3}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESG BREAKDOWN -->
+  <div class="section">
+    <div class="section-label">ESG Breakdown</div>
+    <div class="section-title">Impact by ESG Category</div>
+    <div class="section-intro">ESG social value is estimated using validated benchmark rates aligned to SASB and IFRS ISSB frameworks.</div>
+    <div class="esg-grid">
+      <div class="esg-card esg-env" data-letter="E">
+        <div class="esg-type">Environmental</div>
+        <div class="esg-value">${fmtUsd(envValue)}</div>
+        <div class="esg-count">${environmental.length} activities</div>
+      </div>
+      <div class="esg-card esg-soc" data-letter="S">
+        <div class="esg-type">Social</div>
+        <div class="esg-value">${fmtUsd(socValue)}</div>
+        <div class="esg-count">${social.length} activities</div>
+      </div>
+      <div class="esg-card esg-gov" data-letter="G">
+        <div class="esg-type">Governance</div>
+        <div class="esg-value">${fmtUsd(govValue)}</div>
+        <div class="esg-count">${governance.length} activities</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTIVITY DETAIL -->
+  <div class="dark-header">
+    <div class="dark-header-label">Activity Detail &amp; Evidence</div>
+    <div class="dark-header-title">Full Activity Records — ${escHtml(ambassadorName)} · ${reportPeriod}</div>
+    <div class="dark-header-sub">Complete records for each logged activity — including description, people reached, and verification level.</div>
+  </div>
+  ${activitiesHtml}
+
+  <!-- INTEGRITY -->
+  <div class="integrity">
+    <h3>Data Integrity Statement</h3>
+    <p>Impact values are estimated social value figures — not cash disbursements or audited financial outcomes. "People Reached" represents community reach, not unique individuals. All activities are self-reported by trained T4L Ambassadors through the Transformation Leader Platform. The verification_context field on every record distinguishes Ambassador self-reports, T4L team confirmation, and external auditor sign-off. To discuss L3 verification for funder submission, contact partners@t4leader.com.</p>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div>
+      <div class="footer-brand">Transformation Leader</div>
+      <div class="footer-tagline">Positive Impact &amp; Sustainable Change</div>
+    </div>
+    <div class="footer-meta">
+      <div class="footer-meta-item"><label>Ambassador</label><span>${escHtml(ambassadorName)}</span></div>
+      <div class="footer-meta-item"><label>Report Period</label><span>${escHtml(reportPeriod)}</span></div>
+      <div class="footer-meta-item"><label>Generated</label><span>${escHtml(generatedDate)}</span></div>
+      <div class="footer-meta-item"><label>Report ID</label><span class="gold">${escHtml(reportId)}</span></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
+
+    // Generate PDF with Puppeteer
+    const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '0', right: '0', bottom: '0', left: '0' } });
+    await browser.close();
+
+    const filename = `t4l-ambassador-impact-${now.toISOString().slice(0, 7)}.pdf`;
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
-
-    const doc = new PDFDocument({ margin: 40, size: "A4" });
-    doc.pipe(res);
-
-    const primaryColor = "#3B0F7A";
-    const labelColor = "#555";
-    const sectionBg = "#F3F0FF";
-    const PAGE_H = 762;
-    const MARGIN = 40;
-    const ROW = 12;
-    const SECTION_H = 18;
-
-    const addFooter = (pageNum, totalPages) => {
-      doc.fontSize(7).fillColor("#999").text(
-        `Page ${pageNum} of ${totalPages} • ${orgName} • Generated from Tier Platform`,
-        40, PAGE_H + MARGIN - 16,
-        { width: 515, align: "center" }
-      );
-    };
-
-    const coverBlockHeight = 100;
-    doc.y = MARGIN + (PAGE_H - coverBlockHeight) / 2;
-    doc.fontSize(26).fillColor(primaryColor).text("Impact Report", { align: "center" });
-    doc.moveDown(0.4);
-    doc.fontSize(13).fillColor("#555").text(orgName, { align: "center" });
-    doc.moveDown(0.2);
-    doc.fontSize(11).text(`${formatPdfDate(from)} - ${formatPdfDate(to)}`, { align: "center" });
-    doc.moveDown(1.2);
-    doc.fontSize(10).fillColor("#999").text(`Generated on ${formatPdfDateFull(now.toISOString())}`, { align: "center" });
-    addFooter(1, 3);
-    doc.addPage();
-
-    doc.fontSize(9).fillColor(primaryColor).text("Impact Report", 40, 36);
-    doc.fontSize(7).fillColor("#777").text(orgName, 40, 47);
-    let y = 62;
-    const section = (title) => {
-      doc.rect(40, y, 515, SECTION_H).fill(sectionBg).stroke();
-      doc.fontSize(11).fillColor(primaryColor).text(title, 46, y + 4);
-      y += SECTION_H + 4;
-    };
-    const row = (label, value) => {
-      doc.fontSize(9).fillColor(labelColor).text(label, 40, y);
-      doc.fontSize(9).fillColor("#000").text(String(value), 40, y, { width: 515, align: "right" });
-      y += ROW;
-    };
-    const box = (fn) => { y += 2; fn(); y += 4; };
-
-    section("Executive Summary");
-    box(() => {
-      row("Total People Impacted:", totalPeople.toLocaleString());
-      row("Total Hours Contributed:", totalHours.toLocaleString());
-      row("ESG Social Value (estimated):", "$" + totalEsgValue.toLocaleString());
-      row("Business Outcomes (verified savings):", "$" + totalBusinessValue.toLocaleString());
-      y += 2;
-      doc.moveTo(40, y).lineTo(555, y).stroke("#CCC");
-      y += 10;
-      doc.fontSize(9).fillColor(labelColor).text("Total Combined Impact Value:", 40, y);
-      doc.fontSize(11).fillColor(primaryColor).text("$" + totalCombined.toLocaleString(), 40, y, { width: 515, align: "right" });
-      y += ROW + 4;
-    });
-    section("Verification Summary");
-    box(() => {
-      row("Tier 1 (Self-Reported):", `${tier1} (${Math.round((tier1 / totalT) * 100)}%)`);
-      row("Tier 2 (Partner/Manager Verified):", `${tier2} (${Math.round((tier2 / totalT) * 100)}%)`);
-      row("Tier 3 (Externally Audited):", `${tier3} (${Math.round((tier3 / totalT) * 100)}%)`);
-      y += 6;
-    });
-    section("ESG Impact Breakdown");
-    box(() => {
-      row("Environmental:", `${environmental.length} activities | $${environmental.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0).toLocaleString()}`);
-      row("Social:", `${social.length} activities | $${social.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0).toLocaleString()}`);
-      row("Governance:", `${governance.length} activities | $${governance.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0).toLocaleString()}`);
-      y += 6;
-    });
-    section("Top ESG Activities by Impact");
-    box(() => {
-      if (!topActivities.length) doc.fontSize(9).fillColor(labelColor).text("No ESG activities in this period.", 40, y);
-      else topActivities.forEach((a, i) => { row(`${i + 1}. ${(a.title || "").slice(0, 45)}`, "$" + a.value.toLocaleString()); });
-      y += 6;
-    });
-    addFooter(2, 3);
-    doc.addPage();
-
-    doc.fontSize(9).fillColor(primaryColor).text("Impact Report", 40, 36);
-    doc.fontSize(7).fillColor("#777").text(orgName, 40, 47);
-    y = 62;
-    section("Business Outcomes Breakdown");
-    box(() => {
-      row("Total Operational Savings:", "$" + totalBusinessValue.toLocaleString());
-      doc.fontSize(9).fillColor("#000").text("By Waste Category:", 40, y + 1);
-      y += 12;
-      if (!Object.keys(wasteBreakdown).length) doc.fontSize(9).fillColor(labelColor).text("No business outcome entries in this period.", 40, y);
-      else Object.entries(wasteBreakdown).forEach(([w, v]) => { row(getWasteLabel(w), "$" + Number(v).toLocaleString()); });
-      y += 6;
-    });
-    section("Top Business Outcomes");
-    box(() => {
-      if (!topOutcomes.length) doc.fontSize(9).fillColor(labelColor).text("No business outcome entries in this period.", 40, y);
-      else topOutcomes.forEach((o, i) => {
-        doc.fontSize(9).fillColor(labelColor).text(`${i + 1}. ${(o.outcome || "").slice(0, 55)}`, 40, y);
-        doc.fontSize(9).fillColor("#000").text("$" + o.value.toLocaleString(), 40, y, { width: 515, align: "right" });
-        y += 11;
-        doc.fontSize(7).fillColor("#777").text(`Verification: ${o.verification}`, 48, y);
-        y += 10;
-      });
-      y += 4;
-    });
-    section("Total Impact Value");
-    doc.rect(40, y, 515, 28).fill("#EEF9F7").stroke("#B6E2DA");
-    doc.fontSize(11).fillColor("#2A9D8F").text("Total impact value: $" + totalCombined.toLocaleString(), 46, y + 5);
-    doc.fontSize(8).fillColor("#333").text(`(of which $${totalEsgValue.toLocaleString()} estimated social value and $${totalBusinessValue.toLocaleString()} verified operational savings)`, 46, y + 18, { width: 503 });
-    y += 36;
-    section("Methodology & Assurance Notes");
-    doc.fontSize(7).fillColor(labelColor).text("USD social value is calculated using published benchmark rates and sector cost proxies. Volunteer time is valued at the Independent Sector rate ($33.49/hour, 2024). Figures are estimated social value or costs avoided, not cash or audited outcomes. Business outcome values are user-entered; verification tier indicates validation level. This report aligns with SASB and IFRS ISSB for board reporting and ESG disclosures.", 40, y, { width: 515, lineGap: 1.5 });
-    addFooter(3, 3);
-    doc.end();
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(pdfBuffer);
   } catch (err) {
     console.error("❌ Ambassador export PDF:", err);
     if (!res.headersSent) res.status(500).json({ error: "Failed to generate PDF", details: err.message });
@@ -11028,6 +11626,209 @@ function scheduleLinkedInAuditReminders() {
   setInterval(run, 24 * 60 * 60 * 1000);
   log("⏰ LinkedIn audit reminders: run in 1 min, then every 24h.");
 }
+
+// ============================================
+// AUTO-CLOSE EXPIRED EVENTS & CREATE IMPACT LOGS
+// ============================================
+// Automatically close events after their end time passes and create impact logs
+
+async function autoCloseExpiredEvents() {
+  try {
+    log("🔄 Checking for expired events to auto-close...");
+
+    // Get all open events
+    const { data: openEvents, error: fetchError } = await supabase
+      .from("impact_events")
+      .select("*")
+      .eq("status", "open");
+
+    if (fetchError) {
+      console.error("❌ Error fetching open events:", fetchError.message);
+      return;
+    }
+
+    if (!openEvents || openEvents.length === 0) {
+      log("✅ No open events to process.");
+      return;
+    }
+
+    const now = new Date();
+    let closedCount = 0;
+
+    for (const event of openEvents) {
+      // Parse event end datetime
+      const eventDate = event.event_date; // e.g., "2024-03-15"
+      const endTime = event.end_time || "17:00"; // e.g., "17:00"
+
+      // Combine date and time
+      const eventEndDateTime = new Date(`${eventDate}T${endTime}:00`);
+
+      // Check if event has ended
+      if (now <= eventEndDateTime) {
+        continue; // Event hasn't ended yet
+      }
+
+      log(`📌 Auto-closing expired event: ${event.title} (${event.event_id})`);
+
+      // Get participants for this event
+      const { data: participants } = await supabase
+        .from("event_participants")
+        .select("*")
+        .eq("event_id", event.event_id);
+
+      const participantCount = (participants || []).length;
+
+      // Calculate per-participant impact (people_impacted must be integer, others can be decimal)
+      const totalImpact = parseFloat(event.total_impact_value) || 0;
+      const perParticipantImpact = participantCount > 0 ? Math.round(totalImpact / participantCount) : Math.round(totalImpact);
+      const perParticipantHours = participantCount > 0
+        ? parseFloat(((parseFloat(event.hours_contributed) || 0) / participantCount).toFixed(2))
+        : parseFloat(event.hours_contributed) || 0;
+      const perParticipantUsd = participantCount > 0
+        ? parseFloat(((parseFloat(event.usd_value) || 0) / participantCount).toFixed(2))
+        : parseFloat(event.usd_value) || 0;
+
+      // Create derived impact entries for each participant
+      if (participantCount > 0) {
+        const derivedEntries = (participants || [])
+          .filter(p => p.user_id)
+          .map(participant => ({
+            entry_id: uuidv4(),
+            user_id: participant.user_id,
+            user_role: "ambassador",
+            entry_type: "event_derived",
+            event_id: event.event_id,
+            title: event.title,
+            description: event.description || "",
+            esg_category: event.esg_category,
+            people_impacted: perParticipantImpact,
+            hours_contributed: perParticipantHours,
+            usd_value: perParticipantUsd,
+            impact_unit: event.impact_unit || "people",
+            verification_level: "tier_2",
+            verification_multiplier: 1.5,
+            scp_earned: perParticipantImpact * 1.5,
+            points_earned: 0,
+            points_eligible: true,
+            activity_date: event.event_date,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }));
+
+        // Look up actual roles for each participant
+        for (const entry of derivedEntries) {
+          const { data: userData } = await supabase
+            .from("users")
+            .select("user_type")
+            .eq("user_id", entry.user_id)
+            .single();
+          if (userData) {
+            entry.user_role = userData.user_type;
+            if (userData.user_type === "ambassador") {
+              entry.points_earned = 0;
+              entry.points_eligible = false;
+            }
+          }
+        }
+
+        if (derivedEntries.length > 0) {
+          const { error: insertErr } = await supabase.from("impact_entries").insert(derivedEntries);
+          if (insertErr) {
+            console.error(`⚠️ Error inserting derived entries for event ${event.event_id}:`, insertErr.message);
+          }
+        }
+
+        // Zero out master entry values (impact distributed to participants)
+        await supabase
+          .from("impact_entries")
+          .update({
+            people_impacted: 0,
+            hours_contributed: 0,
+            usd_value: 0,
+            scp_earned: 0,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("event_id", event.event_id)
+          .eq("entry_type", "event_master");
+      } else {
+        // No participants - keep the master entry with full impact for the creator
+        // The event_master entry already exists from event creation
+        log(`   No participants - impact remains with event creator.`);
+      }
+
+      // Update event status to closed (auto-closed events use "closed" status to fit varchar(10))
+      const { error: updateErr } = await supabase
+        .from("impact_events")
+        .update({
+          status: "closed",
+          updated_at: new Date().toISOString()
+        })
+        .eq("event_id", event.event_id);
+
+      if (updateErr) {
+        console.error(`❌ Error updating event ${event.event_id} status:`, updateErr.message);
+        continue;
+      }
+
+      // Notify the event creator
+      try {
+        await createNotification(
+          event.created_by,
+          event.creator_role,
+          "event_auto_closed",
+          "Event Auto-Closed",
+          `Your event "${event.title}" has been automatically closed. ${participantCount > 0 ? `Impact distributed to ${participantCount} participant(s).` : 'The impact has been logged to your account.'}`,
+          "/impactlog-partner.html",
+          null,
+          null,
+          null,
+          null
+        );
+      } catch (notifErr) {
+        console.error(`⚠️ Failed to notify creator of event ${event.event_id}:`, notifErr.message);
+      }
+
+      closedCount++;
+      log(`✅ Event auto-closed: ${event.title} (${participantCount} participants)`);
+    }
+
+    if (closedCount > 0) {
+      log(`✅ Auto-close complete: ${closedCount} event(s) closed.`);
+    }
+  } catch (err) {
+    console.error("❌ Auto-close expired events error:", err.message);
+  }
+}
+
+function scheduleAutoCloseEvents() {
+  const run = () => autoCloseExpiredEvents();
+  // Run 30 seconds after startup, then every 15 minutes
+  setTimeout(run, 30 * 1000);
+  setInterval(run, 15 * 60 * 1000); // Every 15 minutes
+  log("⏰ Event auto-close scheduler: run in 30s, then every 15 min.");
+}
+
+// Admin endpoint to manually trigger auto-close (for testing)
+app.post(
+  "/admin/api/events/auto-close",
+  requireAuth,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      await autoCloseExpiredEvents();
+      return res.json({
+        success: true,
+        message: "Auto-close expired events triggered successfully"
+      });
+    } catch (error) {
+      console.error("❌ Error triggering auto-close:", error);
+      return res.status(500).json({
+        error: "Failed to trigger auto-close",
+        details: error.message
+      });
+    }
+  }
+);
 
 // ============================================
 // ADDITIONAL FIX: Clear any localStorage conflicts
@@ -15700,6 +16501,11 @@ const server = app.listen(PORT, () => {
 
   // Start LinkedIn audit reminder (once per ambassador, after first week)
   scheduleLinkedInAuditReminders();
+
+  // Start auto-close expired events scheduler (creates impact logs automatically)
+  scheduleAutoCloseEvents();
+  log('✅ Event auto-close system initialized (hourly check)');
+
   log(
     `[journey] Journey progress tracking ENABLED with REAL-TIME updates`
   );

@@ -2500,9 +2500,14 @@
         })
         .then(function(blob) {
           const u = URL.createObjectURL(blob);
-          window.open(u, '_blank');
+          const a = document.createElement('a');
+          a.href = u;
+          a.download = 't4l-impact-report-' + new Date().toISOString().slice(0, 7) + '.pdf';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
           setTimeout(function() { URL.revokeObjectURL(u); }, 5000);
-          showToast('Report opened in new tab.', 'success');
+          showToast('Report downloaded successfully.', 'success');
         })
         .catch(function(err) { showToast(err.message || 'Failed to generate PDF.', 'error'); });
     }
