@@ -10,7 +10,30 @@ const { v4: uuidv4 } = require("uuid");
 const cors = require("cors");
 const PDFDocument = require("pdfkit");
 const ExcelJS = require("exceljs");
-const puppeteer = require("puppeteer");
+// Puppeteer setup for both local and Vercel (serverless)
+const puppeteerCore = require("puppeteer-core");
+let chromium;
+try {
+  chromium = require("@sparticuz/chromium");
+} catch {
+  chromium = null;
+}
+
+async function getBrowser() {
+  if (chromium) {
+    // Vercel/serverless environment
+    return puppeteerCore.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
+  } else {
+    // Local development - use system Chrome
+    const puppeteer = require("puppeteer");
+    return puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+  }
+}
 const firebaseAdmin = require("firebase-admin");
 const impactSync = require("./services/impact-sync");
 
@@ -9043,7 +9066,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
 </html>`;
 
     // Generate PDF with Puppeteer
-    const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    const browser = await getBrowser();
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
     const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '0', right: '0', bottom: '0', left: '0' } });
@@ -9639,7 +9662,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
 </html>`;
 
     // Generate PDF with Puppeteer
-    const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    const browser = await getBrowser();
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
     const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '0', right: '0', bottom: '0', left: '0' } });

@@ -17,6 +17,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@sparticuz/chromium": "^143.0.4",
     "@supabase/supabase-js": "^2.86.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
@@ -33,6 +34,7 @@
     "nodemailer": "^7.0.11",
     "pdfkit": "^0.15.0",
     "puppeteer": "^24.39.1",
+    "puppeteer-core": "^24.39.1",
     "resend": "^6.9.3",
     "uuid": "^8.3.2"
   },
