@@ -520,7 +520,7 @@ class EmailService {
       </div>
 
       <div class="cta-wrapper">
-        <a href="${data.review_url}" class="cta-btn" target="_blank" rel="noopener noreferrer">Review &amp; Verify This Entry</a>
+        <a href="${data.review_url}" class="cta-btn" style="color:#ffffff !important;" target="_blank" rel="noopener noreferrer">Review &amp; Verify This Entry</a>
       </div>
       <p class="cta-sub">If you were not expecting this request, you can safely ignore this email.</p>
 
@@ -8902,42 +8902,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
     </div>
   </div>
 
-  <!-- ESG BREAKDOWN -->
-  <div class="section">
-    <div class="section-label">ESG Breakdown</div>
-    <div class="section-title">Impact by ESG Category</div>
-    <div class="section-intro">ESG social value is estimated using validated benchmark rates aligned to SASB and IFRS ISSB frameworks.</div>
-    <div class="esg-grid">
-      <div class="esg-card esg-env" data-letter="E">
-        <div class="esg-type">Environmental</div>
-        <div class="esg-value">${fmtUsd(envValue)}</div>
-        <div class="esg-count">${environmental.length} activities</div>
-      </div>
-      <div class="esg-card esg-soc" data-letter="S">
-        <div class="esg-type">Social</div>
-        <div class="esg-value">${fmtUsd(socValue)}</div>
-        <div class="esg-count">${social.length} activities</div>
-      </div>
-      <div class="esg-card esg-gov" data-letter="G">
-        <div class="esg-type">Governance</div>
-        <div class="esg-value">${fmtUsd(govValue)}</div>
-        <div class="esg-count">${governance.length} activities</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ESG ACTIVITIES -->
-  ${esgEntries.length > 0 ? `
-  <div class="dark-header">
-    <div class="dark-header-label">ESG Activity Detail</div>
-    <div class="dark-header-title">ESG Activities — ${escHtml(orgName)} · ${reportPeriod}</div>
-    <div class="dark-header-sub">Full records for ESG impact activities including description, people reached, and verification level.</div>
-  </div>
-  ${activitiesHtml}` : ""}
-
-  <!-- BUSINESS OUTCOMES - FULL COMPREHENSIVE SECTION -->
+  <!-- BUSINESS OUTCOMES - FULL COMPREHENSIVE SECTION (FIRST) -->
   ${businessEntries.length > 0 ? `
-  <div style="page-break-before: always;"></div>
   <div class="dark-header">
     <div class="dark-header-label">Business Outcomes</div>
     <div class="dark-header-title">8 Wastes Elimination · Operational Value Created</div>
@@ -9010,6 +8976,40 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
     </div>
   </div>
   ` : ""}
+
+  <!-- ESG BREAKDOWN (AFTER BUSINESS) -->
+  <div style="page-break-before: always;"></div>
+  <div class="section">
+    <div class="section-label">ESG Breakdown</div>
+    <div class="section-title">Impact by ESG Category</div>
+    <div class="section-intro">ESG social value is estimated using validated benchmark rates aligned to SASB and IFRS ISSB frameworks.</div>
+    <div class="esg-grid">
+      <div class="esg-card esg-env" data-letter="E">
+        <div class="esg-type">Environmental</div>
+        <div class="esg-value">${fmtUsd(envValue)}</div>
+        <div class="esg-count">${environmental.length} activities</div>
+      </div>
+      <div class="esg-card esg-soc" data-letter="S">
+        <div class="esg-type">Social</div>
+        <div class="esg-value">${fmtUsd(socValue)}</div>
+        <div class="esg-count">${social.length} activities</div>
+      </div>
+      <div class="esg-card esg-gov" data-letter="G">
+        <div class="esg-type">Governance</div>
+        <div class="esg-value">${fmtUsd(govValue)}</div>
+        <div class="esg-count">${governance.length} activities</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESG ACTIVITIES -->
+  ${esgEntries.length > 0 ? `
+  <div class="dark-header">
+    <div class="dark-header-label">ESG Activity Detail</div>
+    <div class="dark-header-title">ESG Activities — ${escHtml(orgName)} · ${reportPeriod}</div>
+    <div class="dark-header-sub">Full records for ESG impact activities including description, people reached, and verification level.</div>
+  </div>
+  ${activitiesHtml}` : ""}
 
   <!-- INTEGRITY & METHODOLOGY -->
   <div class="integrity">
@@ -11663,9 +11663,13 @@ async function autoCloseExpiredEvents() {
       // Combine date and time
       const eventEndDateTime = new Date(`${eventDate}T${endTime}:00`);
 
-      // Check if event has ended
-      if (now <= eventEndDateTime) {
-        continue; // Event hasn't ended yet
+      // Add 24-hour grace period before auto-closing
+      const gracePeriodMs = 24 * 60 * 60 * 1000; // 24 hours
+      const closeAfterDateTime = new Date(eventEndDateTime.getTime() + gracePeriodMs);
+
+      // Check if event has ended + grace period passed
+      if (now <= closeAfterDateTime) {
+        continue; // Event hasn't ended yet or still in grace period
       }
 
       log(`📌 Auto-closing expired event: ${event.title} (${event.event_id})`);
@@ -16502,9 +16506,10 @@ const server = app.listen(PORT, () => {
   // Start LinkedIn audit reminder (once per ambassador, after first week)
   scheduleLinkedInAuditReminders();
 
-  // Start auto-close expired events scheduler (creates impact logs automatically)
-  scheduleAutoCloseEvents();
-  log('✅ Event auto-close system initialized (hourly check)');
+  // DISABLED: Auto-close was removing partner control over events
+  // Events now only close when partner manually clicks the Close button
+  // scheduleAutoCloseEvents();
+  // log('✅ Event auto-close system initialized (hourly check)');
 
   log(
     `[journey] Journey progress tracking ENABLED with REAL-TIME updates`
