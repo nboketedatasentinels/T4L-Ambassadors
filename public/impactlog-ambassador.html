@@ -338,26 +338,8 @@
           </button>
         </div>
 
-        <!-- Tabs -->
-        <div class="tab-container flex gap-2 mb-6 overflow-x-auto pb-2">
-          <button class="tab-btn active" data-tab="events">Shared Impact Events</button>
-          <button class="tab-btn" data-tab="entries">My Impact Entries</button>
-        </div>
-
-        <!-- Tab: Shared Impact Events -->
-        <div id="tab-events" class="tab-content active">
-          <div id="eventsLoading" class="text-center py-8"><div class="spinner"></div><p class="text-gray-500 mt-2 text-sm">Loading events...</p></div>
-          <div id="eventsList" class="space-y-4" style="display:none;"></div>
-          <div id="eventsEmpty" class="empty-state" style="display:none;">
-            <div class="empty-icon"><i class="bx bx-qr-scan text-3xl text-purple-400"></i></div>
-            <h3 class="text-lg font-semibold text-gray-700 mb-2">No Shared Impact Events Yet</h3>
-            <p class="text-gray-500 text-sm mb-4">Scan a partner event QR code to log your participation.</p>
-            <button type="button" onclick="openScanEventQrModal()" class="btn-primary text-sm">Scan Event QR</button>
-          </div>
-        </div>
-
-        <!-- Tab: My Impact Entries -->
-        <div id="tab-entries" class="tab-content">
+        <!-- My Impact Entries -->
+        <div id="tab-entries" class="tab-content active">
           <div id="entriesLoading" class="text-center py-8"><div class="spinner"></div><p class="text-gray-500 mt-2 text-sm">Loading entries...</p></div>
           <div id="entriesList" class="space-y-3" style="display:none;"></div>
           <div id="entriesEmpty" class="empty-state" style="display:none;">
