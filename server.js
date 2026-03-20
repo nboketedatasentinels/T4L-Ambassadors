@@ -9274,6 +9274,88 @@ app.get("/api/ambassador/impact/entries", requireAuth, requireRole("ambassador")
   }
 });
 
+// --- GET /api/ambassador/impact/export - CSV export for ambassador ---
+app.get("/api/ambassador/impact/export", requireAuth, requireRole("ambassador"), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const { from, to, impact_type = "all", esg_category, entry_type = "all" } = req.query || {};
+
+    let query = supabase
+      .from("impact_entries")
+      .select([
+        "entry_id", "impact_type", "title", "description", "activity_date",
+        "esg_category", "user_role", "entry_type", "event_id", "people_impacted",
+        "hours_contributed", "usd_value", "usd_value_source", "impact_unit",
+        "waste_primary", "waste_secondary", "improvement_method", "outcome_statement",
+        "verification_level", "verifier_name", "verifier_role", "verifier_comment",
+        "verified_at", "evidence_link", "sasb_topic", "created_at"
+      ].join(","))
+      .eq("user_id", userId)
+      .order("activity_date", { ascending: true });
+
+    if (from) query = query.gte("activity_date", from);
+    if (to) query = query.lte("activity_date", to);
+    if (impact_type !== "all") query = query.eq("impact_type", impact_type);
+    if (esg_category) query = query.eq("esg_category", esg_category);
+    if (entry_type !== "all") query = query.eq("entry_type", entry_type);
+
+    const { data: entries, error } = await query;
+    if (error) throw error;
+
+    const rows = entries || [];
+    const columns = [
+      "entry_id", "impact_type", "activity_title", "description", "activity_date",
+      "esg_category", "waste_primary", "waste_secondary", "improvement_method",
+      "impact_value", "impact_unit", "hours_contributed", "usd_value", "usd_value_source",
+      "verification_tier", "verifier_name", "verifier_role", "verifier_comment",
+      "verified_at", "evidence_url", "entry_type", "event_id", "user_role", "sasb_topic", "created_at"
+    ];
+
+    const header = columns.join(",");
+    const csvLines = rows.map((e) => {
+      const record = {
+        entry_id: e.entry_id || "",
+        impact_type: e.impact_type || "",
+        activity_title: e.title || "",
+        description: e.description || "",
+        activity_date: e.activity_date || "",
+        esg_category: e.esg_category || "",
+        waste_primary: e.waste_primary || "",
+        waste_secondary: e.waste_secondary || "",
+        improvement_method: e.improvement_method || "",
+        impact_value: e.people_impacted != null ? String(e.people_impacted) : "",
+        impact_unit: e.impact_unit || "",
+        hours_contributed: e.hours_contributed != null ? String(e.hours_contributed) : "",
+        usd_value: e.usd_value != null ? String(e.usd_value) : "",
+        usd_value_source: e.usd_value_source || "",
+        verification_tier: e.verification_level || "",
+        verifier_name: e.verifier_name || "",
+        verifier_role: e.verifier_role || "",
+        verifier_comment: e.verifier_comment || "",
+        verified_at: e.verified_at || "",
+        evidence_url: e.evidence_link || "",
+        entry_type: e.entry_type || "",
+        event_id: e.event_id || "",
+        user_role: e.user_role || "",
+        sasb_topic: e.sasb_topic || "",
+        created_at: e.created_at || ""
+      };
+      return columns.map((col) => {
+        const v = String(record[col] || "");
+        return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+      }).join(",");
+    });
+
+    const csv = [header, ...csvLines].join("\n");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="t4l-ambassador-impactlog-export.csv"');
+    return res.send(csv);
+  } catch (error) {
+    console.error("❌ Ambassador CSV export error:", error);
+    return res.status(500).json({ error: "Failed to generate export", details: error.message });
+  }
+});
+
 // --- GET /api/ambassador/impact/export-pdf ---
 // Professional HTML-based PDF with Puppeteer
 app.get("/api/ambassador/impact/export-pdf", requireAuth, requireRole("ambassador"), async (req, res) => {

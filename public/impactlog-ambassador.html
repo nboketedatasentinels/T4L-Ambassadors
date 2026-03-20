@@ -91,6 +91,11 @@
       /* QR */
       .qr-container { background: white; border: 2px solid #e9d5ff; border-radius: 1rem; padding: 1.5rem; text-align: center; min-height: 200px; display: flex; align-items: center; justify-content: center; }
 
+      /* Success state */
+      .success-container { text-align: center; padding: 2rem; }
+      .success-icon { width: 80px; height: 80px; background: #d1fae5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
+      .success-icon i { font-size: 2.5rem; color: #065f46; }
+
       /* Empty state */
       .empty-state { text-align: center; padding: 3rem 1rem; }
       .empty-icon { width: 80px; height: 80px; background: #f5f3ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; }
@@ -325,6 +330,9 @@
           <button onclick="exportImpactReport()" class="btn-secondary text-sm flex items-center gap-2">
             <i class="bx bx-download"></i> Export Impact Report
           </button>
+          <button onclick="exportImpactCsv()" class="btn-secondary text-sm flex items-center gap-2">
+            <i class="bx bx-file"></i> Export CSV
+          </button>
           <button onclick="openModal('bulkUploadModal')" class="btn-secondary text-sm flex items-center gap-2">
             <i class="bx bx-upload"></i> Bulk Upload (CSV)
           </button>
@@ -412,6 +420,31 @@
         <div class="p-6 pt-0 flex gap-3">
           <button type="button" onclick="closeConfirmEventParticipationModal()" class="btn-secondary flex-1">Cancel</button>
           <button type="button" id="confirmEventParticipationBtn" class="btn-primary flex-1">Confirm Participation</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== YOU'RE IN SUCCESS MODAL ===== -->
+    <div id="youreInModal" class="modal-overlay" onclick="if (event.target === this) closeYoureInModal();">
+      <div class="modal-content" style="max-width: 480px;" onclick="event.stopPropagation();">
+        <div class="p-6">
+          <div class="success-container">
+            <div class="success-icon">
+              <i class="bx bx-check"></i>
+            </div>
+            <h2 class="text-xl font-bold text-gray-900 mb-2" id="youreInTitle">You're In!</h2>
+            <p class="text-gray-600 text-sm mb-6">Your participation has been recorded. Thank you for making a positive impact!</p>
+
+            <div class="bg-purple-50 border border-purple-100 rounded-xl p-5 mb-4">
+              <h3 class="font-semibold text-gray-800 mb-3 text-sm">Share that you participated</h3>
+              <div class="flex flex-wrap gap-2 justify-center">
+                <button onclick="shareParticipationLinkedIn()" class="share-btn share-linkedin"><i class="bx bxl-linkedin"></i> LinkedIn</button>
+                <button onclick="shareParticipationX()" class="share-btn share-x"><i class="bx bxl-twitter"></i> X</button>
+              </div>
+            </div>
+
+            <button type="button" onclick="closeYoureInModal()" class="btn-primary w-full">Done</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2036,6 +2069,30 @@
       closeModal('confirmEventParticipationModal');
     }
 
+    // ---- You're In Modal ----
+    function showYoureInModal() {
+      openModal('youreInModal');
+    }
+
+    function closeYoureInModal() {
+      closeModal('youreInModal');
+      pendingScannedEvent = null;
+    }
+
+    function shareParticipationLinkedIn() {
+      var eventTitle = pendingScannedEvent && pendingScannedEvent.event ? pendingScannedEvent.event.title : 'a Shared Impact Event';
+      var text = "I just participated in " + eventTitle + " through Transformation Leader! Making a positive impact together. #T4L #Impact #ESG";
+      var url = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(window.location.origin) + '&summary=' + encodeURIComponent(text);
+      window.open(url, '_blank', 'width=600,height=400');
+    }
+
+    function shareParticipationX() {
+      var eventTitle = pendingScannedEvent && pendingScannedEvent.event ? pendingScannedEvent.event.title : 'a Shared Impact Event';
+      var text = "I just participated in " + eventTitle + " through @T4Leaders! Making a positive impact together. #T4L #Impact #ESG";
+      var url = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text);
+      window.open(url, '_blank', 'width=600,height=400');
+    }
+
     function confirmEventParticipation(eventId) {
       const btn = document.getElementById('confirmEventParticipationBtn');
       btn.disabled = true;
@@ -2048,8 +2105,8 @@
         .then(function (res) { return res.json().then(function (j) { return { ok: res.ok, status: res.status, json: j }; }); })
         .then(function (r) {
           if (r.ok) {
-            showToast('Participation recorded. You\'ll receive credit after the event is processed.', 'success');
             closeConfirmEventParticipationModal();
+            showYoureInModal();
             if (typeof loadImpactEntries === 'function') loadImpactEntries();
             if (typeof loadEvents === 'function') loadEvents();
           } else {
@@ -2510,6 +2567,34 @@
           showToast('Report downloaded successfully.', 'success');
         })
         .catch(function(err) { showToast(err.message || 'Failed to generate PDF.', 'error'); });
+    }
+
+    // ---- Export Impact CSV ----
+    function exportImpactCsv() {
+      const start = new Date(new Date().getFullYear(), 0, 1);
+      const end = new Date();
+      const from = start.toISOString().slice(0, 10);
+      const to = end.toISOString().slice(0, 10);
+      const url = '/api/ambassador/impact/export?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to) + '&impact_type=all&entry_type=all';
+      showToast('Generating CSV export...', 'info');
+      fetch(url, { credentials: 'include' })
+        .then(function(res) {
+          if (!res.ok) return res.json().then(function(j) { return Promise.reject(new Error(j.error || res.statusText)); });
+          return res.text();
+        })
+        .then(function(csv) {
+          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+          const u = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = u;
+          a.download = 't4l-ambassador-impactlog-export.csv';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function() { URL.revokeObjectURL(u); }, 5000);
+          showToast('CSV download started.', 'success');
+        })
+        .catch(function(err) { showToast(err.message || 'Failed to export CSV.', 'error'); });
     }
 
     </script>
