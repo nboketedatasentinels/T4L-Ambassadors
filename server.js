@@ -315,9 +315,7 @@ class EmailService {
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${
-              process.env.APP_URL || "http://localhost:3000"
-            }/signin" class="button">
+            <a href="https://ambassadors.t4leader.com/signin" class="button" style="color: white !important;">
               Sign In Now →
             </a>
           </div>
@@ -372,9 +370,7 @@ class EmailService {
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${
-              process.env.APP_URL || "http://localhost:3000"
-            }/partner-signin" class="button">
+            <a href="https://ambassadors.t4leader.com/partner-signin" class="button" style="color: white !important;">
               Access Partner Dashboard →
             </a>
           </div>
@@ -679,7 +675,7 @@ class EmailService {
           </div>
           <p class="meta" style="margin-top: 14px;">You will be able to confirm or decline this figure and optionally leave a short comment.</p>
           <div style="margin: 20px 0 8px; text-align: center;">
-            <a href="${data.review_url}" class="button" target="_blank" rel="noopener noreferrer">Review &amp; verify entry</a>
+            <a href="${data.review_url}" class="button" style="color: white !important;" target="_blank" rel="noopener noreferrer">Review &amp; verify entry</a>
           </div>
           <p class="meta" style="text-align: center;">If you did not expect this email you can safely ignore it.</p>
         </div>
