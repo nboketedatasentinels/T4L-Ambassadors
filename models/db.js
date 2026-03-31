@@ -725,6 +725,23 @@ async function deleteUser(id, role = 'ambassador') {
 
     const userId = roleData.user_id;
 
+    // Delete related records first to avoid FK constraint errors
+    if (role === 'ambassador') {
+      // Delete journey progress
+      await supabase.from('journey_progress').delete().eq('ambassador_id', id);
+
+      // Delete linkedin audits
+      await supabase.from('linkedin_audits').delete().eq('ambassador_id', id);
+
+      // Delete articles
+      await supabase.from('articles').delete().eq('ambassador_id', id);
+
+      // Delete service requests
+      await supabase.from('service_requests').delete().eq('ambassador_id', id);
+
+      log('✅ Deleted related ambassador records');
+    }
+
     // Explicitly delete ALL role rows for this user first to avoid FK issues
     const { error: roleDeleteError } = await supabase
       .from(roleTable)
