@@ -8562,33 +8562,6 @@ app.get("/api/partner/impact/export-pdf", requireAuth, requireRole("partner"), a
       { label: 'Governance', value: govValue, color: '#681fa5', count: governance.length }
     ].filter(d => d.value > 0);
 
-    // Collect all entries with evidence links for the appendix
-    const entriesWithEvidence = list
-      .filter(e => e.evidence_link && e.evidence_link.trim())
-      .map((e, idx) => ({
-        refNum: idx + 1,
-        title: e.title || e.outcome_statement || 'Activity',
-        type: e.impact_type === 'business_outcome' ? 'Business' : 'ESG',
-        category: e.impact_type === 'business_outcome' ? getWasteLabel(e.waste_primary) : getEsgLabel(e.esg_category),
-        date: fmtDate(e.activity_date),
-        value: fmtUsd(e.usd_value),
-        url: e.evidence_link
-      }));
-
-    // Helper to render evidence icon
-    const evidenceIcon = (entry, refNum) => {
-      if (!entry.evidence_link || !entry.evidence_link.trim()) return '';
-      return `<a href="${escHtml(entry.evidence_link)}" target="_blank" class="evidence-icon" title="View Evidence [${refNum}]">
-        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM8.5 13a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1H9a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1H9a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1H9a.5.5 0 0 1-.5-.5z"/></svg>
-      </a>`;
-    };
-
-    // Create a map for quick evidence reference lookup
-    const evidenceRefMap = new Map();
-    entriesWithEvidence.forEach(e => {
-      evidenceRefMap.set(e.url, e.refNum);
-    });
-
     // Format dates
     const reportPeriod = new Date(from).toLocaleDateString("en-US", { month: "long", year: "numeric" });
     const generatedDate = now.toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" });
@@ -8604,6 +8577,25 @@ app.get("/api/partner/impact/export-pdf", requireAuth, requireRole("partner"), a
     const getVerClass = (level) => level === "tier_3" ? "l3" : level === "tier_2" ? "l2" : "l1";
     const getEsgTag = (cat) => cat === "environmental" ? "env" : cat === "governance" ? "gov" : "soc";
     const getEsgLabel = (cat) => (cat || "").charAt(0).toUpperCase() + (cat || "").slice(1);
+
+    // Collect all entries with evidence links for the appendix
+    const entriesWithEvidence = list
+      .filter(e => e.evidence_link && e.evidence_link.trim())
+      .map((e, idx) => ({
+        refNum: idx + 1,
+        title: e.title || e.outcome_statement || 'Activity',
+        type: e.impact_type === 'business_outcome' ? 'Business' : 'ESG',
+        category: e.impact_type === 'business_outcome' ? getWasteLabel(e.waste_primary) : getEsgLabel(e.esg_category),
+        date: fmtDate(e.activity_date),
+        value: fmtUsd(e.usd_value),
+        url: e.evidence_link
+      }));
+
+    // Create a map for quick evidence reference lookup
+    const evidenceRefMap = new Map();
+    entriesWithEvidence.forEach(e => {
+      evidenceRefMap.set(e.url, e.refNum);
+    });
 
     // Build activity cards HTML
     const activitiesHtml = esgEntries.slice(0, 12).map((e, idx) => {
