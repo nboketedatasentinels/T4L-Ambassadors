@@ -8562,6 +8562,33 @@ app.get("/api/partner/impact/export-pdf", requireAuth, requireRole("partner"), a
       { label: 'Governance', value: govValue, color: '#681fa5', count: governance.length }
     ].filter(d => d.value > 0);
 
+    // Collect all entries with evidence links for the appendix
+    const entriesWithEvidence = list
+      .filter(e => e.evidence_link && e.evidence_link.trim())
+      .map((e, idx) => ({
+        refNum: idx + 1,
+        title: e.title || e.outcome_statement || 'Activity',
+        type: e.impact_type === 'business_outcome' ? 'Business' : 'ESG',
+        category: e.impact_type === 'business_outcome' ? getWasteLabel(e.waste_primary) : getEsgLabel(e.esg_category),
+        date: fmtDate(e.activity_date),
+        value: fmtUsd(e.usd_value),
+        url: e.evidence_link
+      }));
+
+    // Helper to render evidence icon
+    const evidenceIcon = (entry, refNum) => {
+      if (!entry.evidence_link || !entry.evidence_link.trim()) return '';
+      return `<a href="${escHtml(entry.evidence_link)}" target="_blank" class="evidence-icon" title="View Evidence [${refNum}]">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM8.5 13a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1H9a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1H9a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1H9a.5.5 0 0 1-.5-.5z"/></svg>
+      </a>`;
+    };
+
+    // Create a map for quick evidence reference lookup
+    const evidenceRefMap = new Map();
+    entriesWithEvidence.forEach(e => {
+      evidenceRefMap.set(e.url, e.refNum);
+    });
+
     // Format dates
     const reportPeriod = new Date(from).toLocaleDateString("en-US", { month: "long", year: "numeric" });
     const generatedDate = now.toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" });
@@ -8954,6 +8981,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
 .activity-table tr:nth-child(even) { background: #f8fafc; }
 .activity-table .activity-title-cell { font-weight: 600; color: #271b48; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* EVIDENCE LINKS */
+.evidence-icon { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #eff6ff; border-radius: 4px; margin-left: 4px; vertical-align: middle; text-decoration: none; }
+.evidence-icon svg { width: 10px; height: 10px; fill: #2563eb; }
+.evidence-link { color: #2563eb; text-decoration: none; font-size: 8px; }
+.evidence-link:hover { text-decoration: underline; }
+
+/* EVIDENCE APPENDIX */
+.appendix-section { padding: 20px 32px; }
+.appendix-title { font-size: 16px; font-weight: 700; color: #271b48; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.appendix-title svg { width: 20px; height: 20px; fill: #681fa5; }
+.evidence-list { list-style: none; padding: 0; margin: 0; }
+.evidence-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 12px; border-bottom: 1px solid #e2e8f0; page-break-inside: avoid; }
+.evidence-item:nth-child(even) { background: #f8fafc; }
+.evidence-num { width: 24px; height: 24px; border-radius: 50%; background: #681fa5; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+.evidence-content { flex: 1; }
+.evidence-activity { font-size: 10px; font-weight: 600; color: #271b48; margin-bottom: 2px; }
+.evidence-meta { font-size: 8px; color: #64748b; margin-bottom: 4px; }
+.evidence-url { font-size: 9px; color: #2563eb; word-break: break-all; text-decoration: none; }
+.evidence-url:hover { text-decoration: underline; }
+
 /* TOP OUTCOMES */
 .top-outcomes-section { margin-bottom: 16px; }
 .top-outcomes-title { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #681fa5; margin-bottom: 12px; }
@@ -9153,23 +9200,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
       <table class="activity-table">
         <thead>
           <tr>
-            <th style="width: 30%;">Outcome</th>
-            <th style="width: 15%;">Waste Type</th>
-            <th style="width: 12%;">Date</th>
-            <th style="width: 13%;">Method</th>
-            <th style="width: 15%;">Verification</th>
+            <th style="width: 28%;">Outcome</th>
+            <th style="width: 13%;">Waste Type</th>
+            <th style="width: 11%;">Date</th>
+            <th style="width: 12%;">Method</th>
+            <th style="width: 13%;">Verification</th>
+            <th style="width: 8%;">Ref</th>
             <th style="width: 15%;">Value</th>
           </tr>
         </thead>
         <tbody>
           ${businessEntries.map(e => {
             const verLevel = e.verification_level || "tier_1";
+            const refNum = e.evidence_link ? evidenceRefMap.get(e.evidence_link) : null;
             return `<tr>
-              <td class="activity-title-cell">${escHtml((e.outcome_statement || e.title || "Business Outcome").slice(0, 50))}${(e.outcome_statement || e.title || "").length > 50 ? '...' : ''}</td>
+              <td class="activity-title-cell">${escHtml((e.outcome_statement || e.title || "Business Outcome").slice(0, 45))}${(e.outcome_statement || e.title || "").length > 45 ? '...' : ''}</td>
               <td>${getWasteLabel(e.waste_primary || 'N/A')}</td>
               <td>${fmtDate(e.activity_date)}</td>
-              <td>${escHtml((e.improvement_method || 'N/A').slice(0, 20))}</td>
-              <td><span class="ver-pill ${getVerClass(verLevel)}">${getVerLabel(verLevel)}</span></td>
+              <td>${escHtml((e.improvement_method || 'N/A').slice(0, 15))}</td>
+              <td><span class="ver-pill ${getVerClass(verLevel)}">${verLevel === "tier_3" ? "L3" : verLevel === "tier_2" ? "L2" : "L1"}</span></td>
+              <td>${refNum ? `<a href="${escHtml(e.evidence_link)}" target="_blank" class="evidence-icon" title="Evidence #${refNum}"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></a><span style="font-size:7px;color:#64748b;">#${refNum}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
               <td>${fmtUsd(e.usd_value)}</td>
             </tr>`;
           }).join('')}
@@ -9224,25 +9274,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
     <table class="activity-table">
       <thead>
         <tr>
-          <th style="width: 25%;">Activity</th>
-          <th style="width: 12%;">Category</th>
-          <th style="width: 12%;">Date</th>
-          <th style="width: 10%;">Hours</th>
-          <th style="width: 12%;">People</th>
-          <th style="width: 14%;">Verification</th>
+          <th style="width: 23%;">Activity</th>
+          <th style="width: 11%;">Category</th>
+          <th style="width: 11%;">Date</th>
+          <th style="width: 9%;">Hours</th>
+          <th style="width: 10%;">People</th>
+          <th style="width: 12%;">Verification</th>
+          <th style="width: 9%;">Ref</th>
           <th style="width: 15%;">Value</th>
         </tr>
       </thead>
       <tbody>
         ${esgEntries.map(e => {
           const verLevel = e.verification_level || "tier_1";
+          const refNum = e.evidence_link ? evidenceRefMap.get(e.evidence_link) : null;
           return `<tr>
-            <td class="activity-title-cell">${escHtml((e.title || "Activity").slice(0, 40))}${(e.title || "").length > 40 ? '...' : ''}</td>
+            <td class="activity-title-cell">${escHtml((e.title || "Activity").slice(0, 35))}${(e.title || "").length > 35 ? '...' : ''}</td>
             <td><span class="esg-tag ${getEsgTag(e.esg_category)}">${getEsgLabel(e.esg_category)}</span></td>
             <td>${fmtDate(e.activity_date)}</td>
             <td>${fmtNum(e.hours_contributed)}</td>
             <td>${fmtNum(e.people_impacted)}</td>
             <td><span class="ver-pill ${getVerClass(verLevel)}">${verLevel === "tier_3" ? "L3" : verLevel === "tier_2" ? "L2" : "L1"}</span></td>
+            <td>${refNum ? `<a href="${escHtml(e.evidence_link)}" target="_blank" class="evidence-icon" title="Evidence #${refNum}"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></a><span style="font-size:7px;color:#64748b;">#${refNum}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
             <td>${fmtUsd(e.usd_value)}</td>
           </tr>`;
         }).join('')}
@@ -9256,6 +9309,38 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
       </div>
     </div>
   </div>` : ""}
+
+  <!-- EVIDENCE APPENDIX -->
+  ${entriesWithEvidence.length > 0 ? `
+  <div style="page-break-before: always;"></div>
+  <div class="dark-header">
+    <div class="dark-header-label">Appendix</div>
+    <div class="dark-header-title">Evidence & Supporting Documentation</div>
+    <div class="dark-header-sub">${entriesWithEvidence.length} activities include supporting evidence links. Click any link to view the documentation.</div>
+  </div>
+  <div class="appendix-section">
+    <ul class="evidence-list">
+      ${entriesWithEvidence.map(e => `
+        <li class="evidence-item">
+          <div class="evidence-num">${e.refNum}</div>
+          <div class="evidence-content">
+            <div class="evidence-activity">${escHtml(e.title.slice(0, 60))}${e.title.length > 60 ? '...' : ''}</div>
+            <div class="evidence-meta">${e.type} · ${e.category} · ${e.date} · ${e.value}</div>
+            <a href="${escHtml(e.url)}" target="_blank" class="evidence-url">${escHtml(e.url)}</a>
+          </div>
+        </li>
+      `).join('')}
+    </ul>
+
+    <div style="margin-top: 20px; padding: 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;">
+      <div style="font-size: 9px; font-weight: 600; color: #1d4ed8; margin-bottom: 4px;">📎 About Evidence Links</div>
+      <div style="font-size: 8px; color: #475569; line-height: 1.5;">
+        Evidence links provide supporting documentation for impact activities. Links may point to photos, documents, presentations, videos, or external verification sources.
+        All links are clickable in this PDF. For Level 2 (Manager Verified) and Level 3 (Externally Audited) activities, evidence documentation is required for verification.
+      </div>
+    </div>
+  </div>
+  ` : ''}
 
   <!-- INTEGRITY & METHODOLOGY -->
   <div class="integrity">
