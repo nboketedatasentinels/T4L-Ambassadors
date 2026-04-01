@@ -9727,9 +9727,12 @@ app.get("/api/ambassador/impact/export-pdf", requireAuth, requireRole("ambassado
 
     // Calculate stats
     const esgEntries = list.filter((e) => (e.impact_type || "esg") === "esg");
+    const bizEntries = list.filter((e) => e.impact_type === "business_outcome");
     const totalPeople = esgEntries.reduce((s, e) => s + (parseFloat(e.people_impacted) || 0), 0);
     const totalHours = list.reduce((s, e) => s + (parseFloat(e.hours_contributed) || 0), 0);
     const totalEsgValue = esgEntries.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+    const totalBizValue = bizEntries.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+    const totalCombinedValue = totalEsgValue + totalBizValue;
 
     const tier1 = list.filter((e) => (e.verification_level || "tier_1") === "tier_1").length;
     const tier2 = list.filter((e) => e.verification_level === "tier_2").length;
@@ -10084,14 +10087,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
     <div class="section-label">Summary</div>
     <div class="section-title">Period at a Glance</div>
     <div class="narrative">
-      <div class="narrative-text">In ${escHtml(reportPeriod)}, ${escHtml(ambassadorName)} delivered <strong>${fmtUsd(totalEsgValue)} in estimated ESG social value</strong> across ${list.length} activities — reaching ${fmtNum(totalPeople)} people through ${fmtNum(totalHours)} hours of work spanning Environmental, Social, and Governance initiatives.</div>
+      <div class="narrative-text">In ${escHtml(reportPeriod)}, ${escHtml(ambassadorName)} delivered <strong>${fmtUsd(totalCombinedValue)} in total impact value</strong> (${fmtUsd(totalEsgValue)} ESG + ${fmtUsd(totalBizValue)} Business) across ${list.length} activities — reaching ${fmtNum(totalPeople)} people through ${fmtNum(totalHours)} hours of work.</div>
       <div class="narrative-sub">${tier3} externally audited (Level 3) · ${tier2} T4L verified (Level 2) · ${tier1} self-reported (Level 1).</div>
     </div>
     <div class="hero-stats">
       <div class="hero-stat primary">
-        <div class="hero-stat-label">Total ESG Social Value</div>
-        <div class="hero-stat-value">${fmtUsd(totalEsgValue)}</div>
-        <div class="hero-stat-sub">Benchmark-rated</div>
+        <div class="hero-stat-label">Total Impact Value (ESG + Business)</div>
+        <div class="hero-stat-value">${fmtUsd(totalCombinedValue)}</div>
+        <div class="hero-stat-sub">ESG: ${fmtUsd(totalEsgValue)} · Business: ${fmtUsd(totalBizValue)}</div>
       </div>
       <div class="hero-stat">
         <div class="hero-stat-label">People Reached</div>
@@ -10154,6 +10157,45 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
         <div class="esg-count">${governance.length} activities</div>
       </div>
     </div>
+  </div>
+
+  <!-- BUSINESS OUTCOMES -->
+  <div class="section">
+    <div class="section-label">Business Outcomes</div>
+    <div class="section-title">Operational Value Created</div>
+    <div class="section-intro">Business Outcome values represent actual operational savings or revenue created, entered directly by the ambassador.</div>
+
+    <table class="activity-table">
+      <thead>
+        <tr>
+          <th style="width: 35%;">Outcome</th>
+          <th style="width: 20%;">USD Saved / Created</th>
+          <th style="width: 25%;">Waste Category</th>
+          <th style="width: 20%;">Method</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${bizEntries.length === 0 ? `
+          <tr><td colspan="4" style="text-align:center; color:#9ca3af;">No Business Outcome entries yet.</td></tr>
+        ` : bizEntries.slice(0, 25).map(e => `
+          <tr>
+            <td class="activity-title-cell">${escHtml((e.outcome_statement || e.title || "Business outcome").slice(0, 50))}${(e.outcome_statement || e.title || "").length > 50 ? '...' : ''}</td>
+            <td style="font-weight: 600; color: #F4801A;">${fmtUsd(e.usd_value)}</td>
+            <td>${escHtml(e.waste_primary || '')}${e.waste_secondary ? ' / ' + escHtml(e.waste_secondary) : ''}</td>
+            <td>${escHtml(e.improvement_method || '')}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+
+    ${bizEntries.length > 0 ? `
+    <div style="margin-top: 12px; padding: 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 10px; font-weight: 600; color: #1d4ed8;">Business Outcomes Total (${bizEntries.length} entries)</span>
+        <span style="font-size: 14px; font-weight: 700; color: #1d4ed8;">${fmtUsd(totalBizValue)}</span>
+      </div>
+    </div>
+    ` : ''}
   </div>
 
   <!-- ACTIVITY DETAIL -->
@@ -10238,8 +10280,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
 
   <!-- INTEGRITY -->
   <div class="integrity">
-    <h3>Data Integrity Statement</h3>
-    <p>Impact values are estimated social value figures — not cash disbursements or audited financial outcomes. "People Reached" represents community reach, not unique individuals. All activities are self-reported by trained T4L Ambassadors through the Transformation Leader Platform. The verification_context field on every record distinguishes Ambassador self-reports, T4L team confirmation, and external auditor sign-off. To discuss L3 verification for funder submission, contact partners@t4leader.com.</p>
+    <h3>Methodology &amp; Disclosure</h3>
+    <p><strong>ESG Social Value (Benchmark-based).</strong> USD social value figures are calculated using published benchmark rates applied to verified impact quantities. Impact-based values use sector-specific cost proxies (e.g. training cost per participant from ATD, social cost of carbon from US EPA IWG). Volunteer time is valued at the Independent Sector's nationally recognised rate ($33.49/hour, 2024).</p>
+    <p style="margin-top: 6px;"><strong>Business Outcomes (Operational Value).</strong> Business Outcome values are entered directly by ambassadors and represent actual operational savings or revenue created. Where a manager or finance contact has verified the figure, this is noted in the verification status (Tier 2).</p>
+    <p style="margin-top: 6px;">Reports produced from this Impact Log are intended for transparent internal and stakeholder communication. They do not constitute audited financial statements or ESG assurance reports. To discuss L3 verification for funder submission, contact partners@t4leader.com.</p>
   </div>
 
   <!-- FOOTER -->
