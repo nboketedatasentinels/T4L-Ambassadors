@@ -10425,9 +10425,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
         </tr>
       </thead>
       <tbody>
-        ${bizEntries.length === 0 ? `
+        ${businessEntries.length === 0 ? `
           <tr><td colspan="4" style="text-align:center; color:#9ca3af;">No Business Outcome entries yet.</td></tr>
-        ` : bizEntries.slice(0, 25).map(e => `
+        ` : businessEntries.slice(0, 25).map(e => `
           <tr>
             <td class="activity-title-cell">${escHtml((e.outcome_statement || e.title || "Business outcome").slice(0, 50))}${(e.outcome_statement || e.title || "").length > 50 ? '...' : ''}</td>
             <td style="font-weight: 600; color: #F4801A;">${fmtUsd(e.usd_value)}</td>
@@ -10438,11 +10438,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
       </tbody>
     </table>
 
-    ${bizEntries.length > 0 ? `
+    ${businessEntries.length > 0 ? `
     <div style="margin-top: 12px; padding: 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span style="font-size: 10px; font-weight: 600; color: #1d4ed8;">Business Outcomes Total (${bizEntries.length} entries)</span>
-        <span style="font-size: 14px; font-weight: 700; color: #1d4ed8;">${fmtUsd(totalBizValue)}</span>
+        <span style="font-size: 10px; font-weight: 600; color: #1d4ed8;">Business Outcomes Total (${businessEntries.length} entries)</span>
+        <span style="font-size: 14px; font-weight: 700; color: #1d4ed8;">${fmtUsd(totalBusinessValue)}</span>
       </div>
     </div>
     ` : ''}
