@@ -627,7 +627,7 @@ class EmailService {
   }
 
   async sendBusinessVerificationRequestEmail(data) {
-    // data: { verifier_name, verifier_email, partner_name, entry_title, usd_value, outcome_statement, review_url, is_external_audit, is_esg, esg_category, people_impacted, hours_contributed }
+    // data: { verifier_name, verifier_email, partner_name, entry_title, usd_value, outcome_statement, review_url, is_external_audit, is_esg, esg_category, people_impacted, hours_contributed, evidence_link }
 
     const isEsg = data.is_esg || false;
     const isExternalAudit = data.is_external_audit || false;
@@ -640,6 +640,14 @@ class EmailService {
     const subject = isExternalAudit
       ? `External Audit Request: ${entryType} entry from ${data.partner_name || "T4L Ambassador"}`
       : `Please verify ${entryType} entry from ${data.partner_name || "T4L Partner"}`;
+
+    // Evidence link HTML
+    const evidenceLinkHtml = data.evidence_link ? `
+      <div style="margin-top: 10px;">
+        <div class="label">Evidence Link</div>
+        <div class="value"><a href="${data.evidence_link}" target="_blank" rel="noopener noreferrer" style="color: #4b0d7f; text-decoration: underline;">${data.evidence_link}</a></div>
+      </div>
+    ` : '';
 
     // Build the details card based on entry type
     let detailsHtml = '';
@@ -669,6 +677,7 @@ class EmailService {
           <div class="label">Estimated Social Value</div>
           <div class="value">$${Number(data.usd_value || 0).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
         </div>
+        ${evidenceLinkHtml}
       `;
     } else {
       detailsHtml = `
@@ -684,6 +693,7 @@ class EmailService {
           <div class="label">USD saved / created</div>
           <div class="value">$${Number(data.usd_value || 0).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
         </div>
+        ${evidenceLinkHtml}
       `;
     }
 
@@ -701,9 +711,9 @@ class EmailService {
       <head>
         <style>
           body { font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #111827; background: #f9fafb; }
-          .header { background: linear-gradient(135deg, ${isEsg ? '#0891b2 0%, #06b6d4' : '#4b0d7f 0%, #7c3aed'} 100%); color: white; padding: 24px 28px; }
+          .header { background: linear-gradient(135deg, #4b0d7f 0%, #7c3aed 100%); color: white; padding: 24px 28px; }
           .content { padding: 24px 28px; background: white; }
-          .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: ${isEsg ? '#ecfeff' : '#eef2ff'}; color: ${isEsg ? '#0891b2' : '#4f46e5'}; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 12px; }
+          .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #eef2ff; color: #4f46e5; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 12px; }
           .button { display: inline-block; padding: 10px 20px; background: #16a34a; color: white; text-decoration: none; border-radius: 999px; font-weight: 600; font-size: 14px; }
           .meta { font-size: 13px; color: #6b7280; margin-top: 4px; }
           .footer { font-size: 12px; color: #9ca3af; padding: 16px 28px 24px; text-align: center; }
@@ -7610,6 +7620,7 @@ app.post("/api/impact/entries", requireAuth, async (req, res) => {
             esg_category: entry.esg_category,
             people_impacted: entry.people_impacted,
             hours_contributed: entry.hours_contributed,
+            evidence_link: entry.evidence_link,
           });
         } catch (emailError) {
           console.error("❌ Failed to send ESG verification email:", emailError);
@@ -7656,6 +7667,7 @@ app.post("/api/impact/entries", requireAuth, async (req, res) => {
           esg_category: entry.esg_category,
           people_impacted: entry.people_impacted,
           hours_contributed: entry.hours_contributed,
+          evidence_link: entry.evidence_link,
         });
         console.log("[esg-entry] External audit email sent to", auditor_email);
       } catch (emailError) {
@@ -8304,6 +8316,7 @@ app.post("/api/partner/impact/business-entry", requireAuth, requireRole("partner
             usd_value: entry.usd_value,
             outcome_statement: entry.outcome_statement,
             review_url: reviewUrl,
+            evidence_link: entry.evidence_link,
           });
           emailResult.sent = true;
           log("📧 Verification email result:", JSON.stringify(emailResult));
@@ -9634,6 +9647,7 @@ app.post("/api/ambassador/impact/business-entry", requireAuth, requireRole("amba
               usd_value: entry.usd_value,
               outcome_statement: entry.outcome_statement,
               review_url: reviewUrl,
+              evidence_link: entry.evidence_link,
             });
             console.log("[biz-entry] Verification email queued for", verifier_email);
           } catch (e) {
@@ -9681,6 +9695,7 @@ app.post("/api/ambassador/impact/business-entry", requireAuth, requireRole("amba
               outcome_statement: entry.outcome_statement,
               review_url: reviewUrl,
               is_external_audit: true,
+              evidence_link: entry.evidence_link,
             });
             console.log("[biz-entry] External audit email queued for", auditor_email);
           } catch (e) {
