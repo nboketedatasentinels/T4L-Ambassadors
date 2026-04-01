@@ -10369,8 +10369,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
   </div>
   ` : ""}
 
-  <!-- ESG BREAKDOWN -->
-  <div style="page-break-before: always;"></div>
+  <!-- ESG BREAKDOWN (Part of Impact Summary - Pages 1-2) -->
   <div class="section">
     <div class="section-label">ESG Breakdown</div>
     <div class="section-title">Impact by ESG Category</div>
@@ -10379,13 +10378,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
     ${esgPieChartHtml ? `
     <div class="waste-section" style="margin-bottom: 16px;">
       <div class="waste-section-title">ESG Value Distribution</div>
-      ${esgPieChartHtml}
-    </div>
-    ` : ''}
-
-    ${esgPieChartHtml ? `
-    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-bottom: 16px;">
-      <div style="font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #F4801A; margin-bottom: 12px;">ESG Value Distribution</div>
       ${esgPieChartHtml}
     </div>
     ` : ''}
@@ -10409,48 +10401,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
     </div>
   </div>
 
-  <!-- BUSINESS OUTCOMES -->
-  <div class="section">
-    <div class="section-label">Business Outcomes</div>
-    <div class="section-title">Operational Value Created</div>
-    <div class="section-intro">Business Outcome values represent actual operational savings or revenue created, entered directly by the ambassador.</div>
-
-    <table class="activity-table">
-      <thead>
-        <tr>
-          <th style="width: 35%;">Outcome</th>
-          <th style="width: 20%;">USD Saved / Created</th>
-          <th style="width: 25%;">Waste Category</th>
-          <th style="width: 20%;">Method</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${businessEntries.length === 0 ? `
-          <tr><td colspan="4" style="text-align:center; color:#9ca3af;">No Business Outcome entries yet.</td></tr>
-        ` : businessEntries.slice(0, 25).map(e => `
-          <tr>
-            <td class="activity-title-cell">${escHtml((e.outcome_statement || e.title || "Business outcome").slice(0, 50))}${(e.outcome_statement || e.title || "").length > 50 ? '...' : ''}</td>
-            <td style="font-weight: 600; color: #F4801A;">${fmtUsd(e.usd_value)}</td>
-            <td>${escHtml(e.waste_primary || '')}${e.waste_secondary ? ' / ' + escHtml(e.waste_secondary) : ''}</td>
-            <td>${escHtml(e.improvement_method || '')}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-
-    ${businessEntries.length > 0 ? `
-    <div style="margin-top: 12px; padding: 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span style="font-size: 10px; font-weight: 600; color: #1d4ed8;">Business Outcomes Total (${businessEntries.length} entries)</span>
-        <span style="font-size: 14px; font-weight: 700; color: #1d4ed8;">${fmtUsd(totalBusinessValue)}</span>
-      </div>
-    </div>
-    ` : ''}
-  </div>
-
-  <!-- ACTIVITY DETAIL -->
+  <!-- ACTIVITY DETAIL & EVIDENCE SECTION (Pages 3+) -->
+  <div style="page-break-before: always;"></div>
   <div class="dark-header">
-    <div class="dark-header-label">Activity Detail</div>
+    <div class="dark-header-label">Activity Detail & Evidence</div>
     <div class="dark-header-title">ESG Activities — ${escHtml(ambassadorName)} · ${reportPeriod}</div>
     <div class="dark-header-sub">Complete records for each logged activity with verification level and evidence links.</div>
   </div>
