@@ -9683,7 +9683,7 @@ app.get("/api/ambassador/impact/export", requireAuth, requireRole("ambassador"),
 });
 
 // --- GET /api/ambassador/impact/export-pdf ---
-// Professional HTML-based PDF with Puppeteer
+// Professional HTML-based PDF with Puppeteer (matches partner PDF structure exactly)
 app.get("/api/ambassador/impact/export-pdf", requireAuth, requireRole("ambassador"), async (req, res) => {
   try {
     const userId = req.auth.userId;
@@ -9725,14 +9725,14 @@ app.get("/api/ambassador/impact/export-pdf", requireAuth, requireRole("ambassado
       : "AM";
     const ambassadorRole = ambassador?.professional_headline || "T4L Ambassador";
 
-    // Calculate stats
+    // Calculate stats (same as partner)
     const esgEntries = list.filter((e) => (e.impact_type || "esg") === "esg");
-    const bizEntries = list.filter((e) => e.impact_type === "business_outcome");
+    const businessEntries = list.filter((e) => e.impact_type === "business_outcome");
     const totalPeople = esgEntries.reduce((s, e) => s + (parseFloat(e.people_impacted) || 0), 0);
     const totalHours = list.reduce((s, e) => s + (parseFloat(e.hours_contributed) || 0), 0);
     const totalEsgValue = esgEntries.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
-    const totalBizValue = bizEntries.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
-    const totalCombinedValue = totalEsgValue + totalBizValue;
+    const totalBusinessValue = businessEntries.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+    const totalCombined = totalEsgValue + totalBusinessValue;
 
     const tier1 = list.filter((e) => (e.verification_level || "tier_1") === "tier_1").length;
     const tier2 = list.filter((e) => e.verification_level === "tier_2").length;
@@ -9745,6 +9745,28 @@ app.get("/api/ambassador/impact/export-pdf", requireAuth, requireRole("ambassado
     const envValue = environmental.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
     const socValue = social.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
     const govValue = governance.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+
+    // BUSINESS OUTCOMES - Waste Category Breakdown (8 Wastes)
+    const wasteCategories = ['DEF', 'OVR', 'WAI', 'NUT', 'TRA', 'INV', 'MOT', 'EXP'];
+    const wasteBreakdown = {};
+    const wasteTotals = {};
+    wasteCategories.forEach(waste => {
+      wasteBreakdown[waste] = businessEntries.filter(e => e.waste_primary === waste);
+      wasteTotals[waste] = wasteBreakdown[waste].reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+    });
+
+    // Business Verification Breakdown
+    const bizTier1 = businessEntries.filter(e => (e.verification_level || "tier_1") === "tier_1");
+    const bizTier2 = businessEntries.filter(e => e.verification_level === "tier_2");
+    const bizTier3 = businessEntries.filter(e => e.verification_level === "tier_3");
+    const bizTier1Value = bizTier1.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+    const bizTier2Value = bizTier2.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+    const bizTier3Value = bizTier3.reduce((s, e) => s + (parseFloat(e.usd_value) || 0), 0);
+
+    // Top 5 Business Outcomes by value
+    const topBusinessOutcomes = [...businessEntries]
+      .sort((a, b) => (parseFloat(b.usd_value) || 0) - (parseFloat(a.usd_value) || 0))
+      .slice(0, 5);
 
     // Format dates
     const reportPeriod = new Date(from).toLocaleDateString("en-US", { month: "long", year: "numeric" });
@@ -9763,13 +9785,14 @@ app.get("/api/ambassador/impact/export-pdf", requireAuth, requireRole("ambassado
     const getEsgLabel = (cat) => (cat || "").charAt(0).toUpperCase() + (cat || "").slice(1);
 
     // Collect all entries with evidence links for the appendix
+    // Collect all entries with evidence links for the appendix
     const entriesWithEvidence = list
       .filter(e => (e.evidence_link || e.evidence_url) && (e.evidence_link || e.evidence_url).trim())
       .map((e, idx) => ({
         refNum: idx + 1,
-        title: e.title || 'Activity',
-        type: 'ESG',
-        category: getEsgLabel(e.esg_category),
+        title: e.title || e.outcome_statement || 'Activity',
+        type: e.impact_type === 'business_outcome' ? 'Business' : 'ESG',
+        category: e.impact_type === 'business_outcome' ? getWasteLabel(e.waste_primary) : getEsgLabel(e.esg_category),
         date: fmtDate(e.activity_date),
         value: fmtUsd(e.usd_value),
         url: e.evidence_link || e.evidence_url
@@ -9832,13 +9855,88 @@ app.get("/api/ambassador/impact/export-pdf", requireAuth, requireRole("ambassado
         <svg class="pie-chart-svg" viewBox="0 0 140 140">
           ${esgPieSlicesHtml}
           <circle cx="70" cy="70" r="30" fill="#fff" />
-          <text x="70" y="66" text-anchor="middle" font-size="8" fill="#64748b" font-weight="600">TOTAL</text>
-          <text x="70" y="80" text-anchor="middle" font-size="11" fill="#1B1B3A" font-weight="700">${fmtUsd(totalEsgValue)}</text>
+          <text x="70" y="66" text-anchor="middle" font-size="8" fill="#64748b" font-weight="600">ESG TOTAL</text>
+          <text x="70" y="80" text-anchor="middle" font-size="11" fill="#271b48" font-weight="700">${fmtUsd(totalEsgValue)}</text>
         </svg>
         <div class="pie-legend">
           ${esgPieLegendHtml}
         </div>
       </div>` : '';
+
+    // Pie chart colors for waste categories
+    const pieColors = ['#681fa5', '#271b48', '#D4A017', '#2563eb', '#16a34a', '#dc2626', '#0891b2', '#7c3aed'];
+
+    // Build pie chart SVG for waste categories
+    const activeWastes = wasteCategories.filter(waste => wasteTotals[waste] > 0).sort((a, b) => wasteTotals[b] - wasteTotals[a]);
+    let pieSlicesHtml = '';
+    let pieLegendHtml = '';
+
+    if (totalBusinessValue > 0 && activeWastes.length > 0) {
+      let currentAngle = 0;
+      const cx = 70, cy = 70, r = 60;
+
+      activeWastes.forEach((waste, idx) => {
+        const value = wasteTotals[waste];
+        const pct = (value / totalBusinessValue) * 100;
+        const sliceAngle = (pct / 100) * 360;
+        const color = pieColors[idx % pieColors.length];
+
+        const startRad = (currentAngle - 90) * (Math.PI / 180);
+        const endRad = (currentAngle + sliceAngle - 90) * (Math.PI / 180);
+        const x1 = cx + r * Math.cos(startRad);
+        const y1 = cy + r * Math.sin(startRad);
+        const x2 = cx + r * Math.cos(endRad);
+        const y2 = cy + r * Math.sin(endRad);
+        const largeArc = sliceAngle > 180 ? 1 : 0;
+
+        if (sliceAngle >= 359.9) {
+          pieSlicesHtml += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" />`;
+        } else {
+          pieSlicesHtml += `<path d="M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z" fill="${color}" />`;
+        }
+
+        pieLegendHtml += `
+          <div class="pie-legend-item">
+            <div class="pie-legend-color" style="background: ${color};"></div>
+            <span class="pie-legend-text">${getWasteLabel(waste)}</span>
+            <span class="pie-legend-value">${fmtUsd(value)}</span>
+            <span class="pie-legend-pct">(${Math.round(pct)}%)</span>
+          </div>`;
+
+        currentAngle += sliceAngle;
+      });
+    }
+
+    const wastePieChartHtml = totalBusinessValue > 0 && activeWastes.length > 0 ? `
+      <div class="pie-chart-container">
+        <svg class="pie-chart-svg" viewBox="0 0 140 140">
+          ${pieSlicesHtml}
+          <circle cx="70" cy="70" r="30" fill="#fff" />
+          <text x="70" y="66" text-anchor="middle" font-size="8" fill="#64748b" font-weight="600">TOTAL</text>
+          <text x="70" y="80" text-anchor="middle" font-size="11" fill="#271b48" font-weight="700">${fmtUsd(totalBusinessValue)}</text>
+        </svg>
+        <div class="pie-legend">
+          ${pieLegendHtml}
+        </div>
+      </div>` : '';
+
+    // Build top 5 business outcomes HTML
+    const topOutcomesHtml = topBusinessOutcomes.map((e, idx) => {
+      const verLevel = e.verification_level || "tier_1";
+      return `
+      <div class="top-outcome">
+        <div class="outcome-rank">#${idx + 1}</div>
+        <div class="outcome-content">
+          <div class="outcome-title">${escHtml(e.title || "Business Outcome")}</div>
+          <div class="outcome-statement">"${escHtml(e.outcome_statement || "Operational improvement")}"</div>
+          <div class="outcome-meta">
+            <span class="outcome-value">${fmtUsd(e.usd_value)}</span>
+            <span class="ver-pill ${getVerClass(verLevel)}">${getVerLabel(verLevel)}</span>
+            ${e.waste_primary ? `<span class="outcome-waste">${getWasteLabel(e.waste_primary)}</span>` : ''}
+          </div>
+        </div>
+      </div>`;
+    }).join("");
 
     // Build activity cards HTML (legacy - keeping for reference)
     const activitiesHtml = esgEntries.slice(0, 12).map((e, idx) => {
@@ -9952,7 +10050,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
 .narrative-sub { font-size: 9px; color: #64748b; }
 
 /* HERO STATS */
-.hero-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #e2e8f0; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+.hero-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #e2e8f0; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
 .hero-stat { background: #fff; padding: 14px 12px; text-align: center; }
 .hero-stat.primary { background: #1B1B3A; }
 .hero-stat-label { font-size: 8px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #64748b; margin-bottom: 4px; }
@@ -9961,6 +10059,42 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
 .hero-stat.primary .hero-stat-value { color: #F4801A; }
 .hero-stat-sub { font-size: 8px; color: #94a3b8; margin-top: 2px; }
 .hero-stat.primary .hero-stat-sub { color: rgba(255,255,255,0.4); }
+.hero-stat.green .hero-stat-value { color: #681fa5; }
+
+/* BUSINESS OUTCOMES DETAILED SECTION */
+.biz-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.biz-summary-card { background: linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; text-align: center; }
+.biz-summary-card.highlight { background: linear-gradient(135deg, #681fa5, #271b48); border-color: #681fa5; }
+.biz-summary-label { font-size: 8px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #475569; margin-bottom: 4px; }
+.biz-summary-card.highlight .biz-summary-label { color: rgba(255,255,255,0.7); }
+.biz-summary-value { font-size: 22px; font-weight: 700; color: #271b48; }
+.biz-summary-card.highlight .biz-summary-value { color: #fff; }
+.biz-summary-sub { font-size: 9px; color: #64748b; margin-top: 2px; }
+.biz-summary-card.highlight .biz-summary-sub { color: rgba(255,255,255,0.6); }
+
+/* WASTE BREAKDOWN */
+.waste-section { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.waste-section-title { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #681fa5; margin-bottom: 12px; }
+
+/* BUSINESS VERIFICATION BOX */
+.biz-ver-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+.biz-ver-title { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #475569; margin-bottom: 10px; }
+.biz-ver-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+.biz-ver-row:last-child { border-bottom: none; }
+.biz-ver-count { font-size: 12px; font-weight: 700; min-width: 30px; }
+.biz-ver-value { font-size: 11px; font-weight: 600; color: #271b48; min-width: 80px; text-align: right; }
+
+/* TOP OUTCOMES */
+.top-outcomes-section { margin-bottom: 16px; }
+.top-outcomes-title { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #681fa5; margin-bottom: 12px; }
+.top-outcome { display: flex; gap: 12px; padding: 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; page-break-inside: avoid; }
+.outcome-rank { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #681fa5, #271b48); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.outcome-content { flex: 1; }
+.outcome-title { font-size: 12px; font-weight: 700; color: #271b48; margin-bottom: 3px; }
+.outcome-statement { font-size: 10px; color: #475569; font-style: italic; margin-bottom: 6px; line-height: 1.4; }
+.outcome-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.outcome-value { font-size: 12px; font-weight: 700; color: #681fa5; }
+.outcome-waste { font-size: 8px; font-weight: 600; padding: 2px 6px; border-radius: 100px; background: #f5f3ff; color: #681fa5; }
 
 /* VERIFICATION BOX */
 .ver-box { background: #FDF0E6; border: 1px solid #fde68a; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
@@ -10065,8 +10199,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
       <div class="cover-badge"><div class="dot"></div>Funder-Ready Report</div>
     </div>
     <div class="cover-headline">
-      <h1>Social &amp; ESG<br><span>Impact Log</span></h1>
-      <p class="cover-sub">A traceable record of community and social impact delivered by a Transformation Leader Ambassador — structured for submission to external funders and institutional partners.</p>
+      <h1>Business &amp; ESG<br><span>Impact Report</span></h1>
+      <p class="cover-sub">A comprehensive record of operational business outcomes and ESG social impact — structured for funder submissions, ESG disclosures, and stakeholder communication.</p>
     </div>
     <div class="amb-strip">
       <div class="amb-avatar">${escHtml(ambassadorInitials)}</div>
@@ -10084,27 +10218,32 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
 
   <!-- EXECUTIVE SUMMARY -->
   <div class="section">
-    <div class="section-label">Summary</div>
+    <div class="section-label">Executive Summary</div>
     <div class="section-title">Period at a Glance</div>
     <div class="narrative">
-      <div class="narrative-text">In ${escHtml(reportPeriod)}, ${escHtml(ambassadorName)} delivered <strong>${fmtUsd(totalCombinedValue)} in total impact value</strong> (${fmtUsd(totalEsgValue)} ESG + ${fmtUsd(totalBizValue)} Business) across ${list.length} activities — reaching ${fmtNum(totalPeople)} people through ${fmtNum(totalHours)} hours of work.</div>
-      <div class="narrative-sub">${tier3} externally audited (Level 3) · ${tier2} T4L verified (Level 2) · ${tier1} self-reported (Level 1).</div>
+      <div class="narrative-text">In ${escHtml(reportPeriod)}, ${escHtml(ambassadorName)} delivered <strong>${fmtUsd(totalCombined)} in total impact value</strong> — comprising ${fmtUsd(totalBusinessValue)} in verified business outcomes and ${fmtUsd(totalEsgValue)} in ESG social value across ${list.length} logged activities.</div>
+      <div class="narrative-sub">${tier3} externally audited (Level 3) · ${tier2} manager verified (Level 2) · ${tier1} self-reported (Level 1).</div>
     </div>
     <div class="hero-stats">
       <div class="hero-stat primary">
-        <div class="hero-stat-label">Total Impact Value (ESG + Business)</div>
-        <div class="hero-stat-value">${fmtUsd(totalCombinedValue)}</div>
-        <div class="hero-stat-sub">ESG: ${fmtUsd(totalEsgValue)} · Business: ${fmtUsd(totalBizValue)}</div>
+        <div class="hero-stat-label">Total Impact Value</div>
+        <div class="hero-stat-value">${fmtUsd(totalCombined)}</div>
+        <div class="hero-stat-sub">Business + ESG</div>
+      </div>
+      <div class="hero-stat green">
+        <div class="hero-stat-label">Business Outcomes</div>
+        <div class="hero-stat-value">${fmtUsd(totalBusinessValue)}</div>
+        <div class="hero-stat-sub">Operational savings</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">ESG Social Value</div>
+        <div class="hero-stat-value">${fmtUsd(totalEsgValue)}</div>
+        <div class="hero-stat-sub">Benchmark-rated</div>
       </div>
       <div class="hero-stat">
         <div class="hero-stat-label">People Reached</div>
         <div class="hero-stat-value">${fmtNum(totalPeople)}</div>
-        <div class="hero-stat-sub">Community reach</div>
-      </div>
-      <div class="hero-stat">
-        <div class="hero-stat-label">Hours Contributed</div>
-        <div class="hero-stat-value">${fmtNum(totalHours)}</div>
-        <div class="hero-stat-sub">${list.length} activities</div>
+        <div class="hero-stat-sub">${fmtNum(totalHours)} hours</div>
       </div>
     </div>
     <div class="ver-box">
@@ -10127,11 +10266,122 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
     </div>
   </div>
 
+  <!-- BUSINESS OUTCOMES SECTION -->
+  ${businessEntries.length > 0 ? `
+  <div class="dark-header">
+    <div class="dark-header-label">Business Outcomes</div>
+    <div class="dark-header-title">8 Wastes Elimination · Operational Value Created</div>
+    <div class="dark-header-sub">Verified operational savings and revenue outcomes — ${reportPeriod}</div>
+  </div>
+
+  <div class="section">
+    <!-- Business Summary Stats -->
+    <div class="biz-summary-grid">
+      <div class="biz-summary-card highlight">
+        <div class="biz-summary-label">Total Operational Savings</div>
+        <div class="biz-summary-value">${fmtUsd(totalBusinessValue)}</div>
+        <div class="biz-summary-sub">Verified value created</div>
+      </div>
+      <div class="biz-summary-card">
+        <div class="biz-summary-label">Number of Improvements</div>
+        <div class="biz-summary-value">${businessEntries.length}</div>
+        <div class="biz-summary-sub">Logged outcomes</div>
+      </div>
+      <div class="biz-summary-card">
+        <div class="biz-summary-label">Average per Outcome</div>
+        <div class="biz-summary-value">${businessEntries.length > 0 ? fmtUsd(totalBusinessValue / businessEntries.length) : '$0'}</div>
+        <div class="biz-summary-sub">Mean savings value</div>
+      </div>
+    </div>
+
+    <!-- Waste Category Breakdown with Pie Chart -->
+    ${wastePieChartHtml ? `
+    <div class="waste-section">
+      <div class="waste-section-title">Savings by Waste Category (8 Wastes)</div>
+      ${wastePieChartHtml}
+    </div>
+    ` : ''}
+
+    <!-- Business Verification Breakdown -->
+    <div class="biz-ver-box">
+      <div class="biz-ver-title">Business Outcomes Verification Status</div>
+      <div class="biz-ver-row">
+        <div class="ver-badge ver-l3">L3</div>
+        <div class="ver-info"><div class="ver-name">Externally Audited</div><div class="ver-desc">Third-party verified. Required for financial reporting.</div></div>
+        <div class="biz-ver-count" style="color:#16a34a;">${bizTier3.length}</div>
+        <div class="biz-ver-value">${fmtUsd(bizTier3Value)}</div>
+      </div>
+      <div class="biz-ver-row">
+        <div class="ver-badge ver-l2">L2</div>
+        <div class="ver-info"><div class="ver-name">Manager Verified</div><div class="ver-desc">Verified by internal manager or finance contact.</div></div>
+        <div class="biz-ver-count" style="color:#2563eb;">${bizTier2.length}</div>
+        <div class="biz-ver-value">${fmtUsd(bizTier2Value)}</div>
+      </div>
+      <div class="biz-ver-row">
+        <div class="ver-badge ver-l1">L1</div>
+        <div class="ver-info"><div class="ver-name">Self-Reported</div><div class="ver-desc">Logged via T4L Platform. Subject to verification.</div></div>
+        <div class="biz-ver-count" style="color:#dc2626;">${bizTier1.length}</div>
+        <div class="biz-ver-value">${fmtUsd(bizTier1Value)}</div>
+      </div>
+    </div>
+
+    <!-- Top 5 Business Outcomes -->
+    ${topOutcomesHtml ? `
+    <div class="top-outcomes-section">
+      <div class="top-outcomes-title">Top Outcomes by Value</div>
+      ${topOutcomesHtml}
+    </div>
+    ` : ''}
+
+    <!-- All Business Entries Table -->
+    <div style="margin-top: 16px;">
+      <div class="waste-section-title" style="margin-bottom: 10px;">Activity Detail — All Business Outcomes</div>
+      <table class="activity-table">
+        <thead>
+          <tr>
+            <th style="width: 28%;">Outcome</th>
+            <th style="width: 13%;">Waste Type</th>
+            <th style="width: 11%;">Date</th>
+            <th style="width: 12%;">Method</th>
+            <th style="width: 13%;">Verification</th>
+            <th style="width: 8%;">Evidence</th>
+            <th style="width: 15%;">Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${businessEntries.map(e => {
+            const verLevel = e.verification_level || "tier_1";
+            const evidenceUrl = e.evidence_link || e.evidence_url;
+            const refNum = evidenceUrl ? evidenceRefMap.get(evidenceUrl) : null;
+            return `<tr>
+              <td class="activity-title-cell">${escHtml((e.outcome_statement || e.title || "Business Outcome").slice(0, 45))}${(e.outcome_statement || e.title || "").length > 45 ? '...' : ''}</td>
+              <td>${getWasteLabel(e.waste_primary || 'N/A')}</td>
+              <td>${fmtDate(e.activity_date)}</td>
+              <td>${escHtml((e.improvement_method || 'N/A').slice(0, 15))}</td>
+              <td><span class="ver-pill ${getVerClass(verLevel)}">${verLevel === "tier_3" ? "L3" : verLevel === "tier_2" ? "L2" : "L1"}</span></td>
+              <td>${refNum ? `<a href="${escHtml(evidenceUrl)}" target="_blank" class="evidence-icon" title="Evidence #${refNum}"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></a><span style="font-size:7px;color:#64748b;">#${refNum}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
+              <td>${fmtUsd(e.usd_value)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  ` : ""}
+
   <!-- ESG BREAKDOWN -->
+  <div style="page-break-before: always;"></div>
   <div class="section">
     <div class="section-label">ESG Breakdown</div>
     <div class="section-title">Impact by ESG Category</div>
     <div class="section-intro">ESG social value is estimated using validated benchmark rates aligned to SASB and IFRS ISSB frameworks.</div>
+
+    ${esgPieChartHtml ? `
+    <div class="waste-section" style="margin-bottom: 16px;">
+      <div class="waste-section-title">ESG Value Distribution</div>
+      ${esgPieChartHtml}
+    </div>
+    ` : ''}
 
     ${esgPieChartHtml ? `
     <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-bottom: 16px;">
@@ -10278,12 +10528,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
   </div>
   ` : ''}
 
-  <!-- INTEGRITY -->
+  <!-- INTEGRITY & METHODOLOGY -->
   <div class="integrity">
-    <h3>Methodology &amp; Disclosure</h3>
-    <p><strong>ESG Social Value (Benchmark-based).</strong> USD social value figures are calculated using published benchmark rates applied to verified impact quantities. Impact-based values use sector-specific cost proxies (e.g. training cost per participant from ATD, social cost of carbon from US EPA IWG). Volunteer time is valued at the Independent Sector's nationally recognised rate ($33.49/hour, 2024).</p>
-    <p style="margin-top: 6px;"><strong>Business Outcomes (Operational Value).</strong> Business Outcome values are entered directly by ambassadors and represent actual operational savings or revenue created. Where a manager or finance contact has verified the figure, this is noted in the verification status (Tier 2).</p>
-    <p style="margin-top: 6px;">Reports produced from this Impact Log are intended for transparent internal and stakeholder communication. They do not constitute audited financial statements or ESG assurance reports. To discuss L3 verification for funder submission, contact partners@t4leader.com.</p>
+    <h3>Data Integrity &amp; Methodology</h3>
+    <p><strong>Business Outcomes:</strong> Business outcome values are entered directly by users and represent actual operational savings or revenue created. Where a manager or finance contact has verified the figure, this is noted in the verification status (L2: Manager Verified, L3: Externally Audited). Self-reported values (L1) are subject to internal review.</p>
+    <p style="margin-top: 8px;"><strong>ESG Social Value:</strong> USD social value figures are calculated using published benchmark rates applied to verified impact quantities. Impact-based values use sector-specific cost proxies (e.g., training cost per participant from ATD, social cost of carbon from US EPA IWG, tree planting costs from One Tree Planted). Volunteer time is valued at the Independent Sector's nationally recognised rate ($33.49/hour, 2024). All rates are reviewed annually and stored at the time of entry for audit purposes.</p>
+    <p style="margin-top: 8px;"><em>These figures represent estimated value created or costs avoided. They do not represent cash transactions, revenue, or audited financial outcomes. This report aligns with SASB and IFRS ISSB frameworks for reporting and ESG disclosures.</em></p>
   </div>
 
   <!-- FOOTER -->
