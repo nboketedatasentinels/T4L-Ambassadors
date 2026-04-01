@@ -7578,31 +7578,31 @@ app.post("/api/impact/entries", requireAuth, async (req, res) => {
           verifier_email: auditor_email,
           verifier_role: auditor_organization || 'External Auditor',
           status: "pending",
-          verification_type: "external_audit",
           expires_at: expiresAt.toISOString(),
         },
       ]);
       if (tokenError) {
-        console.error("❌ Failed to create external audit token:", tokenError);
-      } else {
-        const baseUrl = `${req.protocol}://${req.get("host")}`;
-        const reviewUrl = `${baseUrl}/business-verification.html?token=${encodeURIComponent(token)}&type=external_audit`;
-        try {
-          await emailService.sendBusinessVerificationRequestEmail({
-            verifier_name: auditor_name,
-            verifier_email: auditor_email,
-            verifier_role: auditor_organization || 'External Auditor',
-            partner_name: null,
-            entry_title: entry.title,
-            usd_value: entry.usd_value,
-            outcome_statement: entry.description,
-            review_url: reviewUrl,
-            is_external_audit: true,
-          });
-          console.log("[esg-entry] External audit email sent to", auditor_email);
-        } catch (emailError) {
-          console.error("❌ Failed to send external audit email:", emailError);
-        }
+        console.warn("[esg-entry] ⚠️ External audit token insert failed:", tokenError.message || JSON.stringify(tokenError));
+      }
+
+      // Send email regardless of token insert success
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      const reviewUrl = `${baseUrl}/business-verification.html?token=${encodeURIComponent(token)}&type=external_audit`;
+      try {
+        await emailService.sendBusinessVerificationRequestEmail({
+          verifier_name: auditor_name,
+          verifier_email: auditor_email,
+          verifier_role: auditor_organization || 'External Auditor',
+          partner_name: null,
+          entry_title: entry.title,
+          usd_value: entry.usd_value,
+          outcome_statement: entry.description,
+          review_url: reviewUrl,
+          is_external_audit: true,
+        });
+        console.log("[esg-entry] External audit email sent to", auditor_email);
+      } catch (emailError) {
+        console.error("❌ Failed to send external audit email:", emailError);
       }
     }
 
@@ -9604,7 +9604,6 @@ app.post("/api/ambassador/impact/business-entry", requireAuth, requireRole("amba
               verifier_email: auditor_email,
               verifier_role: auditor_organization || 'External Auditor',
               status: "pending",
-              verification_type: "external_audit",
               expires_at: expiresAt.toISOString(),
             }]);
 
