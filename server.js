@@ -10332,40 +10332,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
       ${topOutcomesHtml}
     </div>
     ` : ''}
-
-    <!-- All Business Entries Table -->
-    <div style="margin-top: 16px;">
-      <div class="waste-section-title" style="margin-bottom: 10px;">Activity Detail — All Business Outcomes</div>
-      <table class="activity-table">
-        <thead>
-          <tr>
-            <th style="width: 28%;">Outcome</th>
-            <th style="width: 13%;">Waste Type</th>
-            <th style="width: 11%;">Date</th>
-            <th style="width: 12%;">Method</th>
-            <th style="width: 13%;">Verification</th>
-            <th style="width: 8%;">Evidence</th>
-            <th style="width: 15%;">Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${businessEntries.map(e => {
-            const verLevel = e.verification_level || "tier_1";
-            const evidenceUrl = e.evidence_link || e.evidence_url;
-            const refNum = evidenceUrl ? evidenceRefMap.get(evidenceUrl) : null;
-            return `<tr>
-              <td class="activity-title-cell">${escHtml((e.outcome_statement || e.title || "Business Outcome").slice(0, 45))}${(e.outcome_statement || e.title || "").length > 45 ? '...' : ''}</td>
-              <td>${getWasteLabel(e.waste_primary || 'N/A')}</td>
-              <td>${fmtDate(e.activity_date)}</td>
-              <td>${escHtml((e.improvement_method || 'N/A').slice(0, 15))}</td>
-              <td><span class="ver-pill ${getVerClass(verLevel)}">${verLevel === "tier_3" ? "L3" : verLevel === "tier_2" ? "L2" : "L1"}</span></td>
-              <td>${refNum ? `<a href="${escHtml(evidenceUrl)}" target="_blank" class="evidence-icon" title="Evidence #${refNum}"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></a><span style="font-size:7px;color:#64748b;">#${refNum}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
-              <td>${fmtUsd(e.usd_value)}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>
   </div>
   ` : ""}
 
@@ -10405,11 +10371,57 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
   <div style="page-break-before: always;"></div>
   <div class="dark-header">
     <div class="dark-header-label">Activity Detail & Evidence</div>
-    <div class="dark-header-title">ESG Activities — ${escHtml(ambassadorName)} · ${reportPeriod}</div>
+    <div class="dark-header-title">All Activities — ${escHtml(ambassadorName)} · ${reportPeriod}</div>
     <div class="dark-header-sub">Complete records for each logged activity with verification level and evidence links.</div>
   </div>
 
+  <!-- Business Outcomes Detail Table -->
+  ${businessEntries.length > 0 ? `
   <div class="section">
+    <div class="section-label">Business Outcomes</div>
+    <div class="section-title">All Business Outcome Entries</div>
+    <table class="activity-table">
+      <thead>
+        <tr>
+          <th style="width: 28%;">Outcome</th>
+          <th style="width: 13%;">Waste Type</th>
+          <th style="width: 11%;">Date</th>
+          <th style="width: 12%;">Method</th>
+          <th style="width: 13%;">Verification</th>
+          <th style="width: 8%;">Evidence</th>
+          <th style="width: 15%;">Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${businessEntries.map(e => {
+          const verLevel = e.verification_level || "tier_1";
+          const evidenceUrl = e.evidence_link || e.evidence_url;
+          const refNum = evidenceUrl ? evidenceRefMap.get(evidenceUrl) : null;
+          return `<tr>
+            <td class="activity-title-cell">${escHtml((e.outcome_statement || e.title || "Business Outcome").slice(0, 45))}${(e.outcome_statement || e.title || "").length > 45 ? '...' : ''}</td>
+            <td>${getWasteLabel(e.waste_primary || 'N/A')}</td>
+            <td>${fmtDate(e.activity_date)}</td>
+            <td>${escHtml((e.improvement_method || 'N/A').slice(0, 15))}</td>
+            <td><span class="ver-pill ${getVerClass(verLevel)}">${verLevel === "tier_3" ? "L3" : verLevel === "tier_2" ? "L2" : "L1"}</span></td>
+            <td>${refNum ? `<a href="${escHtml(evidenceUrl)}" target="_blank" class="evidence-icon" title="Evidence #${refNum}"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></a><span style="font-size:7px;color:#64748b;">#${refNum}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
+            <td>${fmtUsd(e.usd_value)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    <div style="margin-top: 12px; padding: 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 10px; font-weight: 600; color: #1d4ed8;">Business Outcomes Total (${businessEntries.length} entries)</span>
+        <span style="font-size: 14px; font-weight: 700; color: #1d4ed8;">${fmtUsd(totalBusinessValue)}</span>
+      </div>
+    </div>
+  </div>
+  ` : ''}
+
+  <!-- ESG Activities Detail Table -->
+  <div class="section">
+    <div class="section-label">ESG Activities</div>
+    <div class="section-title">All ESG Activity Entries</div>
     <table class="activity-table">
       <thead>
         <tr>
