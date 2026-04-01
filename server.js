@@ -7432,6 +7432,11 @@ app.post("/api/impact/entries", requireAuth, async (req, res) => {
       verifier_email,
       verifier_role,
       tier, // 'tier_2' or 'tier_3' when using internal verification tools
+      // External auditor (L3) verification
+      send_for_external_audit,
+      auditor_name,
+      auditor_email,
+      auditor_organization,
     } = req.body || {};
 
     if (!title || !esg_category) {
@@ -7559,18 +7564,66 @@ app.post("/api/impact/entries", requireAuth, async (req, res) => {
       }
     }
 
+    // External auditor verification (L3)
+    if (send_for_external_audit && auditor_email) {
+      const token = uuidv4();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      const { error: tokenError } = await supabase.from("business_verification_tokens").insert([
+        {
+          token,
+          entry_id: entryId,
+          verifier_name: auditor_name || null,
+          verifier_email: auditor_email,
+          verifier_role: auditor_organization || 'External Auditor',
+          status: "pending",
+          verification_type: "external_audit",
+          expires_at: expiresAt.toISOString(),
+        },
+      ]);
+      if (tokenError) {
+        console.error("❌ Failed to create external audit token:", tokenError);
+      } else {
+        const baseUrl = `${req.protocol}://${req.get("host")}`;
+        const reviewUrl = `${baseUrl}/business-verification.html?token=${encodeURIComponent(token)}&type=external_audit`;
+        try {
+          await emailService.sendBusinessVerificationRequestEmail({
+            verifier_name: auditor_name,
+            verifier_email: auditor_email,
+            verifier_role: auditor_organization || 'External Auditor',
+            partner_name: null,
+            entry_title: entry.title,
+            usd_value: entry.usd_value,
+            outcome_statement: entry.description,
+            review_url: reviewUrl,
+            is_external_audit: true,
+          });
+          console.log("[esg-entry] External audit email sent to", auditor_email);
+        } catch (emailError) {
+          console.error("❌ Failed to send external audit email:", emailError);
+        }
+      }
+    }
+
     // Auto-sync to Firestore (non-blocking)
     if (firebaseInitialized && entry) {
       impactSync.syncEntryBackground(supabase, entry, getUserById).catch(() => {});
     }
 
+    let message = "Impact entry logged successfully";
+    if ((send_for_verification && verifier_email) && (send_for_external_audit && auditor_email)) {
+      message = "Impact entry logged! Verification requests sent to verifier and external auditor.";
+    } else if (send_for_external_audit && auditor_email) {
+      message = "Impact entry logged! External audit request sent.";
+    } else if ((send_for_verification && verifier_email) || tier) {
+      message = "Impact entry logged with verification action";
+    }
+
     return res.json({
       success: true,
       entry,
-      message:
-        (send_for_verification && verifier_email) || tier
-          ? "Impact entry logged with verification action"
-          : "Impact entry logged successfully",
+      message,
     });
   } catch (error) {
     console.error("❌ Error creating impact entry:", error);
@@ -9438,6 +9491,7 @@ app.post("/api/ambassador/impact/business-entry", requireAuth, requireRole("amba
       title, description, waste_primary, waste_secondary, improvement_method,
       usd_saved, outcome_statement, activity_date, evidence_link,
       send_for_verification, verifier_name, verifier_email, verifier_role,
+      send_for_external_audit, auditor_name, auditor_email, auditor_organization,
     } = req.body || {};
 
     if (!waste_primary || !improvement_method || !usd_saved || !outcome_statement) {
@@ -9534,14 +9588,68 @@ app.post("/api/ambassador/impact/business-entry", requireAuth, requireRole("amba
       });
     }
 
+    // Handle external auditor verification (L3)
+    if (send_for_external_audit && auditor_email) {
+      setImmediate(async () => {
+        try {
+          const token = uuidv4();
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + 30); // 30 days for external audit
+          const { error: tokenError } = await supabase
+            .from("business_verification_tokens")
+            .insert([{
+              token,
+              entry_id: entryId,
+              verifier_name: auditor_name || null,
+              verifier_email: auditor_email,
+              verifier_role: auditor_organization || 'External Auditor',
+              status: "pending",
+              verification_type: "external_audit",
+              expires_at: expiresAt.toISOString(),
+            }]);
+
+          if (tokenError) {
+            console.warn("[biz-entry] ⚠️ External audit token insert failed:", tokenError.message || JSON.stringify(tokenError));
+          }
+
+          const baseUrl = `${req.protocol}://${req.get("host")}`;
+          const reviewUrl = `${baseUrl}/business-verification.html?token=${encodeURIComponent(token)}&type=external_audit`;
+          try {
+            await emailService.sendBusinessVerificationRequestEmail({
+              verifier_name: auditor_name,
+              verifier_email: auditor_email,
+              verifier_role: auditor_organization || 'External Auditor',
+              partner_name: null,
+              entry_title: entry.title,
+              usd_value: entry.usd_value,
+              outcome_statement: entry.outcome_statement,
+              review_url: reviewUrl,
+              is_external_audit: true,
+            });
+            console.log("[biz-entry] External audit email queued for", auditor_email);
+          } catch (e) {
+            console.error("[biz-entry] External audit email failed:", e.message || e);
+          }
+        } catch (bgErr) {
+          console.error("❌ [biz-entry] External audit flow failed:", bgErr.message || bgErr);
+        }
+      });
+    }
+
+    let message = "Business Outcome entry logged successfully";
+    if (send_for_verification && verifier_email && send_for_external_audit && auditor_email) {
+      message = "Business Outcome logged! Verification emails will be sent to manager and external auditor.";
+    } else if (send_for_verification && verifier_email) {
+      message = "Business Outcome logged! Verification email will be sent shortly.";
+    } else if (send_for_external_audit && auditor_email) {
+      message = "Business Outcome logged! External audit request will be sent shortly.";
+    }
+
     return res.json({
       success: true,
       entry,
-      email: send_for_verification && verifier_email ? { queued: true } : null,
-      message:
-        send_for_verification && verifier_email
-          ? "Business Outcome logged! Verification email will be sent shortly."
-          : "Business Outcome entry logged successfully",
+      email: (send_for_verification && verifier_email) || (send_for_external_audit && auditor_email) ? { queued: true } : null,
+      message,
     });
   } catch (error) {
     console.error("❌ Ambassador business-entry:", error);
