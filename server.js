@@ -627,18 +627,83 @@ class EmailService {
   }
 
   async sendBusinessVerificationRequestEmail(data) {
-    // data: { verifier_name, verifier_email, partner_name, entry_title, usd_value, outcome_statement, review_url }
+    // data: { verifier_name, verifier_email, partner_name, entry_title, usd_value, outcome_statement, review_url, is_external_audit, is_esg, esg_category, people_impacted, hours_contributed }
 
-    const subject = `Please verify Business Outcome impact entry from ${data.partner_name || "T4L Partner"}`;
+    const isEsg = data.is_esg || false;
+    const isExternalAudit = data.is_external_audit || false;
+
+    // Determine email content based on entry type
+    const entryType = isEsg ? "ESG Impact" : "Business Outcome";
+    const badgeText = isExternalAudit ? `External Audit Request - ${entryType}` : `${entryType} Verification`;
+    const verifierRole = isExternalAudit ? "external auditor" : "manager / finance contact";
+
+    const subject = isExternalAudit
+      ? `External Audit Request: ${entryType} entry from ${data.partner_name || "T4L Ambassador"}`
+      : `Please verify ${entryType} entry from ${data.partner_name || "T4L Partner"}`;
+
+    // Build the details card based on entry type
+    let detailsHtml = '';
+    if (isEsg) {
+      detailsHtml = `
+        <div>
+          <div class="label">Activity Title</div>
+          <div class="value">${data.entry_title || "ESG Activity"}</div>
+        </div>
+        <div style="margin-top: 10px;">
+          <div class="label">Description</div>
+          <div class="value">${data.outcome_statement || "N/A"}</div>
+        </div>
+        ${data.esg_category ? `<div style="margin-top: 10px;">
+          <div class="label">ESG Category</div>
+          <div class="value">${data.esg_category.charAt(0).toUpperCase() + data.esg_category.slice(1)}</div>
+        </div>` : ''}
+        ${data.people_impacted ? `<div style="margin-top: 10px;">
+          <div class="label">People Impacted</div>
+          <div class="value">${Number(data.people_impacted || 0).toLocaleString("en-US")}</div>
+        </div>` : ''}
+        ${data.hours_contributed ? `<div style="margin-top: 10px;">
+          <div class="label">Hours Contributed</div>
+          <div class="value">${Number(data.hours_contributed || 0).toLocaleString("en-US")}</div>
+        </div>` : ''}
+        <div style="margin-top: 10px;">
+          <div class="label">Estimated Social Value</div>
+          <div class="value">$${Number(data.usd_value || 0).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+        </div>
+      `;
+    } else {
+      detailsHtml = `
+        <div>
+          <div class="label">Title</div>
+          <div class="value">${data.entry_title || "Business outcome"}</div>
+        </div>
+        <div style="margin-top: 10px;">
+          <div class="label">Outcome</div>
+          <div class="value">${data.outcome_statement || "N/A"}</div>
+        </div>
+        <div style="margin-top: 10px;">
+          <div class="label">USD saved / created</div>
+          <div class="value">$${Number(data.usd_value || 0).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+        </div>
+      `;
+    }
+
+    const introText = isEsg
+      ? `An ESG Impact activity has been logged in the Transformation Leader platform and you have been listed as the ${verifierRole} to verify this entry. Please review the summary below and confirm the details are accurate.`
+      : `A Business Outcome has been logged in the Transformation Leader partner platform and listed you as the ${verifierRole} to verify the impact. Please review the summary below and confirm whether the USD amount is accurate.`;
+
+    const confirmText = isEsg
+      ? "You will be able to confirm or decline this entry and optionally leave a short comment."
+      : "You will be able to confirm or decline this figure and optionally leave a short comment.";
+
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
         <style>
           body { font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; color: #111827; background: #f9fafb; }
-          .header { background: linear-gradient(135deg, #4b0d7f 0%, #7c3aed 100%); color: white; padding: 24px 28px; }
+          .header { background: linear-gradient(135deg, ${isEsg ? '#0891b2 0%, #06b6d4' : '#4b0d7f 0%, #7c3aed'} 100%); color: white; padding: 24px 28px; }
           .content { padding: 24px 28px; background: white; }
-          .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #eef2ff; color: #4f46e5; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 12px; }
+          .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: ${isEsg ? '#ecfeff' : '#eef2ff'}; color: ${isEsg ? '#0891b2' : '#4f46e5'}; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 12px; }
           .button { display: inline-block; padding: 10px 20px; background: #16a34a; color: white; text-decoration: none; border-radius: 999px; font-weight: 600; font-size: 14px; }
           .meta { font-size: 13px; color: #6b7280; margin-top: 4px; }
           .footer { font-size: 12px; color: #9ca3af; padding: 16px 28px 24px; text-align: center; }
@@ -649,31 +714,15 @@ class EmailService {
       </head>
       <body>
         <div class="header">
-          <div class="badge">Business Outcome Verification</div>
-          <h1 style="margin: 0; font-size: 20px;">Approval requested from ${data.partner_name || "a Transformation Leader partner"}</h1>
-          <p style="margin: 6px 0 0; font-size: 13px; color: #e5e7eb;">A Business Outcome entry needs your review and confirmation.</p>
+          <div class="badge">${badgeText}</div>
+          <h1 style="margin: 0; font-size: 20px;">${isExternalAudit ? 'External audit' : 'Approval'} requested from ${data.partner_name || "a Transformation Leader ambassador"}</h1>
+          <p style="margin: 6px 0 0; font-size: 13px; color: #e5e7eb;">A ${entryType} entry needs your review and confirmation.</p>
         </div>
         <div class="content">
           <p style="font-size: 14px; margin-bottom: 12px;">Hello ${data.verifier_name || "there"},</p>
-          <p style="font-size: 14px; margin-bottom: 14px;">
-            A Business Outcome has been logged in the Transformation Leader partner platform and listed you as the manager / finance contact
-            to verify the impact. Please review the summary below and confirm whether the USD amount is accurate.
-          </p>
-          <div class="card">
-            <div>
-              <div class="label">Title</div>
-              <div class="value">${data.entry_title || "Business outcome"}</div>
-            </div>
-            <div style="margin-top: 10px;">
-              <div class="label">Outcome</div>
-              <div class="value">${data.outcome_statement || "N/A"}</div>
-            </div>
-            <div style="margin-top: 10px;">
-              <div class="label">USD saved / created</div>
-              <div class="value">$${Number(data.usd_value || 0).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-            </div>
-          </div>
-          <p class="meta" style="margin-top: 14px;">You will be able to confirm or decline this figure and optionally leave a short comment.</p>
+          <p style="font-size: 14px; margin-bottom: 14px;">${introText}</p>
+          <div class="card">${detailsHtml}</div>
+          <p class="meta" style="margin-top: 14px;">${confirmText}</p>
           <div style="margin: 20px 0 8px; text-align: center;">
             <a href="${data.review_url}" class="button" style="color: white !important;" target="_blank" rel="noopener noreferrer">Review &amp; verify entry</a>
           </div>
@@ -7557,6 +7606,10 @@ app.post("/api/impact/entries", requireAuth, async (req, res) => {
             usd_value: entry.usd_value,
             outcome_statement: entry.description,
             review_url: reviewUrl,
+            is_esg: true,
+            esg_category: entry.esg_category,
+            people_impacted: entry.people_impacted,
+            hours_contributed: entry.hours_contributed,
           });
         } catch (emailError) {
           console.error("❌ Failed to send ESG verification email:", emailError);
@@ -7599,6 +7652,10 @@ app.post("/api/impact/entries", requireAuth, async (req, res) => {
           outcome_statement: entry.description,
           review_url: reviewUrl,
           is_external_audit: true,
+          is_esg: true,
+          esg_category: entry.esg_category,
+          people_impacted: entry.people_impacted,
+          hours_contributed: entry.hours_contributed,
         });
         console.log("[esg-entry] External audit email sent to", auditor_email);
       } catch (emailError) {
