@@ -8555,6 +8555,13 @@ app.get("/api/partner/impact/export-pdf", requireAuth, requireRole("partner"), a
       .sort((a, b) => (parseFloat(b.usd_value) || 0) - (parseFloat(a.usd_value) || 0))
       .slice(0, 5);
 
+    // ESG Pie Chart data
+    const esgPieData = [
+      { label: 'Environmental', value: envValue, color: '#1d4ed8', count: environmental.length },
+      { label: 'Social', value: socValue, color: '#0891b2', count: social.length },
+      { label: 'Governance', value: govValue, color: '#681fa5', count: governance.length }
+    ].filter(d => d.value > 0);
+
     // Format dates
     const reportPeriod = new Date(from).toLocaleDateString("en-US", { month: "long", year: "numeric" });
     const generatedDate = now.toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" });
@@ -8617,7 +8624,119 @@ app.get("/api/partner/impact/export-pdf", requireAuth, requireRole("partner"), a
       </div>`;
     }).join("");
 
-    // Build waste category breakdown HTML
+    // Pie chart colors
+    const pieColors = ['#681fa5', '#271b48', '#D4A017', '#2563eb', '#16a34a', '#dc2626', '#0891b2', '#7c3aed'];
+
+    // Build ESG pie chart
+    let esgPieSlicesHtml = '';
+    let esgPieLegendHtml = '';
+    const esgColors = { Environmental: '#1d4ed8', Social: '#0891b2', Governance: '#681fa5' };
+
+    if (totalEsgValue > 0 && esgPieData.length > 0) {
+      let esgCurrentAngle = 0;
+      const esgCx = 70, esgCy = 70, esgR = 60;
+
+      esgPieData.forEach((item) => {
+        const pct = (item.value / totalEsgValue) * 100;
+        const sliceAngle = (pct / 100) * 360;
+        const color = item.color;
+
+        const startRad = (esgCurrentAngle - 90) * (Math.PI / 180);
+        const endRad = (esgCurrentAngle + sliceAngle - 90) * (Math.PI / 180);
+        const x1 = esgCx + esgR * Math.cos(startRad);
+        const y1 = esgCy + esgR * Math.sin(startRad);
+        const x2 = esgCx + esgR * Math.cos(endRad);
+        const y2 = esgCy + esgR * Math.sin(endRad);
+        const largeArc = sliceAngle > 180 ? 1 : 0;
+
+        if (sliceAngle >= 359.9) {
+          esgPieSlicesHtml += `<circle cx="${esgCx}" cy="${esgCy}" r="${esgR}" fill="${color}" />`;
+        } else {
+          esgPieSlicesHtml += `<path d="M ${esgCx} ${esgCy} L ${x1} ${y1} A ${esgR} ${esgR} 0 ${largeArc} 1 ${x2} ${y2} Z" fill="${color}" />`;
+        }
+
+        esgPieLegendHtml += `
+          <div class="pie-legend-item">
+            <div class="pie-legend-color" style="background: ${color};"></div>
+            <span class="pie-legend-text">${item.label}</span>
+            <span class="pie-legend-value">${fmtUsd(item.value)}</span>
+            <span class="pie-legend-pct">(${Math.round(pct)}%)</span>
+          </div>`;
+
+        esgCurrentAngle += sliceAngle;
+      });
+    }
+
+    const esgPieChartHtml = totalEsgValue > 0 && esgPieData.length > 0 ? `
+      <div class="pie-chart-container">
+        <svg class="pie-chart-svg" viewBox="0 0 140 140">
+          ${esgPieSlicesHtml}
+          <circle cx="70" cy="70" r="30" fill="#fff" />
+          <text x="70" y="66" text-anchor="middle" font-size="8" fill="#64748b" font-weight="600">ESG TOTAL</text>
+          <text x="70" y="80" text-anchor="middle" font-size="11" fill="#271b48" font-weight="700">${fmtUsd(totalEsgValue)}</text>
+        </svg>
+        <div class="pie-legend">
+          ${esgPieLegendHtml}
+        </div>
+      </div>` : '';
+
+    // Build pie chart SVG for waste categories
+    const activeWastes = wasteCategories.filter(waste => wasteTotals[waste] > 0).sort((a, b) => wasteTotals[b] - wasteTotals[a]);
+    let pieSlicesHtml = '';
+    let pieLegendHtml = '';
+
+    if (totalBusinessValue > 0 && activeWastes.length > 0) {
+      let currentAngle = 0;
+      const cx = 70, cy = 70, r = 60;
+
+      activeWastes.forEach((waste, idx) => {
+        const value = wasteTotals[waste];
+        const pct = (value / totalBusinessValue) * 100;
+        const sliceAngle = (pct / 100) * 360;
+        const color = pieColors[idx % pieColors.length];
+
+        // Calculate pie slice path
+        const startRad = (currentAngle - 90) * (Math.PI / 180);
+        const endRad = (currentAngle + sliceAngle - 90) * (Math.PI / 180);
+        const x1 = cx + r * Math.cos(startRad);
+        const y1 = cy + r * Math.sin(startRad);
+        const x2 = cx + r * Math.cos(endRad);
+        const y2 = cy + r * Math.sin(endRad);
+        const largeArc = sliceAngle > 180 ? 1 : 0;
+
+        if (sliceAngle >= 359.9) {
+          // Full circle
+          pieSlicesHtml += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" />`;
+        } else {
+          pieSlicesHtml += `<path d="M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z" fill="${color}" />`;
+        }
+
+        pieLegendHtml += `
+          <div class="pie-legend-item">
+            <div class="pie-legend-color" style="background: ${color};"></div>
+            <span class="pie-legend-text">${getWasteLabel(waste)}</span>
+            <span class="pie-legend-value">${fmtUsd(value)}</span>
+            <span class="pie-legend-pct">(${Math.round(pct)}%)</span>
+          </div>`;
+
+        currentAngle += sliceAngle;
+      });
+    }
+
+    const wastePieChartHtml = totalBusinessValue > 0 && activeWastes.length > 0 ? `
+      <div class="pie-chart-container">
+        <svg class="pie-chart-svg" viewBox="0 0 140 140">
+          ${pieSlicesHtml}
+          <circle cx="70" cy="70" r="30" fill="#fff" />
+          <text x="70" y="66" text-anchor="middle" font-size="8" fill="#64748b" font-weight="600">TOTAL</text>
+          <text x="70" y="80" text-anchor="middle" font-size="11" fill="#271b48" font-weight="700">${fmtUsd(totalBusinessValue)}</text>
+        </svg>
+        <div class="pie-legend">
+          ${pieLegendHtml}
+        </div>
+      </div>` : '';
+
+    // Build waste category breakdown HTML (bar chart version as backup/detail)
     const wasteBreakdownHtml = wasteCategories
       .filter(waste => wasteTotals[waste] > 0)
       .sort((a, b) => wasteTotals[b] - wasteTotals[a])
@@ -8664,10 +8783,19 @@ app.get("/api/partner/impact/export-pdf", requireAuth, requireRole("partner"), a
 <meta charset="UTF-8">
 <title>Partner Impact Report - ${escHtml(orgName)}</title>
 <style>
-@page { size: A4; margin: 0; }
+@page { size: A4; margin: 40px 40px 60px 40px; }
+@page { @bottom-center { content: counter(page) " of " counter(pages); font-size: 9px; color: #64748b; } }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 11px; line-height: 1.4; color: #271b48; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-.page { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 11px; line-height: 1.4; color: #271b48; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; counter-reset: page; }
+.page { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; padding-bottom: 40px; }
+
+/* Fixed page footer with page numbers */
+.pdf-page-footer { position: running(pageFooter); }
+@page { @bottom-center { content: element(pageFooter); } }
+.page-number::before { content: "Page " counter(page) " of " counter(pages); }
+.running-footer { position: fixed; bottom: 0; left: 0; right: 0; height: 36px; background: linear-gradient(135deg, #271b48, #1a1030); display: flex; justify-content: space-between; align-items: center; padding: 0 40px; font-size: 8px; color: rgba(255,255,255,0.7); }
+.running-footer .org { font-weight: 600; color: #fff; }
+.running-footer .page-num { color: #D4A017; font-weight: 600; }
 
 /* COVER */
 .cover { background: linear-gradient(135deg, #271b48 0%, #271b48 100%); color: #fff; padding: 28px 32px 24px; }
@@ -8800,6 +8928,31 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
 .waste-stats { text-align: right; min-width: 90px; }
 .waste-value { font-size: 11px; font-weight: 700; color: #681fa5; }
 .waste-count { font-size: 8px; color: #64748b; }
+
+/* PIE CHART */
+.pie-chart-container { display: flex; align-items: center; justify-content: center; gap: 24px; margin: 16px 0; }
+.pie-chart-svg { width: 140px; height: 140px; }
+.pie-legend { display: flex; flex-direction: column; gap: 8px; }
+.pie-legend-item { display: flex; align-items: center; gap: 8px; }
+.pie-legend-color { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+.pie-legend-text { font-size: 9px; color: #475569; }
+.pie-legend-value { font-size: 10px; font-weight: 700; color: #271b48; margin-left: auto; }
+.pie-legend-pct { font-size: 8px; color: #64748b; margin-left: 4px; }
+
+/* PAGE NUMBERS */
+.page-footer { position: fixed; bottom: 0; left: 0; right: 0; height: 32px; background: #271b48; display: flex; justify-content: space-between; align-items: center; padding: 0 32px; }
+.page-footer-left { font-size: 8px; color: rgba(255,255,255,0.6); }
+.page-footer-center { font-size: 9px; font-weight: 600; color: #fff; }
+.page-footer-right { font-size: 8px; color: #D4A017; }
+
+/* ACTIVITY DETAIL TABLE */
+.activity-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+.activity-table th { background: #271b48; color: #fff; font-size: 8px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; padding: 10px 8px; text-align: left; }
+.activity-table th:last-child { text-align: right; }
+.activity-table td { font-size: 9px; padding: 10px 8px; border-bottom: 1px solid #e2e8f0; color: #475569; }
+.activity-table td:last-child { text-align: right; font-weight: 600; color: #681fa5; }
+.activity-table tr:nth-child(even) { background: #f8fafc; }
+.activity-table .activity-title-cell { font-weight: 600; color: #271b48; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* TOP OUTCOMES */
 .top-outcomes-section { margin-bottom: 16px; }
@@ -8955,11 +9108,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
       </div>
     </div>
 
-    <!-- Waste Category Breakdown -->
-    ${wasteBreakdownHtml ? `
+    <!-- Waste Category Breakdown with Pie Chart -->
+    ${wastePieChartHtml ? `
     <div class="waste-section">
-      <div class="waste-section-title">By Waste Category (8 Wastes)</div>
-      ${wasteBreakdownHtml}
+      <div class="waste-section-title">Savings by Waste Category (8 Wastes)</div>
+      ${wastePieChartHtml}
     </div>
     ` : ''}
 
@@ -8994,10 +9147,34 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
     </div>
     ` : ''}
 
-    <!-- All Business Entries List -->
+    <!-- All Business Entries Table -->
     <div style="margin-top: 16px;">
-      <div class="waste-section-title" style="margin-bottom: 10px;">All Business Outcomes</div>
-      ${businessHtml}
+      <div class="waste-section-title" style="margin-bottom: 10px;">Activity Detail — All Business Outcomes</div>
+      <table class="activity-table">
+        <thead>
+          <tr>
+            <th style="width: 30%;">Outcome</th>
+            <th style="width: 15%;">Waste Type</th>
+            <th style="width: 12%;">Date</th>
+            <th style="width: 13%;">Method</th>
+            <th style="width: 15%;">Verification</th>
+            <th style="width: 15%;">Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${businessEntries.map(e => {
+            const verLevel = e.verification_level || "tier_1";
+            return `<tr>
+              <td class="activity-title-cell">${escHtml((e.outcome_statement || e.title || "Business Outcome").slice(0, 50))}${(e.outcome_statement || e.title || "").length > 50 ? '...' : ''}</td>
+              <td>${getWasteLabel(e.waste_primary || 'N/A')}</td>
+              <td>${fmtDate(e.activity_date)}</td>
+              <td>${escHtml((e.improvement_method || 'N/A').slice(0, 20))}</td>
+              <td><span class="ver-pill ${getVerClass(verLevel)}">${getVerLabel(verLevel)}</span></td>
+              <td>${fmtUsd(e.usd_value)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
     </div>
   </div>
   ` : ""}
@@ -9008,6 +9185,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
     <div class="section-label">ESG Breakdown</div>
     <div class="section-title">Impact by ESG Category</div>
     <div class="section-intro">ESG social value is estimated using validated benchmark rates aligned to SASB and IFRS ISSB frameworks.</div>
+
+    ${esgPieChartHtml ? `
+    <div class="waste-section" style="margin-bottom: 16px;">
+      <div class="waste-section-title">ESG Value Distribution</div>
+      ${esgPieChartHtml}
+    </div>
+    ` : ''}
+
     <div class="esg-grid">
       <div class="esg-card esg-env" data-letter="E">
         <div class="esg-type">Environmental</div>
@@ -9032,9 +9217,45 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
   <div class="dark-header">
     <div class="dark-header-label">ESG Activity Detail</div>
     <div class="dark-header-title">ESG Activities — ${escHtml(orgName)} · ${reportPeriod}</div>
-    <div class="dark-header-sub">Full records for ESG impact activities including description, people reached, and verification level.</div>
+    <div class="dark-header-sub">Full records for ESG impact activities including people reached and verification level.</div>
   </div>
-  ${activitiesHtml}` : ""}
+
+  <div class="section">
+    <table class="activity-table">
+      <thead>
+        <tr>
+          <th style="width: 25%;">Activity</th>
+          <th style="width: 12%;">Category</th>
+          <th style="width: 12%;">Date</th>
+          <th style="width: 10%;">Hours</th>
+          <th style="width: 12%;">People</th>
+          <th style="width: 14%;">Verification</th>
+          <th style="width: 15%;">Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${esgEntries.map(e => {
+          const verLevel = e.verification_level || "tier_1";
+          return `<tr>
+            <td class="activity-title-cell">${escHtml((e.title || "Activity").slice(0, 40))}${(e.title || "").length > 40 ? '...' : ''}</td>
+            <td><span class="esg-tag ${getEsgTag(e.esg_category)}">${getEsgLabel(e.esg_category)}</span></td>
+            <td>${fmtDate(e.activity_date)}</td>
+            <td>${fmtNum(e.hours_contributed)}</td>
+            <td>${fmtNum(e.people_impacted)}</td>
+            <td><span class="ver-pill ${getVerClass(verLevel)}">${verLevel === "tier_3" ? "L3" : verLevel === "tier_2" ? "L2" : "L1"}</span></td>
+            <td>${fmtUsd(e.usd_value)}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+
+    <div style="margin-top: 12px; padding: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 10px; font-weight: 600; color: #166534;">ESG Activities Subtotal (${esgEntries.length} entries)</span>
+        <span style="font-size: 14px; font-weight: 700; color: #166534;">${fmtUsd(totalEsgValue)}</span>
+      </div>
+    </div>
+  </div>` : ""}
 
   <!-- INTEGRITY & METHODOLOGY -->
   <div class="integrity">
@@ -9058,6 +9279,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
     </div>
   </div>
 </div>
+
+<!-- Running footer for page numbers -->
+<div class="running-footer">
+  <span class="org">${escHtml(orgName)} · Partner Impact Report</span>
+  <span>Generated from Transformation Leader Platform</span>
+  <span class="page-num">${escHtml(reportId)}</span>
+</div>
+
+<script>
+  // Add page numbers via JavaScript for Puppeteer
+  (function() {
+    const footer = document.querySelector('.running-footer');
+    if (footer) {
+      const pageNumSpan = document.createElement('span');
+      pageNumSpan.className = 'page-num';
+      pageNumSpan.id = 'page-number';
+    }
+  })();
+</script>
 </body>
 </html>`;
 
@@ -9065,7 +9305,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
     const browser = await getBrowser();
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
-    const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '0', right: '0', bottom: '0', left: '0' } });
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '40px', right: '0', bottom: '50px', left: '0' },
+      displayHeaderFooter: true,
+      headerTemplate: '<div></div>',
+      footerTemplate: `
+        <div style="width: 100%; font-size: 9px; padding: 8px 40px; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #271b48, #1a1030); color: rgba(255,255,255,0.8);">
+          <span style="font-weight: 600; color: #fff;">${escHtml(orgName)} · Partner Impact Report</span>
+          <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
+          <span style="color: #D4A017; font-weight: 600;">${escHtml(reportId)}</span>
+        </div>
+      `
+    });
     await browser.close();
 
     const filename = `t4l-partner-impact-${now.toISOString().slice(0, 7)}.pdf`;
