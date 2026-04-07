@@ -71,6 +71,18 @@
       }
       .entry-card:hover { border-color: #e9d5ff; }
 
+      /* Feedback status styling */
+      .entry-card-positive {
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        border-color: #86efac;
+      }
+      .entry-card-positive:hover { border-color: #22c55e; }
+      .entry-card-negative {
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        border-color: #fca5a5;
+      }
+      .entry-card-negative:hover { border-color: #ef4444; }
+
       /* Badges */
       .badge { padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
       .badge-open { background: #d1fae5; color: #065f46; }
@@ -1585,7 +1597,8 @@
           : 'Tier 1 • Self-Reported';
         const tierBadgeClass = entry.verification_level === 'tier_3' ? 'badge-gov' : entry.verification_level === 'tier_2' ? 'badge-open' : 'text-gray-500';
         const hasVerifierFeedback = !!(entry.verifier_name || entry.verifier_comment);
-        const isPositiveFeedback = entry.verification_level === 'tier_2' || entry.verification_level === 'tier_3';
+        const isPositiveFeedback = hasVerifierFeedback && (entry.verification_level === 'tier_2' || entry.verification_level === 'tier_3');
+        const isNegativeFeedback = hasVerifierFeedback && entry.verification_level === 'tier_1';
         const feedbackBoxClass = isPositiveFeedback
           ? 'bg-green-50 border-green-100 text-green-800'
           : 'bg-red-50 border-red-100 text-red-800';
@@ -1597,11 +1610,16 @@
             </div>`
           : '';
 
+        // Card class based on feedback
+        let cardClass = 'entry-card';
+        if (isPositiveFeedback) cardClass += ' entry-card-positive';
+        else if (isNegativeFeedback) cardClass += ' entry-card-negative';
+
         if (entry.impact_type === 'business_outcome') {
           // Business Outcome card
           const usd = formatNumber(entry.usd_value);
           return `
-            <div class="entry-card">
+            <div class="${cardClass}">
               <div class="flex items-start justify-between gap-4">
                 <div class="flex-1">
                   <div class="flex items-center gap-2 mb-1 flex-wrap">
@@ -1632,7 +1650,7 @@
           // ESG / event card
           const catBadge = entry.esg_category === 'environmental' ? 'badge-env' : entry.esg_category === 'social' ? 'badge-social' : 'badge-gov';
         return `
-          <div class="entry-card">
+          <div class="${cardClass}">
             <div class="flex items-start justify-between gap-4">
               <div class="flex-1">
                 <div class="flex items-center gap-2 mb-1 flex-wrap">

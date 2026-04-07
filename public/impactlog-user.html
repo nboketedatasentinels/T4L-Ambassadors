@@ -38,6 +38,35 @@
       }
       .entry-card:hover { border-color: #e9d5ff; }
 
+      /* Feedback status styling */
+      .entry-card-positive {
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        border-color: #86efac;
+      }
+      .entry-card-positive:hover { border-color: #22c55e; }
+      .entry-card-negative {
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        border-color: #fca5a5;
+      }
+      .entry-card-negative:hover { border-color: #ef4444; }
+      .feedback-box {
+        margin-top: 0.5rem;
+        padding: 0.5rem;
+        border-radius: 0.375rem;
+        font-size: 0.75rem;
+        border: 1px solid;
+      }
+      .feedback-box-positive {
+        background: rgba(34, 197, 94, 0.1);
+        border-color: #86efac;
+        color: #166534;
+      }
+      .feedback-box-negative {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: #fca5a5;
+        color: #991b1b;
+      }
+
       /* Badges */
       .badge { padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
       .badge-env { background: #d1fae5; color: #065f46; }
@@ -392,8 +421,28 @@
                         entry.entry_type === 'event_derived' ? 'Event Participant' : 'Individual';
         const actDate = new Date(entry.activity_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
+        // Determine feedback status for card styling
+        const hasVerifierFeedback = !!(entry.verifier_name || entry.verifier_comment);
+        const isPositiveFeedback = hasVerifierFeedback && (entry.verification_level === 'tier_2' || entry.verification_level === 'tier_3');
+        const isNegativeFeedback = hasVerifierFeedback && entry.verification_level === 'tier_1';
+
+        // Card class based on feedback
+        let cardClass = 'entry-card';
+        if (isPositiveFeedback) cardClass += ' entry-card-positive';
+        else if (isNegativeFeedback) cardClass += ' entry-card-negative';
+
+        // Feedback display box
+        const feedbackBoxClass = isPositiveFeedback ? 'feedback-box feedback-box-positive' : 'feedback-box feedback-box-negative';
+        const feedbackLabel = isPositiveFeedback ? 'Verified' : 'Feedback';
+        const verifierFeedbackHtml = hasVerifierFeedback
+          ? `<div class="${feedbackBoxClass}">
+              <span class="font-medium">${feedbackLabel}${entry.verifier_name ? ' by ' + escapeHtml(entry.verifier_name) : ''}</span>
+              ${entry.verifier_comment ? `<p class="mt-0.5 opacity-90">"${escapeHtml(entry.verifier_comment)}"</p>` : ''}
+            </div>`
+          : '';
+
         return `
-          <div class="entry-card">
+          <div class="${cardClass}">
             <div class="flex items-start justify-between gap-4">
               <div class="flex-1">
                 <div class="flex items-center gap-2 mb-1 flex-wrap">
@@ -403,6 +452,7 @@
                 </div>
                 <h4 class="font-semibold text-gray-800 text-sm">${escapeHtml(entry.title)}</h4>
                 ${entry.description ? `<p class="text-xs text-gray-500 mt-1 line-clamp-1">${escapeHtml(entry.description)}</p>` : ''}
+                ${verifierFeedbackHtml}
               </div>
               <div class="text-right flex-shrink-0">
                 <p class="text-sm font-bold text-purple-700">${formatNumber(entry.people_impacted)} ${escapeHtml(entry.impact_unit || 'people')}</p>
@@ -475,7 +525,7 @@
               </div>
               <div>
                 <p class="text-2xl font-bold text-green-700">${events}</p>
-                <p class="text-xs text-gray-500">Events</p>
+                <p class="text-xs text-gray-500">Scanned Events</p>
               </div>
             </div>
             <p class="text-xs text-gray-400">Positive Impact | Sustainable Change</p>
