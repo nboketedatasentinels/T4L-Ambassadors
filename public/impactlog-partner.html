@@ -1610,16 +1610,11 @@
             </div>`
           : '';
 
-        // Card class based on feedback
-        let cardClass = 'entry-card';
-        if (isPositiveFeedback) cardClass += ' entry-card-positive';
-        else if (isNegativeFeedback) cardClass += ' entry-card-negative';
-
         if (entry.impact_type === 'business_outcome') {
           // Business Outcome card
           const usd = formatNumber(entry.usd_value);
           return `
-            <div class="${cardClass}">
+            <div class="entry-card">
               <div class="flex items-start justify-between gap-4">
                 <div class="flex-1">
                   <div class="flex items-center gap-2 mb-1 flex-wrap">
@@ -1650,7 +1645,7 @@
           // ESG / event card
           const catBadge = entry.esg_category === 'environmental' ? 'badge-env' : entry.esg_category === 'social' ? 'badge-social' : 'badge-gov';
         return `
-          <div class="${cardClass}">
+          <div class="entry-card">
             <div class="flex items-start justify-between gap-4">
               <div class="flex-1">
                 <div class="flex items-center gap-2 mb-1 flex-wrap">

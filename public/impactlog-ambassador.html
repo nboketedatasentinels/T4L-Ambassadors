@@ -1877,11 +1877,6 @@
         const isPositiveFeedback = hasVerifierFeedback && (entry.verification_level === 'tier_2' || entry.verification_level === 'tier_3');
         const isNegativeFeedback = hasVerifierFeedback && entry.verification_level === 'tier_1';
 
-        // Card class based on feedback
-        let cardClass = 'entry-card';
-        if (isPositiveFeedback) cardClass += ' entry-card-positive';
-        else if (isNegativeFeedback) cardClass += ' entry-card-negative';
-
         // Feedback display box
         const feedbackBoxClass = isPositiveFeedback ? 'feedback-box feedback-box-positive' : 'feedback-box feedback-box-negative';
         const feedbackLabel = isPositiveFeedback ? 'Verified' : 'Feedback';
@@ -1893,7 +1888,7 @@
           : '';
 
         return `
-          <div class="${cardClass}">
+          <div class="entry-card">
             <div class="flex items-start justify-between gap-4">
               <div class="flex-1">
                 <div class="flex items-center gap-2 mb-1 flex-wrap">
