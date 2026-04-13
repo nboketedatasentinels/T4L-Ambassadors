@@ -727,8 +727,11 @@ async function deleteUser(id, role = 'ambassador') {
 
     // Delete related records first to avoid FK constraint errors
     if (role === 'ambassador') {
-      // Delete notifications for this ambassador (before applications/articles/service_requests)
+      // Delete notifications for this ambassador
       await supabase.from('notifications').delete().eq('recipient_id', id).eq('recipient_type', 'ambassador');
+
+      // Delete certificates
+      await supabase.from('certificates').delete().eq('ambassador_id', id);
 
       // Delete applications
       await supabase.from('applications').delete().eq('ambassador_id', id);
@@ -759,7 +762,9 @@ async function deleteUser(id, role = 'ambassador') {
       log('✅ Deleted related partner records');
     }
 
-    // Delete sessions for this user (applies to all roles, must happen before users delete)
+    // Delete records that reference user_id (applies to all roles)
+    await supabase.from('impact_entries').delete().eq('user_id', userId);
+    await supabase.from('upload_batches').delete().eq('uploaded_by', userId);
     await supabase.from('sessions').delete().eq('user_id', userId);
 
     // Explicitly delete ALL role rows for this user first to avoid FK issues
