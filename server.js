@@ -14672,7 +14672,7 @@ app.delete(
       return res.json({ success: true });
     } catch (error) {
       console.error("Error deleting ambassador:", error);
-      return res.status(500).json({ error: "Internal server error" });
+      return res.status(500).json({ error: "Internal server error", details: error.message || String(error) });
     }
   }
 );
@@ -14913,7 +14913,7 @@ app.delete(
       return res.json({ success: true });
     } catch (error) {
       console.error("Error deleting partner:", error);
-      return res.status(500).json({ error: "Internal server error" });
+      return res.status(500).json({ error: "Internal server error", details: error.message || String(error) });
     }
   }
 );

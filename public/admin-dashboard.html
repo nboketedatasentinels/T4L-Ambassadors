@@ -4752,14 +4752,15 @@ async function markAllNotificationsRead() {
                 
                 if (!response.ok) {
                     const error = await response.json();
-                    throw new Error(error.error || 'Failed to delete');
+                    console.error('Delete error details:', error.details);
+                    throw new Error(error.details || error.error || 'Failed to delete');
                 }
-                
+
                 closeDeleteModal();
                 showToast('Item deleted successfully!');
                 fetchList();
                 fetchStats();
-                
+
             } catch (error) {
                 console.error('Error deleting:', error);
                 showToast(error.message || 'Failed to delete', true);

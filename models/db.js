@@ -736,8 +736,10 @@ async function deleteUser(id, role = 'ambassador') {
       // Delete applications
       await supabase.from('applications').delete().eq('ambassador_id', id);
 
-      // Delete journey progress
+      // Delete journey progress (both tables)
       await supabase.from('journey_progress').delete().eq('ambassador_id', id);
+      await supabase.from('ambassador_task_completion').delete().eq('ambassador_id', id);
+      await supabase.from('ambassador_journey_progress').delete().eq('ambassador_id', id);
 
       // Delete linkedin audits
       await supabase.from('linkedin_audits').delete().eq('ambassador_id', id);
@@ -766,6 +768,9 @@ async function deleteUser(id, role = 'ambassador') {
     await supabase.from('impact_entries').delete().eq('user_id', userId);
     await supabase.from('upload_batches').delete().eq('uploaded_by', userId);
     await supabase.from('sessions').delete().eq('user_id', userId);
+    await supabase.from('event_participants').delete().eq('user_id', userId);
+    await supabase.from('support_feedback').delete().eq('user_id', userId);
+    await supabase.from('business_verification_tokens').delete().eq('user_id', userId);
 
     // Explicitly delete ALL role rows for this user first to avoid FK issues
     const { error: roleDeleteError } = await supabase

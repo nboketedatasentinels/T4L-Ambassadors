@@ -888,6 +888,10 @@ video {
   margin-left: 0.75rem;
 }
 
+.ml-6 {
+  margin-left: 1.5rem;
+}
+
 .ml-\[104px\] {
   margin-left: 104px;
 }
