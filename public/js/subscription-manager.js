@@ -8,8 +8,8 @@ class SubscriptionManager {
     this.subscriptionType = null;
     this.hasFullAccess = false;
     // Free ambassadors do NOT have access to visibility (Partner Calls).
-    // They only get events, impact log, and T4L Ecosystem chat.
-    this.freeFeatures = ['events', 'impact-log', 'chat'];
+    // They get events, impact log, T4L Ecosystem chat, and services.
+    this.freeFeatures = ['events', 'impact-log', 'chat', 'services'];
   }
 
   async checkSubscription() {
@@ -237,6 +237,7 @@ class SubscriptionManager {
                     <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> Access to Events</li>
                     <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> Impact Log</li>
                     <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> T4L Ecosystem (Community &amp; chat)</li>
+                    <li class="flex items-center gap-2"><i class="fas fa-check-circle text-green-600 text-xs"></i> Services</li>
                   </ul>
                 </div>
               </div>

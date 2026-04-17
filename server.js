@@ -14560,7 +14560,7 @@ function requireSubscription(featureName) {
       }
 
       // Free tier allowed features
-      const freeFeatures = ["events", "partners", "impact-log", "chat"];
+      const freeFeatures = ["events", "partners", "impact-log", "chat", "services"];
 
       if (freeFeatures.includes(featureName)) {
         return next();
