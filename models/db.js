@@ -6,10 +6,16 @@ const { createClient } = require('@supabase/supabase-js');
 const { v4: uuidv4 } = require("uuid");
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
+// Prefer the service_role key on the server: it bypasses RLS so the backend
+// keeps working after we enable RLS on every public table. Fall back to the
+// anon key only if the service_role key is not set (e.g. local dev before
+// the env var is configured) — in that case RLS will block reads/writes.
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  console.warn('⚠️ SUPABASE_URL or SUPABASE_ANON_KEY is missing. Set them in .env for production; DB calls will fail and APIs will return safe fallbacks where implemented.');
+  console.warn('⚠️ SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing. Set them in .env for production; DB calls will fail and APIs will return safe fallbacks where implemented.');
+} else if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY not set — falling back to anon key. With RLS enabled, queries will be blocked. Set SUPABASE_SERVICE_ROLE_KEY for production.');
 }
 
 let supabase;
