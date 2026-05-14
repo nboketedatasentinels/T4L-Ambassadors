@@ -578,8 +578,8 @@
       <div class="modal-content">
         <div class="p-6 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <h2 class="text-xl font-bold text-gray-900">Log Your Impact</h2>
-            <p class="text-sm text-gray-500 mt-1">Track and measure your organization's impact</p>
+            <h2 class="text-xl font-bold text-gray-900" id="partnerWizardTitle">Log Your Impact</h2>
+            <p class="text-sm text-gray-500 mt-1" id="partnerWizardSubtitle">Track and measure your organization's impact</p>
           </div>
           <button type="button" onclick="closePartnerEntryWizard()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"><i class="bx bx-x text-xl text-gray-500"></i></button>
         </div>
@@ -666,7 +666,7 @@
                 <label class="form-label">Evidence Link</label>
                 <input type="url" name="evidence_link" class="form-input" placeholder="https://...">
               </div>
-              <div class="mt-2 border-t border-gray-100 pt-3 space-y-2">
+              <div class="mt-2 border-t border-gray-100 pt-3 space-y-2" id="partnerVerificationSection">
                 <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                   <input type="checkbox" name="send_for_verification" id="partnerSendForVerification" value="1">
                   <span>Send to external auditor for verification (Tier 3) <span class="text-gray-400 font-normal">(optional)</span></span>
@@ -722,7 +722,7 @@
             <button type="button" id="partnerWizardBack" onclick="partnerEntryWizardBack()" class="btn-secondary text-sm" style="display: none;">Back</button>
             <button type="button" id="partnerWizardNext" onclick="partnerEntryWizardNext()" class="btn-primary text-sm">Next</button>
             <button type="submit" id="partnerWizardSubmit" class="btn-primary text-sm flex items-center gap-2" style="display: none;">
-              <span>Submit Impact</span>
+              <span id="partnerWizardSubmitLabel">Submit Impact</span>
               <div class="spinner hidden" id="createEntrySpinner"></div>
             </button>
           </div>
@@ -735,8 +735,8 @@
       <div class="modal-content">
         <div class="p-6 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <h2 class="text-xl font-bold text-gray-900">Log Business Outcome</h2>
-            <p class="text-sm text-gray-500 mt-1">Record an operational improvement (8 Wastes + USD saved/created)</p>
+            <h2 class="text-xl font-bold text-gray-900" id="businessWizardTitle">Log Business Outcome</h2>
+            <p class="text-sm text-gray-500 mt-1" id="businessWizardSubtitle">Record an operational improvement (8 Wastes + USD saved/created)</p>
           </div>
           <button type="button" onclick="closeBusinessWizard()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"><i class="bx bx-x text-xl text-gray-500"></i></button>
         </div>
@@ -837,7 +837,7 @@
                 <label class="form-label">Evidence Link (optional)</label>
                 <input type="url" name="evidence_link" id="businessEvidenceLink" class="form-input" placeholder="https://...">
               </div>
-              <div class="mt-2 border-t border-gray-100 pt-3 space-y-2">
+              <div class="mt-2 border-t border-gray-100 pt-3 space-y-2" id="businessVerificationSection">
                 <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                   <input type="checkbox" name="send_for_verification" id="businessSendForVerification" value="1">
                   <span>Send to manager / finance for verification (Tier 2) <span class="text-gray-400 font-normal">(optional)</span></span>
@@ -893,7 +893,7 @@
             <button type="button" id="businessWizardBack" class="btn-secondary text-sm" style="display: none;">Back</button>
             <button type="button" id="businessWizardNext" class="btn-primary text-sm">Next</button>
             <button type="submit" id="businessWizardSubmit" class="btn-primary text-sm flex items-center gap-2" style="display: none;">
-              <span>Log Business Outcome</span>
+              <span id="businessWizardSubmitLabel">Log Business Outcome</span>
               <div class="spinner hidden" id="createBusinessSpinner"></div>
             </button>
           </div>
@@ -1079,12 +1079,36 @@
 
     let partnerWizardStep = 'category';
     let businessWizardStep = 'category';
+    // When set, the wizard submit performs an update (PUT) instead of create (POST)
+    let editingPartnerEntryId = null;
+    let editingBusinessEntryId = null;
     function openPartnerEntryWizard() {
+      editingPartnerEntryId = null;
+      setPartnerWizardEditUi(false);
       openModal('createEntryModal');
       initPartnerEntryWizard();
     }
     function closePartnerEntryWizard() {
       closeModal('createEntryModal');
+      editingPartnerEntryId = null;
+      setPartnerWizardEditUi(false);
+    }
+    function setPartnerWizardEditUi(isEdit) {
+      const titleEl = document.getElementById('partnerWizardTitle');
+      const subEl = document.getElementById('partnerWizardSubtitle');
+      const submitLabel = document.getElementById('partnerWizardSubmitLabel');
+      const verSection = document.getElementById('partnerVerificationSection');
+      const activitySel = document.getElementById('activityKeySelect');
+      if (titleEl) titleEl.textContent = isEdit ? 'Edit Impact Entry' : 'Log Your Impact';
+      if (subEl) subEl.textContent = isEdit ? 'Update the details of this impact entry' : "Track and measure your organization's impact";
+      if (submitLabel) submitLabel.textContent = isEdit ? 'Save Changes' : 'Submit Impact';
+      if (verSection) verSection.style.display = isEdit ? 'none' : '';
+      // activity_key isn't stored on the entry — drop the HTML5 'required' constraint in edit mode
+      // so the form can submit without re-selecting an activity.
+      if (activitySel) {
+        if (isEdit) activitySel.removeAttribute('required');
+        else activitySel.setAttribute('required', 'required');
+      }
     }
     function initPartnerEntryWizard() {
       partnerWizardStep = 'category';
@@ -1146,7 +1170,8 @@
         const esg = document.getElementById('esgCategorySelect').value;
         const act = document.getElementById('activityKeySelect').value;
         if (!esg) { showToast('Please select an ESG category.', 'error'); return; }
-        if (!act) { showToast('Please select an impact activity.', 'error'); return; }
+        // When editing, activity_key is optional (existing rates are reused if not re-picked)
+        if (!act && !editingPartnerEntryId) { showToast('Please select an impact activity.', 'error'); return; }
       }
       if (partnerWizardStep === 'numbers') {
         const people = parseFloat(document.getElementById('peopleInput').value) || 0;
@@ -1174,6 +1199,7 @@
       }
       const form = document.getElementById('createEntryForm');
       const raw = Object.fromEntries(new FormData(form));
+      const isEdit = !!editingPartnerEntryId;
       const body = {
         title: raw.title || '',
         description: raw.description || '',
@@ -1183,11 +1209,13 @@
         hours_contributed: raw.hours_contributed || '',
         activity_date: raw.activity_date || '',
         evidence_link: raw.evidence_link || '',
-        send_for_verification: !!raw.send_for_verification,
-        verifier_name: raw.verifier_name || '',
-        verifier_email: raw.verifier_email || '',
-        verifier_role: raw.verifier_role || '',
       };
+      if (!isEdit) {
+        body.send_for_verification = !!raw.send_for_verification;
+        body.verifier_name = raw.verifier_name || '';
+        body.verifier_email = raw.verifier_email || '';
+        body.verifier_role = raw.verifier_role || '';
+      }
       const btn = document.getElementById('partnerWizardSubmit');
       const spinner = document.getElementById('createEntrySpinner');
       btn.disabled = true;
@@ -1196,8 +1224,13 @@
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      fetch('/api/partner/impact/esg-entry', {
-        method: 'POST',
+      const url = isEdit
+        ? `/api/partner/impact/entries/${encodeURIComponent(editingPartnerEntryId)}`
+        : '/api/partner/impact/esg-entry';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(body),
@@ -1209,18 +1242,18 @@
           if (!data.error) {
             closePartnerEntryWizard();
             form.reset();
-            showToast(data.message || 'Impact entry logged successfully!', 'success');
+            showToast(data.message || (isEdit ? 'Impact entry updated!' : 'Impact entry logged successfully!'), 'success');
             loadStats();
             loadEntries();
           } else {
-            showToast(data.error || 'Failed to create entry', 'error');
+            showToast(data.error || (isEdit ? 'Failed to update entry' : 'Failed to create entry'), 'error');
           }
         })
         .catch((err) => {
           clearTimeout(timeoutId);
           const msg = err.name === 'AbortError'
             ? 'Submission timed out. Please try again.'
-            : (err.message || 'Failed to create entry');
+            : (err.message || (isEdit ? 'Failed to update entry' : 'Failed to create entry'));
           showToast(msg, 'error');
         })
         .finally(() => {
@@ -1257,7 +1290,19 @@
       });
     }
     const BUSINESS_OUTCOME_CATEGORY_LABELS = { cost_savings: 'Cost Savings', efficiency_gains: 'Efficiency Gains', revenue_growth: 'Revenue Growth' };
+    function setBusinessWizardEditUi(isEdit) {
+      const titleEl = document.getElementById('businessWizardTitle');
+      const subEl = document.getElementById('businessWizardSubtitle');
+      const submitLabel = document.getElementById('businessWizardSubmitLabel');
+      const verSection = document.getElementById('businessVerificationSection');
+      if (titleEl) titleEl.textContent = isEdit ? 'Edit Business Outcome' : 'Log Business Outcome';
+      if (subEl) subEl.textContent = isEdit ? 'Update the details of this business outcome' : 'Record an operational improvement (8 Wastes + USD saved/created)';
+      if (submitLabel) submitLabel.textContent = isEdit ? 'Save Changes' : 'Log Business Outcome';
+      if (verSection) verSection.style.display = isEdit ? 'none' : '';
+    }
     function openBusinessWizard() {
+      editingBusinessEntryId = null;
+      setBusinessWizardEditUi(false);
       businessWizardStep = 'category';
       document.getElementById('createBusinessModal').classList.add('active');
       document.body.style.overflow = 'hidden';
@@ -1275,6 +1320,8 @@
     function closeBusinessWizard() {
       document.getElementById('createBusinessModal').classList.remove('active');
       document.body.style.overflow = '';
+      editingBusinessEntryId = null;
+      setBusinessWizardEditUi(false);
     }
     function businessWizardShowPanel(step) {
       businessWizardStep = step;
@@ -1315,7 +1362,8 @@
         const category = document.getElementById('businessOutcomeCategory').value;
         const waste = document.getElementById('businessWastePrimary').value;
         const method = document.getElementById('businessImprovementMethod').value;
-        if (!category) { showToast('Please select a Business Outcome Category.', 'error'); return; }
+        // Business outcome category isn't persisted, so don't require it during edit
+        if (!category && !editingBusinessEntryId) { showToast('Please select a Business Outcome Category.', 'error'); return; }
         if (!waste) { showToast('Please select a primary waste (8 Wastes).', 'error'); return; }
         if (!method) { showToast('Please select an improvement method.', 'error'); return; }
       }
@@ -1346,6 +1394,7 @@
       }
       const form = document.getElementById('createBusinessWizardForm');
       const raw = Object.fromEntries(new FormData(form));
+      const isEdit = !!editingBusinessEntryId;
       const body = {
         title: (document.getElementById('businessTitle') && document.getElementById('businessTitle').value) || raw.title || '',
         description: (document.getElementById('businessDescription') && document.getElementById('businessDescription').value) || raw.description || '',
@@ -1355,17 +1404,23 @@
         outcome_statement: document.getElementById('businessOutcomeStatement').value || raw.outcome_statement || '',
         activity_date: document.getElementById('businessActivityDate').value || raw.activity_date || '',
         evidence_link: document.getElementById('businessEvidenceLink') && document.getElementById('businessEvidenceLink').value || raw.evidence_link || '',
-        send_for_verification: !!raw.send_for_verification,
-        verifier_name: raw.verifier_name || '',
-        verifier_email: raw.verifier_email || '',
-        verifier_role: raw.verifier_role || '',
       };
+      if (!isEdit) {
+        body.send_for_verification = !!raw.send_for_verification;
+        body.verifier_name = raw.verifier_name || '';
+        body.verifier_email = raw.verifier_email || '';
+        body.verifier_role = raw.verifier_role || '';
+      }
       const btn = document.getElementById('businessWizardSubmit');
       const spinner = document.getElementById('createBusinessSpinner');
       btn.disabled = true;
       spinner.classList.remove('hidden');
-      fetch('/api/partner/impact/business-entry', {
-        method: 'POST',
+      const url = isEdit
+        ? `/api/partner/impact/entries/${encodeURIComponent(editingBusinessEntryId)}`
+        : '/api/partner/impact/business-entry';
+      const method = isEdit ? 'PUT' : 'POST';
+      fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(body),
@@ -1381,14 +1436,14 @@
             document.querySelectorAll('.impact-biz-category-card').forEach((c) => c.classList.remove('selected', 'cost_savings', 'efficiency_gains', 'revenue_growth'));
             document.querySelectorAll('.impact-waste-btn').forEach((b) => b.classList.remove('selected'));
             document.querySelectorAll('.impact-pill').forEach((p) => p.classList.remove('selected'));
-            showToast(data.message || 'Business Outcome logged successfully!', 'success');
+            showToast(data.message || (isEdit ? 'Business Outcome updated!' : 'Business Outcome logged successfully!'), 'success');
             loadStats();
             loadEntries();
           } else {
-            showToast(data.error || 'Failed to create business outcome entry', 'error');
+            showToast(data.error || (isEdit ? 'Failed to update business outcome entry' : 'Failed to create business outcome entry'), 'error');
           }
         })
-        .catch((err) => showToast(err.message || 'Failed to create business outcome entry', 'error'))
+        .catch((err) => showToast(err.message || (isEdit ? 'Failed to update business outcome entry' : 'Failed to create business outcome entry'), 'error'))
         .finally(() => {
           btn.disabled = false;
           spinner.classList.add('hidden');
@@ -1610,6 +1665,7 @@
             </div>`
           : '';
 
+        const canEdit = entry.entry_type !== 'event_derived';
         if (entry.impact_type === 'business_outcome') {
           // Business Outcome card
           const usd = formatNumber(entry.usd_value);
@@ -1629,10 +1685,11 @@
                   <p class="text-[11px] text-gray-400 mt-1">
                     Waste: ${escapeHtml(entry.waste_primary || '')}${entry.waste_secondary ? ' · ' + escapeHtml(entry.waste_secondary) : ''} · Method: ${escapeHtml(entry.improvement_method || '')}
                   </p>
-                  <div class="mt-1 flex flex-wrap gap-2">
+                  <div class="mt-1 flex flex-wrap gap-2 items-center">
                     <button class="text-[11px] text-gray-600 underline mt-1" onclick="openShareCard('${entry.entry_id}')">
                       View share card
                     </button>
+                    ${canEdit ? `<button class="text-[11px] text-purple-700 underline mt-1 flex items-center gap-1" onclick="openEditEntry('${entry.entry_id}')"><i class="bx bx-edit-alt"></i> Edit</button>` : ''}
                   </div>
                 </div>
                 <div class="text-right flex-shrink-0">
@@ -1657,10 +1714,11 @@
                 <h4 class="font-semibold text-gray-800 text-sm">${escapeHtml(entry.title)}</h4>
                 ${entry.description ? `<p class="text-xs text-gray-500 mt-1 line-clamp-1">${escapeHtml(entry.description)}</p>` : ''}
                   ${verifierFeedbackHtml}
-                  <div class="mt-1 flex flex-wrap gap-2">
+                  <div class="mt-1 flex flex-wrap gap-2 items-center">
                     <button class="text-[11px] text-gray-600 underline" onclick="openShareCard('${entry.entry_id}')">
                       View share card
                     </button>
+                    ${canEdit ? `<button class="text-[11px] text-purple-700 underline flex items-center gap-1" onclick="openEditEntry('${entry.entry_id}')"><i class="bx bx-edit-alt"></i> Edit</button>` : ''}
                   </div>
               </div>
               <div class="text-right flex-shrink-0">
@@ -1671,6 +1729,109 @@
           </div>`;
         }
       }).join('');
+    }
+
+    // ============================================
+    // EDIT IMPACT ENTRY
+    // ============================================
+    function openEditEntry(entryId) {
+      const entry = (myEntries || []).find((e) => e.entry_id === entryId);
+      if (!entry) { showToast('Entry not found', 'error'); return; }
+      if (entry.entry_type === 'event_derived') {
+        showToast('Event-derived entries cannot be edited directly.', 'error');
+        return;
+      }
+      if (entry.impact_type === 'business_outcome') {
+        openEditBusinessEntry(entry);
+      } else {
+        openEditEsgEntry(entry);
+      }
+    }
+
+    function openEditEsgEntry(entry) {
+      // Open the ESG wizard fresh, then switch it into edit mode and prefill
+      openModal('createEntryModal');
+      initPartnerEntryWizard();
+      editingPartnerEntryId = entry.entry_id;
+      setPartnerWizardEditUi(true);
+
+      // Pre-select ESG category card and populate activity options
+      const esg = entry.esg_category || '';
+      document.getElementById('esgCategorySelect').value = esg;
+      document.querySelectorAll('.impact-category-card').forEach((c) => {
+        c.classList.toggle('selected', c.getAttribute('data-esg') === esg);
+      });
+      // Activity dropdown is repopulated; activity_key is not stored on the entry, so it stays unselected.
+      if (esg) populateActivityOptions(esg);
+      const helper = document.getElementById('activityHelper');
+      if (helper) helper.textContent = 'Activity is optional when editing — leave blank to keep the original USD rate.';
+
+      // Numbers
+      document.getElementById('peopleInput').value = entry.people_impacted ?? '';
+      document.getElementById('hoursInput').value = entry.hours_contributed ?? '';
+      document.getElementById('activityDateInput').value = entry.activity_date
+        ? String(entry.activity_date).slice(0, 10)
+        : new Date().toISOString().slice(0, 10);
+
+      // Describe
+      const form = document.getElementById('createEntryForm');
+      form.querySelector('[name="title"]').value = entry.title || '';
+      form.querySelector('[name="description"]').value = entry.description || '';
+      const evidenceInput = form.querySelector('[name="evidence_link"]');
+      if (evidenceInput) evidenceInput.value = entry.evidence_link || '';
+
+      // Reset attestation - user must re-confirm
+      document.getElementById('partnerAttestation').checked = false;
+
+      partnerWizardShowPanel('category');
+    }
+
+    function openEditBusinessEntry(entry) {
+      openBusinessWizard();
+      editingBusinessEntryId = entry.entry_id;
+      setBusinessWizardEditUi(true);
+
+      // Pre-select business outcome category (stored separately if available)
+      const bizCat = entry.business_outcome_category || '';
+      document.getElementById('businessOutcomeCategory').value = bizCat;
+      document.querySelectorAll('.impact-biz-category-card').forEach((c) => {
+        const isSel = c.getAttribute('data-category') === bizCat;
+        c.classList.toggle('selected', isSel);
+        c.classList.toggle('cost_savings', isSel && bizCat === 'cost_savings');
+        c.classList.toggle('efficiency_gains', isSel && bizCat === 'efficiency_gains');
+        c.classList.toggle('revenue_growth', isSel && bizCat === 'revenue_growth');
+      });
+
+      // Primary waste
+      const waste = entry.waste_primary || '';
+      document.getElementById('businessWastePrimary').value = waste;
+      document.querySelectorAll('.impact-waste-btn').forEach((b) => {
+        b.classList.toggle('selected', b.getAttribute('data-waste') === waste);
+      });
+
+      // Improvement method
+      const method = entry.improvement_method || '';
+      document.getElementById('businessImprovementMethod').value = method;
+      document.querySelectorAll('.impact-pill').forEach((p) => {
+        p.classList.toggle('selected', p.getAttribute('data-method') === method);
+      });
+
+      // Numbers
+      document.getElementById('businessUsdSaved').value = entry.usd_value ?? '';
+      document.getElementById('businessActivityDate').value = entry.activity_date
+        ? String(entry.activity_date).slice(0, 10)
+        : new Date().toISOString().slice(0, 10);
+      document.getElementById('businessOutcomeStatement').value = entry.outcome_statement || '';
+
+      // Describe
+      document.getElementById('businessTitle').value = entry.title || '';
+      document.getElementById('businessDescription').value = entry.description || '';
+      document.getElementById('businessEvidenceLink').value = entry.evidence_link || '';
+
+      // Reset attestation
+      document.getElementById('businessAttestation').checked = false;
+
+      businessWizardShowPanel('category');
     }
 
     function populateCreateEventActivityOptions(esgCategory) {

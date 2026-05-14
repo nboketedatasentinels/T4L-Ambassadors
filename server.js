@@ -7802,6 +7802,145 @@ app.post("/api/impact/entries/:id/mark-tier3", requireAuth, requireRole("partner
   }
 });
 
+// --- PUT /api/partner/impact/entries/:id - Update an existing impact entry (ESG or business outcome) ---
+app.put("/api/partner/impact/entries/:id", requireAuth, requireRole("partner"), async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const entryId = req.params.id;
+
+    const { data: existing, error: fetchErr } = await supabase
+      .from("impact_entries")
+      .select("*")
+      .eq("entry_id", entryId)
+      .single();
+
+    if (fetchErr || !existing) {
+      return res.status(404).json({ error: "Impact entry not found" });
+    }
+    if (existing.user_id !== userId) {
+      return res.status(403).json({ error: "Not authorized to edit this entry" });
+    }
+    if (existing.entry_type === "event_derived") {
+      return res.status(400).json({ error: "Event-derived entries cannot be edited directly" });
+    }
+
+    const body = req.body || {};
+    const nowIso = new Date().toISOString();
+    const updates = { updated_at: nowIso };
+
+    if (existing.impact_type === "business_outcome") {
+      if (body.title !== undefined) updates.title = String(body.title).trim();
+      if (body.description !== undefined) updates.description = String(body.description).trim();
+      if (body.outcome_statement !== undefined) updates.outcome_statement = String(body.outcome_statement).trim();
+      if (body.waste_primary !== undefined) updates.waste_primary = body.waste_primary || null;
+      if (body.waste_secondary !== undefined) updates.waste_secondary = body.waste_secondary || null;
+      if (body.improvement_method !== undefined) updates.improvement_method = body.improvement_method || null;
+      if (body.activity_date !== undefined && body.activity_date) updates.activity_date = body.activity_date;
+      if (body.evidence_link !== undefined) updates.evidence_link = body.evidence_link || null;
+      if (body.usd_saved !== undefined && body.usd_saved !== "") {
+        const usd = parseFloat(body.usd_saved);
+        if (!isFinite(usd) || usd <= 0) {
+          return res.status(400).json({ error: "usd_saved must be a positive number" });
+        }
+        updates.usd_value = usd;
+      }
+    } else {
+      // ESG (individual or event_master) entry
+      if (body.title !== undefined) updates.title = String(body.title).trim();
+      if (body.description !== undefined) updates.description = String(body.description).trim();
+      if (body.activity_date !== undefined && body.activity_date) updates.activity_date = body.activity_date;
+      if (body.evidence_link !== undefined) updates.evidence_link = body.evidence_link || null;
+
+      let unitRate = parseFloat(existing.unit_rate_applied) || 0;
+      let volHourRate = parseFloat(existing.vol_hour_rate_applied) || 33.49;
+      let esgCategory = body.esg_category || existing.esg_category;
+
+      // If a (possibly new) activity_key is provided, refresh the rates and unit label
+      if (body.activity_key) {
+        const { data: rate } = await supabase
+          .from("rate_configuration")
+          .select("*")
+          .eq("activity_key", body.activity_key)
+          .eq("esg_category", esgCategory)
+          .eq("is_active", true)
+          .single();
+        if (rate) {
+          unitRate = parseFloat(rate.unit_rate_usd) || 0;
+          volHourRate = parseFloat(rate.volunteer_hour_rate) || 33.49;
+          updates.unit_rate_applied = unitRate;
+          updates.vol_hour_rate_applied = volHourRate;
+          updates.impact_unit = rate.unit_label || existing.impact_unit || "people";
+          updates.esg_category = esgCategory;
+        } else {
+          return res.status(404).json({ error: "No active rate configuration found for activity_key and esg_category" });
+        }
+      } else if (body.esg_category && body.esg_category !== existing.esg_category) {
+        updates.esg_category = esgCategory;
+      }
+
+      const peopleProvided = body.people_impacted !== undefined && body.people_impacted !== "";
+      const hoursProvided = body.hours_contributed !== undefined && body.hours_contributed !== "";
+      const people = peopleProvided ? parseFloat(body.people_impacted) : parseFloat(existing.people_impacted) || 0;
+      const hours = hoursProvided ? parseFloat(body.hours_contributed) : parseFloat(existing.hours_contributed) || 0;
+      if (peopleProvided) {
+        if (!isFinite(people) || people < 0) {
+          return res.status(400).json({ error: "people_impacted must be a non-negative number" });
+        }
+        updates.people_impacted = people;
+      }
+      if (hoursProvided) {
+        if (!isFinite(hours) || hours < 0) {
+          return res.status(400).json({ error: "hours_contributed must be a non-negative number" });
+        }
+        updates.hours_contributed = hours;
+      }
+
+      // Recompute USD social value and SCP using either the new or stored rates
+      if (peopleProvided || hoursProvided || body.activity_key) {
+        const usdValue = people * unitRate + hours * volHourRate;
+        updates.usd_value = usdValue;
+        // Match partner ESG create: 1 SCP per person impacted
+        updates.scp_earned = people;
+      }
+    }
+
+    // Update with graceful column-missing retry (some legacy DBs may lack newer columns)
+    let updated, updateErr;
+    const MAX_RETRIES = 8;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      ({ data: updated, error: updateErr } = await supabase
+        .from("impact_entries")
+        .update(updates)
+        .eq("entry_id", entryId)
+        .select()
+        .single());
+
+      if (updateErr && updateErr.code === "PGRST204") {
+        const match = updateErr.message.match(/Could not find the '(\w+)' column/);
+        if (match && match[1] in updates) {
+          console.warn(`⚠️ Column '${match[1]}' missing in impact_entries (update), removing and retrying...`);
+          delete updates[match[1]];
+          continue;
+        }
+      }
+      break;
+    }
+
+    if (updateErr) throw updateErr;
+
+    return res.json({
+      success: true,
+      entry: updated,
+      message: existing.impact_type === "business_outcome"
+        ? "Business Outcome entry updated successfully"
+        : "Impact entry updated successfully",
+    });
+  } catch (error) {
+    console.error("❌ Error updating impact entry:", error);
+    return res.status(500).json({ error: "Failed to update impact entry", details: error.message });
+  }
+});
+
 // --- GET /api/impact/my-stats - Get aggregated stats for current user ---
 app.get("/api/impact/my-stats", requireAuth, async (req, res) => {
   try {
